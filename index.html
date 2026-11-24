@@ -711,6 +711,13 @@
     <div class="divider"></div>
 
     <div class="group">
+      <select id="timeSigSelect" title="박자표 (단축키 s)">
+        <option value="4/4" selected>4/4</option>
+        <option value="3/4">3/4</option>
+        <option value="2/4">2/4</option>
+        <option value="5/4">5/4</option>
+        <option value="6/8">6/8</option>
+      </select>
       <select id="barsSelect" title="마디 수 (단축키 l)">
         <option value="2">2마디</option>
         <option value="4" selected>4마디 (1줄)</option>
@@ -884,7 +891,7 @@
       statusSub: "1박 초록 / 2~4박 노랑 · 악보 위치 표시 없음",
       statusReady: "준비 완료 — Enter 또는 Space로 시작",
       statusGetReady: "준비하세요...",
-      statusCountIn: (b) => `카운트인  ${b} / 4`,
+      statusCountIn: (b, n = 4) => `카운트인  ${b} / ${n}`,
       statusDemo: "정답 베이스 미리듣기 중...",
       statusPlay: "연주 중 — 정박 메트로놈에 맞춰 입력하세요",
       statusDone: "완료! — Enter 재시도 · N 새 악보 · P 정답 듣기",
@@ -915,7 +922,7 @@
       audioFail: (err, isFile) => `오디오 입력 연결 실패: ${err}${isFile ? " (file:// 보안 제한일 수 있음 — python3 -m http.server 로 http://localhost 접속 권장)" : " (브라우저/OS 마이크 권한 및 장치 선택 확인)"}`,
       calMeasuring: "줄을 건드리지 말고 잠시 기다리세요 (바닥 노이즈 측정 중)...",
       calDone: (pct) => `노이즈 보정 완료 — 임계값 ${pct}%로 자동 설정됨`,
-      tapHintHtml: `입력: <kbd>Space</kbd> / <kbd>J</kbd> / <kbd>K</kbd> 또는 오디오 · <kbd>Enter</kbd> 시작 · <kbd>Esc</kbd> 정지 · <kbd>N</kbd> 새 악보 · <kbd>P</kbd> 정답 듣기 · <kbd>L</kbd> 마디 수 · <kbd>+</kbd><kbd>−</kbd> BPM · <kbd>M</kbd> 메트로놈 · <kbd>B</kbd> 박자표기 · <kbd>G</kbd> 채점시점 · <kbd>T</kbd> 3연음 · <kbd>I</kbd> 입력모드 · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> 난이도`,
+      tapHintHtml: `입력: <kbd>Space</kbd> / <kbd>J</kbd> / <kbd>K</kbd> 또는 오디오 · <kbd>Enter</kbd> 시작 · <kbd>Esc</kbd> 정지 · <kbd>N</kbd> 새 악보 · <kbd>P</kbd> 정답 듣기 · <kbd>S</kbd> 박자표 · <kbd>L</kbd> 마디 수 · <kbd>+</kbd><kbd>−</kbd> BPM · <kbd>M</kbd> 메트로놈 · <kbd>B</kbd> 박자표기 · <kbd>G</kbd> 채점시점 · <kbd>T</kbd> 3연음 · <kbd>I</kbd> 입력모드 · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> 난이도`,
       legendHtml: `판정: <strong style="color:var(--green)">★ ≤35ms/쉼표통과</strong> · <strong style="color:var(--amber)">−/+ ≤80ms</strong> · <strong style="color:var(--red)">&lt;/&gt; &gt;80ms · × miss/쉼표에러</strong> · 서스테인(AUD): <strong style="color:var(--green)">▬ 양호</strong> / <strong style="color:var(--amber)">▬ 짧음</strong> / <strong style="color:var(--red)">▬ 침범</strong>`,
       summaryIdle: "연주를 마치면 타이밍 분포가 표시됩니다.",
       summaryHits: (hits, total, pct, tight, sign, mean, sd, extra, sus, restErrs) => {
@@ -980,7 +987,7 @@
             <div><kbd>Esc</kbd></div><div>즉시 정지</div>
             <div><kbd>N</kbd> / <kbd>P</kbd></div><div>새 악보 생성 / 정답 베이스 듣기</div>
             <div><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> / <kbd>T</kbd></div><div>난이도 변경 (8분 / 싱코페이션 / 16분) · 3연음 포함 ON/OFF</div>
-            <div><kbd>L</kbd></div><div>마디 수 변경 (2→4→8→12→16→32)</div>
+            <div><kbd>S</kbd> / <kbd>L</kbd></div><div>박자표 변경 (4/4·3/4·2/4·5/4·6/8) · 마디 수 변경</div>
             <div><kbd>+</kbd> / <kbd>−</kbd></div><div>BPM ±5 조절</div>
             <div><kbd>M</kbd> / <kbd>B</kbd> / <kbd>G</kbd></div><div>메트로놈 · 1234 박자표기 · 채점시점(즉시/완료후)</div>
             <div><kbd>I</kbd></div><div>입력 모드 전환 (KEY → AUDIO → BOTH)</div>
@@ -1011,7 +1018,7 @@
       statusSub: "Beat 1 Green / Beats 2–4 Amber · No moving score cursor",
       statusReady: "Ready — Press Enter or Space to start",
       statusGetReady: "Get ready...",
-      statusCountIn: (b) => `Count-in  ${b} / 4`,
+      statusCountIn: (b, n = 4) => `Count-in  ${b} / ${n}`,
       statusDemo: "Playing demo bass...",
       statusPlay: "Playing — Follow the metronome click",
       statusDone: "Done! — Enter Retry · N New · P Demo",
@@ -1042,7 +1049,7 @@
       audioFail: (err, isFile) => `Audio input failed: ${err}${isFile ? " (file:// restriction — try http://localhost via python3 -m http.server)" : " (check browser/OS microphone permissions)"}`,
       calMeasuring: "Keep strings muted — measuring idle noise floor...",
       calDone: (pct) => `Noise calibrated — threshold auto-set to ${pct}%`,
-      tapHintHtml: `Play: <kbd>Space</kbd> / <kbd>J</kbd> / <kbd>K</kbd> or Audio · <kbd>Enter</kbd> Start · <kbd>Esc</kbd> Stop · <kbd>N</kbd> New · <kbd>P</kbd> Demo · <kbd>L</kbd> Bars · <kbd>+</kbd><kbd>−</kbd> BPM · <kbd>M</kbd> Click · <kbd>B</kbd> Beats · <kbd>G</kbd> Grading · <kbd>T</kbd> Triplets · <kbd>I</kbd> Input · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> Level`,
+      tapHintHtml: `Play: <kbd>Space</kbd> / <kbd>J</kbd> / <kbd>K</kbd> or Audio · <kbd>Enter</kbd> Start · <kbd>Esc</kbd> Stop · <kbd>N</kbd> New · <kbd>P</kbd> Demo · <kbd>S</kbd> Meter · <kbd>L</kbd> Bars · <kbd>+</kbd><kbd>−</kbd> BPM · <kbd>M</kbd> Click · <kbd>B</kbd> Beats · <kbd>G</kbd> Grading · <kbd>T</kbd> Triplets · <kbd>I</kbd> Input · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> Level`,
       legendHtml: `Grade: <strong style="color:var(--green)">★ ≤35ms/Rest OK</strong> · <strong style="color:var(--amber)">−/+ ≤80ms</strong> · <strong style="color:var(--red)">&lt;/&gt; &gt;80ms · × Miss/Rest Err</strong> · Sustain(AUD): <strong style="color:var(--green)">▬ OK</strong> / <strong style="color:var(--amber)">▬ Short</strong> / <strong style="color:var(--red)">▬ Bleed</strong>`,
       summaryIdle: "Finish a take to see your timing distribution.",
       summaryHits: (hits, total, pct, tight, sign, mean, sd, extra, sus, restErrs) => {
@@ -1107,7 +1114,7 @@
             <div><kbd>Esc</kbd></div><div>Stop immediately</div>
             <div><kbd>N</kbd> / <kbd>P</kbd></div><div>New score / Play demo bass</div>
             <div><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> / <kbd>T</kbd></div><div>Difficulty (8th / Syncopation / 16th) · Triplets ON/OFF</div>
-            <div><kbd>L</kbd></div><div>Cycle bar count (2→4→8→12→16→32)</div>
+            <div><kbd>S</kbd> / <kbd>L</kbd></div><div>Cycle time signature (4/4..6/8) · Cycle bar count</div>
             <div><kbd>+</kbd> / <kbd>−</kbd></div><div>BPM ±5</div>
             <div><kbd>M</kbd> / <kbd>B</kbd> / <kbd>G</kbd></div><div>Metronome · 1234 beat numbers · Grading (Live/End)</div>
             <div><kbd>I</kbd></div><div>Cycle input mode (KEY → AUDIO → BOTH)</div>
@@ -1138,7 +1145,7 @@
       statusSub: "1拍目 緑 / 2〜4拍目 黄 · 譜面カーソル表示なし",
       statusReady: "準備完了 — Enter または Space で開始",
       statusGetReady: "準備してください...",
-      statusCountIn: (b) => `カウントイン  ${b} / 4`,
+      statusCountIn: (b, n = 4) => `カウントイン  ${b} / ${n}`,
       statusDemo: "お手本ベース再生中...",
       statusPlay: "演奏中 — メトロノームに合わせて演奏してください",
       statusDone: "完了! — Enter 再挑戦 · N 新しい譜面 · P お手本",
@@ -1169,7 +1176,7 @@
       audioFail: (err, isFile) => `オーディオ入力接続失敗: ${err}${isFile ? " (file:// の制限の可能性 — python3 -m http.server で http://localhost 接続推奨)" : " (ブラウザ/OSのマイク権限を確認)"}`,
       calMeasuring: "弦に触れずにお待ちください（フロアノイズ測定中）...",
       calDone: (pct) => `ノイズ補正完了 — しきい値を ${pct}% に自動設定しました`,
-      tapHintHtml: `入力: <kbd>Space</kbd> / <kbd>J</kbd> / <kbd>K</kbd> またはオーディオ · <kbd>Enter</kbd> 開始 · <kbd>Esc</kbd> 停止 · <kbd>N</kbd> 新規 · <kbd>P</kbd> お手本 · <kbd>L</kbd> 小節数 · <kbd>+</kbd><kbd>−</kbd> BPM · <kbd>M</kbd> クリック · <kbd>B</kbd> 拍番号 · <kbd>G</kbd> 採点表示 · <kbd>T</kbd> 3連符 · <kbd>I</kbd> 入力切替 · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> 難易度`,
+      tapHintHtml: `入力: <kbd>Space</kbd> / <kbd>J</kbd> / <kbd>K</kbd> またはオーディオ · <kbd>Enter</kbd> 開始 · <kbd>Esc</kbd> 停止 · <kbd>N</kbd> 新規 · <kbd>P</kbd> お手本 · <kbd>S</kbd> 拍子 · <kbd>L</kbd> 小節数 · <kbd>+</kbd><kbd>−</kbd> BPM · <kbd>M</kbd> クリック · <kbd>B</kbd> 拍番号 · <kbd>G</kbd> 採点表示 · <kbd>T</kbd> 3連符 · <kbd>I</kbd> 入力切替 · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> 難易度`,
       legendHtml: `判定: <strong style="color:var(--green)">★ ≤35ms/休符OK</strong> · <strong style="color:var(--amber)">−/+ ≤80ms</strong> · <strong style="color:var(--red)">&lt;/&gt; &gt;80ms · × ミス/休符エラー</strong> · サステイン(AUD): <strong style="color:var(--green)">▬ 良好</strong> / <strong style="color:var(--amber)">▬ 短い</strong> / <strong style="color:var(--red)">▬ はみ出し</strong>`,
       summaryIdle: "演奏を終えるとタイミング分布が表示されます。",
       summaryHits: (hits, total, pct, tight, sign, mean, sd, extra, sus, restErrs) => {
@@ -1234,7 +1241,7 @@
             <div><kbd>Esc</kbd></div><div>即座に停止</div>
             <div><kbd>N</kbd> / <kbd>P</kbd></div><div>新しい譜面 / お手本ベース再生</div>
             <div><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> / <kbd>T</kbd></div><div>難易度切替（8分 / シンコペ / 16分）· 3連符 ON/OFF</div>
-            <div><kbd>L</kbd></div><div>小節数切替（2→4→8→12→16→32）</div>
+            <div><kbd>S</kbd> / <kbd>L</kbd></div><div>拍子切替（4/4·3/4·2/4·5/4·6/8）· 小節数切替</div>
             <div><kbd>+</kbd> / <kbd>−</kbd></div><div>BPM ±5 調整</div>
             <div><kbd>M</kbd> / <kbd>B</kbd> / <kbd>G</kbd></div><div>メトロノーム · 1234 拍番号 · 採点表示（即時/終了後）</div>
             <div><kbd>I</kbd></div><div>入力モード切替（KEY → AUDIO → BOTH）</div>
@@ -1272,6 +1279,19 @@
   // -------------------------------------------------------------------------
   const TICKS_PER_BEAT = 12;
   const TICKS_PER_BAR = 48;
+
+  const TIME_SIG_OPTIONS = ["4/4", "3/4", "2/4", "5/4", "6/8"];
+  const TIME_SIGS = {
+    "4/4": { num: 4, den: 4, beatsPerBar: 4, beatTicks: 12, barTicks: 48, clicksPerBar: 4, clickTicks: 12, countInClicks: 4, subAcc: [],  compound: false, clickSec: (bpm) => 60 / bpm },
+    "3/4": { num: 3, den: 4, beatsPerBar: 3, beatTicks: 12, barTicks: 36, clicksPerBar: 3, clickTicks: 12, countInClicks: 3, subAcc: [],  compound: false, clickSec: (bpm) => 60 / bpm },
+    "2/4": { num: 2, den: 4, beatsPerBar: 2, beatTicks: 12, barTicks: 24, clicksPerBar: 2, clickTicks: 12, countInClicks: 2, subAcc: [],  compound: false, clickSec: (bpm) => 60 / bpm },
+    "5/4": { num: 5, den: 4, beatsPerBar: 5, beatTicks: 12, barTicks: 60, clicksPerBar: 5, clickTicks: 12, countInClicks: 5, subAcc: [3], compound: false, clickSec: (bpm) => 60 / bpm },
+    "6/8": { num: 6, den: 8, beatsPerBar: 2, beatTicks: 18, barTicks: 36, clicksPerBar: 6, clickTicks: 6,  countInClicks: 6, subAcc: [3], compound: true,  clickSec: (bpm) => (60 / bpm) / 3 },
+  };
+
+  function getTimeSig(key = null) {
+    return TIME_SIGS[key || app.timeSig] || TIME_SIGS["4/4"];
+  }
 
   function scale16thPool(rawPool) {
     return rawPool.map(([cells, weight, starts]) => [
@@ -1364,8 +1384,45 @@
     [[[[0, 8, false, "4t"], [8, 8, false, "4t"]], [[4, 8, false, "4t"]]], 1.8, [0, 1, 2]],
   ];
 
+  // Compound 6/8 pattern pools (18 ticks/beat = 1 dotted quarter = 3 eighth notes)
+  const PATTERNS_68_LV1 = [
+    [[[[0, 36, false, null]], []], 0.9, [0]],                                             // dotted half (full bar)
+    [[[[0, 18, false, null]]], 2.6, [0, 1]],                                              // dotted quarter
+    [[[[0, 18, true, null]]], 0.9, [0, 1]],                                               // dotted quarter rest
+    [[[[0, 6, false, null], [6, 6, false, null], [12, 6, false, null]]], 4.0, [0, 1]],    // 3 eighth notes
+    [[[[0, 12, false, null], [12, 6, false, null]]], 3.2, [0, 1]],                        // quarter + eighth
+    [[[[0, 6, true, null], [6, 6, false, null], [12, 6, false, null]]], 1.6, [0, 1]],     // 8th rest + 2 eighths
+    [[[[0, 12, false, null], [12, 6, true, null]]], 1.4, [0, 1]],                         // quarter + 8th rest
+  ];
+
+  const PATTERNS_68_LV2 = [
+    [[[[0, 36, false, null]], []], 0.6, [0]],
+    [[[[0, 18, false, null]]], 2.0, [0, 1]],
+    [[[[0, 18, true, null]]], 0.6, [0, 1]],
+    [[[[0, 6, false, null], [6, 6, false, null], [12, 6, false, null]]], 3.0, [0, 1]],
+    [[[[0, 12, false, null], [12, 6, false, null]]], 2.8, [0, 1]],
+    [[[[0, 6, false, null], [6, 12, false, null]]], 2.2, [0, 1]],                         // eighth + quarter (syncopation)
+    [[[[0, 6, true, null], [6, 6, false, null], [12, 6, false, null]]], 2.0, [0, 1]],
+    [[[[0, 6, false, null], [6, 6, true, null], [12, 6, false, null]]], 2.0, [0, 1]],     // eighth + rest + eighth
+    [[[[0, 6, false, null], [6, 6, false, null], [12, 6, true, null]]], 1.5, [0, 1]],     // 2 eighths + rest
+    [[[[0, 6, true, null], [6, 12, false, null]]], 1.5, [0, 1]],                          // 8th rest + quarter
+    [[[[0, 12, true, null], [12, 6, false, null]]], 1.3, [0, 1]],                         // quarter rest + eighth
+  ];
+
+  const PATTERNS_68_LV3 = [
+    ...PATTERNS_68_LV2.map(([c, w, s]) => [c, w * 0.65, s]),
+    [[[[0, 3, false, null], [3, 3, false, null], [6, 6, false, null], [12, 6, false, null]]], 2.2, [0, 1]],
+    [[[[0, 6, false, null], [6, 3, false, null], [9, 3, false, null], [12, 6, false, null]]], 2.0, [0, 1]],
+    [[[[0, 6, false, null], [6, 6, false, null], [12, 3, false, null], [15, 3, false, null]]], 2.2, [0, 1]],
+    [[[[0, 9, false, null], [9, 3, false, null], [12, 6, false, null]]], 2.2, [0, 1]],    // dot8 + 16th + 8th
+    [[[[0, 12, false, null], [12, 3, false, null], [15, 3, false, null]]], 2.0, [0, 1]],  // quarter + two 16ths
+    [[[[0, 3, false, null], [3, 3, false, null], [6, 3, false, null], [9, 3, false, null], [12, 6, false, null]]], 1.5, [0, 1]],
+    [[[[0, 6, true, null], [6, 3, false, null], [9, 3, false, null], [12, 6, false, null]]], 1.4, [0, 1]],
+  ];
+
   const LEVEL_POOLS = { 1: PATTERNS_LV1, 2: PATTERNS_LV2, 3: PATTERNS_LV3 };
   const TRIPLET_POOLS = { 1: TRIPLETS_LV1, 2: TRIPLETS_LV2, 3: TRIPLETS_LV3 };
+  const COMPOUND68_POOLS = { 1: PATTERNS_68_LV1, 2: PATTERNS_68_LV2, 3: PATTERNS_68_LV3 };
   const LEVEL_TITLES = { 1: "Level 1 · 8th Basic", 2: "Level 2 · 8th Syncopation", 3: "Level 3 · 16th Rhythm" };
   const TIE_PROBS = { 1: 0.0, 2: 0.28, 3: 0.24 };
   const PRE_DELAY_SEC = 0.5;
@@ -1384,10 +1441,24 @@
     return cells.every(c => c.every(ev => ev[2]));
   }
 
-  function generatePhrase(numBars, level, tripletsOn = false, forcedSeed = null) {
+  function beatStartAllowed(cells, starts, bt, beatsPerBar, isCompound) {
+    if (isCompound) return starts.includes(bt);
+    if (cells.length === 1) return true; // any 1-beat pattern allowed on any beat (0..4)
+    if (starts.includes(bt)) return true;
+    // Allow 2-beat patterns on beat 3 (4th beat) in 5/4 (3+2 grouping), and 3-beat patterns on beat 2 in 5/4
+    if (beatsPerBar === 5 && cells.length === 2 && bt === 3) return true;
+    if (beatsPerBar === 5 && cells.length === 3 && bt === 2) return true;
+    return false;
+  }
+
+  function generatePhrase(numBars, level, tripletsOn = false, timeSigKey = "4/4", forcedSeed = null) {
+    const ts = TIME_SIGS[timeSigKey] || TIME_SIGS["4/4"];
+    const useTriplets = tripletsOn && !ts.compound;
     const seed = forcedSeed ?? (0x1000 + Math.floor(Math.random() * 0xEFFF));
     const rand = mulberry32(seed);
-    const pool = tripletsOn ? [...LEVEL_POOLS[level], ...TRIPLET_POOLS[level]] : LEVEL_POOLS[level];
+    const pool = ts.compound
+      ? COMPOUND68_POOLS[level]
+      : (useTriplets ? [...LEVEL_POOLS[level], ...TRIPLET_POOLS[level]] : LEVEL_POOLS[level]);
     const tieProb = TIE_PROBS[level];
 
     let bestBars = [];
@@ -1400,12 +1471,12 @@
       for (let b = 0; b < numBars; b++) {
         const beats = [];
         let prevRest = false;
-        while (beats.length < 4) {
+        while (beats.length < ts.beatsPerBar) {
           const bt = beats.length;
-          const rem = 4 - bt;
+          const rem = ts.beatsPerBar - bt;
           const cands = pool.filter(([cells, _w, starts]) =>
             cells.length <= rem &&
-            starts.includes(bt) &&
+            beatStartAllowed(cells, starts, bt, ts.beatsPerBar, ts.compound) &&
             !(prevRest && patternIsAllRest(cells))
           );
           const totalW = cands.reduce((s, c) => s + c[1], 0);
@@ -1424,14 +1495,14 @@
           prevRest = patternIsAllRest(chosen);
         }
 
-        for (let bt = 1; bt < 4; bt++) {
+        for (let bt = 1; bt < ts.beatsPerBar; bt++) {
           if (!beats[bt - 1].length || !beats[bt].length) continue;
           const prevEv = beats[bt - 1][beats[bt - 1].length - 1];
           const currEv = beats[bt][0];
           if (
             !prevEv.rest && !currEv.rest && !prevEv.tiedIn &&
             !prevEv.tuplet && !currEv.tuplet &&
-            prevEv.slot + prevEv.dur === TICKS_PER_BEAT && currEv.slot === 0 &&
+            prevEv.slot + prevEv.dur === ts.beatTicks && currEv.slot === 0 &&
             rand() < tieProb
           ) {
             prevEv.tiedOut = true;
@@ -1446,12 +1517,13 @@
       bars.forEach((beats, bIdx) => {
         beats.forEach((events, btIdx) => {
           events.forEach(ev => {
+            const globalSlot = bIdx * ts.barTicks + btIdx * ts.beatTicks + ev.slot;
             if (ev.rest) {
               rests.push({
                 bar: bIdx,
                 beat: btIdx,
                 slotInBeat: ev.slot,
-                globalSlot: bIdx * TICKS_PER_BAR + btIdx * TICKS_PER_BEAT + ev.slot,
+                globalSlot,
                 durSlots: ev.dur,
                 timeSec: 0,
                 endSec: 0,
@@ -1468,7 +1540,7 @@
                 bar: bIdx,
                 beat: btIdx,
                 slotInBeat: ev.slot,
-                globalSlot: bIdx * TICKS_PER_BAR + btIdx * TICKS_PER_BEAT + ev.slot,
+                globalSlot,
                 durSlots: ev.dur,
                 timeSec: 0,
                 hit: false,
@@ -1483,10 +1555,10 @@
       bestBars = bars;
       bestTargets = targets;
       bestRests = rests;
-      if (targets.length >= Math.max(4, numBars * 2) && (!tripletsOn || hasTriplet)) break;
+      if (targets.length >= Math.max(3, numBars * Math.min(2, ts.beatsPerBar)) && (!useTriplets || hasTriplet)) break;
     }
 
-    return { seed, bars: bestBars, targets: bestTargets, rests: bestRests };
+    return { seed, timeSig: timeSigKey, bars: bestBars, targets: bestTargets, rests: bestRests };
   }
 
   // -------------------------------------------------------------------------
@@ -1513,7 +1585,7 @@
     g.appendChild(el("circle", { cx: x + 26, cy: staffTop + 14.5, r: 2.0, fill: "#111" }));
   }
 
-  function drawTimeSig(g, x, staffTop) {
+  function drawTimeSig(g, x, staffTop, num = 4, den = 4) {
     const common = {
       "font-family": 'Georgia, "Times New Roman", serif',
       "font-weight": "700",
@@ -1521,8 +1593,8 @@
       fill: "#111",
       "text-anchor": "middle",
     };
-    g.appendChild(el("text", { ...common, x, y: staffTop + 18.5 }, "4"));
-    g.appendChild(el("text", { ...common, x, y: staffTop + 38.5 }, "4"));
+    g.appendChild(el("text", { ...common, x, y: staffTop + 18.5 }, String(num)));
+    g.appendChild(el("text", { ...common, x, y: staffTop + 38.5 }, String(den)));
   }
 
   function drawRest(g, dur, x, midY) {
@@ -1654,6 +1726,7 @@
   function renderScore(svg, phrase) {
     while (svg.firstChild) svg.removeChild(svg.firstChild);
 
+    const ts = TIME_SIGS[phrase.timeSig || "4/4"] || TIME_SIGS["4/4"];
     const numBars = phrase.bars.length;
     const isNarrow = window.innerWidth <= 640;
     const barsPerSystem = numBars <= 2 ? numBars : (isNarrow ? 2 : 4);
@@ -1699,10 +1772,10 @@
         stroke: "#111", "stroke-width": 1.4
       }));
 
-      // Bass clef (+ 4/4 on first system)
+      // Bass clef (+ time signature on first system)
       drawBassClef(g, leftPad + 6, staffTop);
       const headerW = sys === 0 ? clefArea : 42;
-      if (sys === 0) drawTimeSig(g, leftPad + 54, staffTop);
+      if (sys === 0) drawTimeSig(g, leftPad + 54, staffTop, ts.num, ts.den);
 
       const sysBars = Math.min(barsPerSystem, numBars - sys * barsPerSystem);
       const usableW = (W - rightPad) - (leftPad + headerW);
@@ -1714,8 +1787,9 @@
         const barX1 = barX0 + barW;
         const innerPadL = barsPerSystem === 4 ? 17 : 26;
         const innerPadR = barsPerSystem === 4 ? 12 : 18;
-        const beatW = (barW - innerPadL - innerPadR) / 4;
-        const slotX = (bt, slot) => barX0 + innerPadL + bt * beatW + (slot / TICKS_PER_BEAT) * beatW;
+        const innerW = barW - innerPadL - innerPadR;
+        const tickX = (barTick) => barX0 + innerPadL + (barTick / ts.barTicks) * innerW;
+        const slotX = (bt, slot) => tickX(bt * ts.beatTicks + slot);
 
         // Subtle measure number
         g.appendChild(el("text", {
@@ -1723,28 +1797,30 @@
           "font-family": "Georgia, serif", "font-size": 10.5, fill: "#9ca3af"
         }, `${bIdx + 1}`));
 
-        // Subtle beat numbers 1..4 above staff (toggleable)
+        // Subtle beat/click numbers above staff (toggleable: 1..clicksPerBar)
         if (app.showBeatNums) {
-          for (let bt = 0; bt < 4; bt++) {
+          for (let c = 0; c < ts.clicksPerBar; c++) {
             g.appendChild(el("text", {
-              x: slotX(bt, 0), y: staffTop - 42,
+              x: tickX(c * ts.clickTicks), y: staffTop - 42,
               "font-family": "ui-sans-serif, system-ui, sans-serif",
               "font-size": 10, "font-weight": 600, fill: "#a1a1aa", "text-anchor": "middle"
-            }, String(bt + 1)));
+            }, String(c + 1)));
           }
         }
 
         const beats = phrase.bars[bIdx];
 
-        // Draw each beat
-        for (let bt = 0; bt < 4; bt++) {
+        // Draw each beat / compound group
+        for (let bt = 0; bt < ts.beatsPerBar; bt++) {
           const events = beats[bt];
-          const beamable = [];
+          const beamGroups = [];
+          let curBeam = [];
 
           for (const ev of events) {
             const nx = slotX(bt, ev.slot);
             if (ev.rest) {
               drawRest(g, ev.dur, nx, midY);
+              if (curBeam.length) { beamGroups.push(curBeam); curBeam = []; }
             } else {
               drawNotehead(g, ev.dur, nx, midY);
               if (ev.dur !== 48) {
@@ -1754,48 +1830,52 @@
                   stroke: "#111", "stroke-width": 1.35
                 }));
                 // Beamable: 16th(3), triplet-8th(4), 8th(6), dot8(9) — NOT quarter(12) or triplet-quarter(8)
-                if (ev.dur <= 9 && ev.dur !== 8) beamable.push({ ev, nx, sx });
+                if (ev.dur <= 9 && ev.dur !== 8) {
+                  curBeam.push({ ev, nx, sx });
+                } else if (curBeam.length) {
+                  beamGroups.push(curBeam);
+                  curBeam = [];
+                }
               }
             }
           }
+          if (curBeam.length) beamGroups.push(curBeam);
 
-          // Beams or flags for beamable notes in beat
-          const restBetweenBeams = beamable.length === 2 && events.some(e =>
-            e.rest && e.slot > beamable[0].ev.slot && e.slot < beamable[1].ev.slot
-          );
-          if (beamable.length === 1 || restBetweenBeams) {
-            for (const b0 of beamable) {
+          // Beams or flags for each contiguous beamable run inside the beat/group
+          for (const beamable of beamGroups) {
+            if (beamable.length === 1) {
+              const b0 = beamable[0];
               drawFlag(g, b0.sx, stemTopY, b0.ev.dur === 3);
-            }
-          } else if (beamable.length >= 2) {
-            const xFirst = beamable[0].sx - 0.65;
-            const xLast = beamable[beamable.length - 1].sx + 0.65;
-            // Primary 8th beam
-            g.appendChild(el("rect", {
-              x: xFirst, y: stemTopY, width: xLast - xFirst, height: 4.5, fill: "#111"
-            }));
+            } else if (beamable.length >= 2) {
+              const xFirst = beamable[0].sx - 0.65;
+              const xLast = beamable[beamable.length - 1].sx + 0.65;
+              // Primary 8th beam
+              g.appendChild(el("rect", {
+                x: xFirst, y: stemTopY, width: xLast - xFirst, height: 4.5, fill: "#111"
+              }));
 
-            // Secondary 16th beams (dur === 3 ticks)
-            const connected = new Array(beamable.length).fill(false);
-            const y2 = stemTopY + 7.0;
-            for (let i = 0; i < beamable.length - 1; i++) {
-              const a = beamable[i], b = beamable[i + 1];
-              if (a.ev.dur === 3 && b.ev.dur === 3 && a.ev.slot + a.ev.dur === b.ev.slot) {
-                g.appendChild(el("rect", {
-                  x: a.sx - 0.65, y: y2, width: (b.sx - a.sx) + 1.3, height: 4.0, fill: "#111"
-                }));
-                connected[i] = true;
-                connected[i + 1] = true;
+              // Secondary 16th beams (dur === 3 ticks)
+              const connected = new Array(beamable.length).fill(false);
+              const y2 = stemTopY + 7.0;
+              for (let i = 0; i < beamable.length - 1; i++) {
+                const a = beamable[i], b = beamable[i + 1];
+                if (a.ev.dur === 3 && b.ev.dur === 3 && a.ev.slot + a.ev.dur === b.ev.slot) {
+                  g.appendChild(el("rect", {
+                    x: a.sx - 0.65, y: y2, width: (b.sx - a.sx) + 1.3, height: 4.0, fill: "#111"
+                  }));
+                  connected[i] = true;
+                  connected[i + 1] = true;
+                }
               }
-            }
-            for (let i = 0; i < beamable.length; i++) {
-              const item = beamable[i];
-              if (item.ev.dur === 3 && !connected[i]) {
-                const stubW = 9.5;
-                const sx = i < beamable.length - 1 ? item.sx - 0.65 : item.sx - stubW + 0.65;
-                g.appendChild(el("rect", {
-                  x: sx, y: y2, width: stubW, height: 4.0, fill: "#111"
-                }));
+              for (let i = 0; i < beamable.length; i++) {
+                const item = beamable[i];
+                if (item.ev.dur === 3 && !connected[i]) {
+                  const stubW = 9.5;
+                  const sx = i < beamable.length - 1 ? item.sx - 0.65 : item.sx - stubW + 0.65;
+                  g.appendChild(el("rect", {
+                    x: sx, y: y2, width: stubW, height: 4.0, fill: "#111"
+                  }));
+                }
               }
             }
           }
@@ -1805,10 +1885,10 @@
             const xStart = slotX(bt, events[0].slot) + (events[0].rest ? 0 : 4.7);
             const lastEv = events[events.length - 1];
             const xEnd = slotX(bt, lastEv.slot) + (lastEv.rest ? 4 : 4.7);
-            const allBeamed3 = beamable.length === 3 && !events.some(e => e.rest);
+            const allBeamed3 = beamGroups.length === 1 && beamGroups[0].length === 3 && !events.some(e => e.rest);
             drawTuplet(g, xStart, xEnd, stemTopY, !allBeamed3);
           }
-          if (events.length && events[0].tuplet === "4t" && events[0].slot === 0 && bt + 1 < 4) {
+          if (events.length && events[0].tuplet === "4t" && events[0].slot === 0 && bt + 1 < ts.beatsPerBar) {
             const nextEvents = beats[bt + 1];
             const lastSlot = nextEvents.length ? nextEvents[nextEvents.length - 1].slot : 4;
             const xStart = slotX(bt, 0) + 4.7;
@@ -1889,8 +1969,8 @@
 
             // Sustain bar beneath notehead (AUDIO input only)
             if (tgt.hit && tgt.hitSource === "AUDIO" && tgt.sustainStatus) {
-              const endSlotInBar = bt * TICKS_PER_BEAT + ev.slot + tgt.durSlots;
-              const rawEndX = barX0 + innerPadL + (endSlotInBar / TICKS_PER_BEAT) * beatW;
+              const endTickInBar = bt * ts.beatTicks + ev.slot + tgt.durSlots;
+              const rawEndX = tickX(endTickInBar);
               const spanW = Math.max(12, Math.min(barX1 - 6, rawEndX) - nx - 3);
               const susY = staffTop + 65;
               const barG = el("g");
@@ -2038,23 +2118,29 @@
     scheduledNodes.push(osc1, osc2, g2, filter, gain);
   }
 
-  function scheduleRunAudio(bpm, numBars, startAudioT, playMetronome, demoTargets = null) {
+  function scheduleRunAudio(bpm, numBars, startAudioT, playMetronome, demoTargets = null, timeSigKey = "4/4") {
     stopScheduledAudio();
     const ctx = ensureAudioCtx();
-    const beatSec = 60 / bpm;
-    const tickSec = beatSec / TICKS_PER_BEAT;
+    const ts = TIME_SIGS[timeSigKey] || TIME_SIGS["4/4"];
+    const clickSec = ts.clickSec(bpm);
+    const tickSec = clickSec / ts.clickTicks;
+    const countInSec = ts.countInClicks * clickSec;
 
     if (playMetronome || demoTargets) {
-      // Consistent concert-pitch clicks across count-in & bars: E6 (1318.5Hz) on beat 1, A5 (880Hz) on beats 2-4
-      const totalBeats = 4 + numBars * 4;
-      for (let b = 0; b < totalBeats; b++) {
-        const isDownbeat = b % 4 === 0;
-        scheduleClick(ctx, startAudioT + b * beatSec, isDownbeat ? 1318.51 : 880.0, isDownbeat ? 0.32 : 0.22);
+      // Consistent concert-pitch clicks: E6 (1318.5Hz) on beat 1, C6 (1046.5Hz) on sub-accent, A5 (880Hz) otherwise
+      const totalClicks = ts.countInClicks + numBars * ts.clicksPerBar;
+      for (let c = 0; c < totalClicks; c++) {
+        const pos = c < ts.countInClicks ? c : (c - ts.countInClicks) % ts.clicksPerBar;
+        const isDownbeat = pos === 0;
+        const isSubAcc = !isDownbeat && ts.subAcc.includes(pos);
+        const freq = isDownbeat ? 1318.51 : (isSubAcc ? 1046.50 : 880.0);
+        const amp = isDownbeat ? 0.32 : (isSubAcc ? 0.25 : 0.20);
+        scheduleClick(ctx, startAudioT + c * clickSec, freq, amp);
       }
     }
     if (demoTargets) {
       for (const tgt of demoTargets) {
-        const when = startAudioT + 4 * beatSec + tgt.globalSlot * tickSec;
+        const when = startAudioT + countInSec + tgt.globalSlot * tickSec;
         const durSec = tgt.durSlots * tickSec;
         // All notes on the middle line of bass clef = D (sounding D2 = 73.42Hz on bass guitar)
         scheduleBassNote(ctx, when, durSec, 73.42);
@@ -2550,6 +2636,7 @@
     bpm: 60,
     level: 1,
     tripletsOn: false,
+    timeSig: "4/4",
     numBars: 4,
     soundOn: true,
     showBeatNums: false,
@@ -2566,18 +2653,24 @@
   };
 
   function hitWindowSec() {
+    const ts = getTimeSig();
     const beatSec = 60 / app.bpm;
+    if (ts.compound) {
+      // In 6/8 at dotted-quarter = bpm, 8th note is beatSec/3, 16th is beatSec/6
+      return app.level >= 3 ? Math.min(0.115, (beatSec / 6) * 0.48) : Math.min(0.135, (beatSec / 3) * 0.46);
+    }
     if (app.level >= 3) return Math.min(0.120, (beatSec / 4) * 0.48);
     if (app.tripletsOn) return Math.min(0.135, (beatSec / 3) * 0.46);
     return Math.min(0.150, (beatSec / 2) * 0.45);
   }
 
   function resetTargets() {
-    const beatSec = 60 / app.bpm;
-    const tickSec = beatSec / TICKS_PER_BEAT;
-    const countIn = 4 * beatSec;
+    const ts = getTimeSig(app.phrase ? app.phrase.timeSig : app.timeSig);
+    const clickSec = ts.clickSec(app.bpm);
+    const tickSec = clickSec / ts.clickTicks;
+    const countIn = ts.countInClicks * clickSec;
     const targets = app.phrase.targets;
-    const totalSlots = app.numBars * TICKS_PER_BAR;
+    const totalSlots = app.numBars * ts.barTicks;
     for (let i = 0; i < targets.length; i++) {
       const tgt = targets[i];
       const nextTgt = targets[i + 1];
@@ -2619,7 +2712,7 @@
   function newPhrase() {
     stopScheduledAudio();
     app.takeId += 1;
-    app.phrase = generatePhrase(app.numBars, app.level, app.tripletsOn);
+    app.phrase = generatePhrase(app.numBars, app.level, app.tripletsOn, app.timeSig);
     resetTargets();
     app.state = "READY";
     setHitBadge(t("badgeWait"), "");
@@ -2639,7 +2732,8 @@
       app.numBars,
       app.startAudioT,
       demo ? true : app.soundOn,
-      demo ? app.phrase.targets : null
+      demo ? app.phrase.targets : null,
+      app.timeSig
     );
   }
 
@@ -2669,8 +2763,8 @@
 
   function handleHit(hitAudioT, source) {
     if (app.state !== "COUNTIN" && app.state !== "PLAY") return;
-    const beatSec = 60 / app.bpm;
-    const countIn = 4 * beatSec;
+    const ts = getTimeSig();
+    const countIn = ts.countInClicks * ts.clickSec(app.bpm);
     const elapsed = hitAudioT - app.startAudioT;
     const win = hitWindowSec();
     if (elapsed < countIn - win) return;
@@ -2766,7 +2860,8 @@
       seed: app.phrase.seed.toString(16).toUpperCase().padStart(4, "0"),
       bpm: app.bpm,
       lv: app.level,
-      triplets: app.tripletsOn,
+      triplets: app.tripletsOn && !getTimeSig().compound,
+      ts: app.timeSig,
       mode: app.inputMode,
       hits, total, acc, tight, mean, sd, extra: app.extraHits,
       susTotal, susOk,
@@ -2846,7 +2941,7 @@
       return `<tr>
         <td>#${h.take}</td>
         <td>${h.bpm}</td>
-        <td>L${h.lv}${h.triplets ? "T" : ""}</td>
+        <td>L${h.lv}${h.triplets ? "T" : ""} ${h.ts || "4/4"}</td>
         <td>${h.mode}</td>
         <td><strong>${h.hits}/${h.total}</strong> (${h.acc.toFixed(0)}%)</td>
         <td>${h.tight}</td>
@@ -2863,15 +2958,18 @@
   }
 
   function updateMeta() {
+    const ts = getTimeSig();
     document.getElementById("bpmVal").textContent = String(app.bpm);
     document.getElementById("bpmSlider").value = String(app.bpm);
-    document.getElementById("metaTempo").textContent = `♩ = ${app.bpm}`;
-    document.getElementById("metaLevel").textContent = LEVEL_TITLES[app.level] + (app.tripletsOn ? " + Triplets" : "");
+    document.getElementById("metaTempo").textContent = ts.compound ? `♩. = ${app.bpm}` : `♩ = ${app.bpm}`;
+    document.getElementById("metaLevel").textContent = `${app.timeSig} · ${LEVEL_TITLES[app.level]}${app.tripletsOn && !ts.compound ? " + Triplets" : ""}`;
     document.getElementById("metaSeed").textContent = `Seed #${app.phrase.seed.toString(16).toUpperCase().padStart(4, "0")}`;
+    document.getElementById("timeSigSelect").value = app.timeSig;
     document.getElementById("barsSelect").value = String(app.numBars);
     const btnTriplets = document.getElementById("btnTriplets");
-    btnTriplets.textContent = app.tripletsOn ? t("tripletsOn") : t("tripletsOff");
-    btnTriplets.classList.toggle("active", app.tripletsOn);
+    btnTriplets.disabled = ts.compound;
+    btnTriplets.textContent = (app.tripletsOn && !ts.compound) ? t("tripletsOn") : t("tripletsOff");
+    btnTriplets.classList.toggle("active", app.tripletsOn && !ts.compound);
     const btnSound = document.getElementById("btnSound");
     btnSound.textContent = app.soundOn ? t("metroOn") : t("metroOff");
     btnSound.classList.toggle("active", app.soundOn);
@@ -3021,12 +3119,13 @@
     if ((app.state === "COUNTIN" || app.state === "PLAY" || app.state === "DEMO") && audioCtx) {
       const now = audioCtx.currentTime;
       const elapsed = now - app.startAudioT;
-      const beatSec = 60 / app.bpm;
-      const tickSec = beatSec / TICKS_PER_BEAT;
-      const countIn = 4 * beatSec;
+      const ts = getTimeSig();
+      const clickSec = ts.clickSec(app.bpm);
+      const tickSec = clickSec / ts.clickTicks;
+      const countIn = ts.countInClicks * clickSec;
       const win = hitWindowSec();
-      const totalBeats = 4 + app.numBars * 4;
-      const endT = countIn + (app.numBars * TICKS_PER_BAR) * tickSec + win;
+      const totalClicks = ts.countInClicks + app.numBars * ts.clicksPerBar;
+      const endT = countIn + (app.numBars * ts.barTicks) * tickSec + win;
 
       if (app.state === "COUNTIN" && elapsed >= countIn) {
         app.state = "PLAY";
@@ -3053,8 +3152,8 @@
       if (elapsed < 0) {
         statusMain.textContent = t("statusGetReady");
       } else if (elapsed < countIn) {
-        const ciBeat = Math.min(4, Math.floor(elapsed / beatSec) + 1);
-        statusMain.textContent = t("statusCountIn", ciBeat);
+        const ciBeat = Math.min(ts.countInClicks, Math.floor(elapsed / clickSec) + 1);
+        statusMain.textContent = t("statusCountIn", ciBeat, ts.countInClicks);
       } else if (app.state === "DEMO") {
         statusMain.textContent = t("statusDemo");
       } else {
@@ -3062,11 +3161,12 @@
       }
 
       if (elapsed >= 0) {
-        const beatIdx = Math.floor(elapsed / beatSec);
-        const phase = elapsed - beatIdx * beatSec;
-        const flashDur = Math.min(0.13, beatSec * 0.28);
-        if (beatIdx >= 0 && beatIdx < totalBeats && phase < flashDur) {
-          ledClass = beatIdx % 4 === 0 ? "led-core beat1" : "led-core beatn";
+        const clickIdx = Math.floor(elapsed / clickSec);
+        const phase = elapsed - clickIdx * clickSec;
+        const flashDur = Math.min(0.13, clickSec * 0.32);
+        if (clickIdx >= 0 && clickIdx < totalClicks && phase < flashDur) {
+          const pos = clickIdx < ts.countInClicks ? clickIdx : (clickIdx - ts.countInClicks) % ts.clicksPerBar;
+          ledClass = pos === 0 ? "led-core beat1" : "led-core beatn";
         }
       }
 
@@ -3115,7 +3215,14 @@
   });
 
   document.getElementById("btnTriplets").addEventListener("click", () => {
+    if (getTimeSig().compound) return;
     app.tripletsOn = !app.tripletsOn;
+    newPhrase();
+  });
+
+  document.getElementById("timeSigSelect").addEventListener("change", (e) => {
+    app.timeSig = e.target.value;
+    e.target.blur();
     newPhrase();
   });
 
@@ -3341,7 +3448,14 @@
       newPhrase();
     } else if (code === "KeyT") {
       e.preventDefault();
-      app.tripletsOn = !app.tripletsOn;
+      if (!getTimeSig().compound) {
+        app.tripletsOn = !app.tripletsOn;
+        newPhrase();
+      }
+    } else if (code === "KeyS") {
+      e.preventDefault();
+      const idx = TIME_SIG_OPTIONS.indexOf(app.timeSig);
+      app.timeSig = TIME_SIG_OPTIONS[(idx + 1) % TIME_SIG_OPTIONS.length];
       newPhrase();
     } else if (code === "KeyL") {
       e.preventDefault();
@@ -3379,7 +3493,7 @@
   });
 
   // Boot
-  app.phrase = generatePhrase(app.numBars, app.level, app.tripletsOn);
+  app.phrase = generatePhrase(app.numBars, app.level, app.tripletsOn, app.timeSig);
   resetTargets();
   syncGain(2);
   syncThreshold(16);
