@@ -800,7 +800,7 @@
       </div>
       <div class="status-text">
         <div id="statusMain" class="status-main">준비 완료 — Enter 또는 Space로 시작</div>
-        <div id="statusSub" class="status-sub">1박 초록 / 2~4박 노랑 · 악보 위치 표시 없음</div>
+        <div id="statusSub" class="status-sub">1박 초록 / 나머지 박 노랑 · 악보 위치 표시 없음</div>
       </div>
     </div>
     <div id="hitBadge" class="hit-badge">대기 중</div>
@@ -939,7 +939,7 @@
       btnPad: "👆 패드",
       btnPrint: "🖨 PDF",
       btnGuide: "❓ 설명",
-      statusSub: "1박 초록 / 2~4박 노랑 · 악보 위치 표시 없음",
+      statusSub: "1박 초록 / 나머지 박 노랑 · 악보 위치 표시 없음",
       statusReady: "준비 완료 — Enter 또는 Space로 시작",
       statusGetReady: "준비하세요...",
       statusCountIn: (b, n = 4) => `카운트인  ${b} / ${n}`,
@@ -998,7 +998,7 @@
         <div class="guide-sec">
           <h3>1. 기본 연습 방법</h3>
           <ul>
-            <li><strong>시작 / 정지</strong>: <kbd>Enter</kbd> 또는 <strong>▶ 시작</strong>을 누르면 4박 카운트인(1박 초록 LED, 2~4박 노랑 LED) 후 연주가 시작됩니다. 중간에 멈추려면 <kbd>Esc</kbd> 또는 <strong>■ 정지</strong>를 누르세요.</li>
+            <li><strong>시작 / 정지</strong>: <kbd>Enter</kbd> 또는 <strong>▶ 시작</strong>을 누르면 1마디 카운트인(1박 초록 LED, 나머지 박 노랑 LED) 후 연주가 시작됩니다. 중간에 멈추려면 <kbd>Esc</kbd> 또는 <strong>■ 정지</strong>를 누르세요.</li>
             <li><strong>정답 미리듣기</strong>: <kbd>P</kbd> 또는 <strong>♪ 정답 듣기</strong>를 누르면 메트로놈에 맞춰 베이스 가이드 음(D)이 재생됩니다.</li>
             <li><strong>악보 커스터마이즈</strong>: 난이도(<kbd>1</kbd> 8분 기초 / <kbd>2</kbd> 싱코페이션 / <kbd>3</kbd> 16분음표), 마디 수(<kbd>L</kbd>, 2~32마디), BPM(<kbd>+</kbd>/<kbd>−</kbd>), 마디 위 <code>1 2 3 4</code> 박자 표시(<kbd>B</kbd>)를 자유롭게 바꿀 수 있습니다.</li>
             <li><strong>시창(초견) 훈련 설계</strong>: 악보 위에 움직이는 커서가 없으므로 메트로놈과 LED만 보고 직접 박자를 세며 읽는 연습에 최적화되어 있습니다. <strong>채점: 완료후(<kbd>G</kbd>)</strong>를 켜면 연주 중 채점 표시를 숨기고 끝난 뒤 한꺼번에 공개해 보정 없이 순수 박자감만 점검할 수 있습니다.</li>
@@ -1066,7 +1066,7 @@
       btnPad: "👆 Pads",
       btnPrint: "🖨 PDF",
       btnGuide: "❓ Guide",
-      statusSub: "Beat 1 Green / Beats 2–4 Amber · No moving score cursor",
+      statusSub: "Beat 1 Green / Other beats Amber · No moving score cursor",
       statusReady: "Ready — Press Enter or Space to start",
       statusGetReady: "Get ready...",
       statusCountIn: (b, n = 4) => `Count-in  ${b} / ${n}`,
@@ -1125,7 +1125,7 @@
         <div class="guide-sec">
           <h3>1. How to Practice</h3>
           <ul>
-            <li><strong>Start / Stop</strong>: Press <kbd>Enter</kbd> or <strong>▶ Start</strong> for a 4-beat count-in (Beat 1 green LED, Beats 2–4 amber LED). Press <kbd>Esc</kbd> or <strong>■ Stop</strong> anytime to abort while keeping the same sheet.</li>
+            <li><strong>Start / Stop</strong>: Press <kbd>Enter</kbd> or <strong>▶ Start</strong> for a 1-bar count-in (Beat 1 green LED, other beats amber LED). Press <kbd>Esc</kbd> or <strong>■ Stop</strong> anytime to abort while keeping the same sheet.</li>
             <li><strong>Demo Playback</strong>: Press <kbd>P</kbd> or <strong>♪ Play Demo</strong> to hear the exact rhythm played on bass (D) with the metronome.</li>
             <li><strong>Customize</strong>: Switch difficulty (<kbd>1</kbd> 8th Basic / <kbd>2</kbd> Syncopation / <kbd>3</kbd> 16th Notes), length (<kbd>L</kbd>, 2–32 bars), BPM (<kbd>+</kbd>/<kbd>−</kbd>), and beat numbers <code>1 2 3 4</code> (<kbd>B</kbd>).</li>
             <li><strong>True Sight-Reading</strong>: There is intentionally no moving cursor on the score—read ahead and internalize the pulse using only the click and LED. Enable <strong>Grade: End (<kbd>G</kbd>)</strong> to hide all feedback during the take and reveal every result together when finished.</li>
@@ -1193,7 +1193,7 @@
       btnPad: "👆 パッド",
       btnPrint: "🖨 PDF",
       btnGuide: "❓ 使い方",
-      statusSub: "1拍目 緑 / 2〜4拍目 黄 · 譜面カーソル表示なし",
+      statusSub: "1拍目 緑 / その他の拍 黄 · 譜面カーソル表示なし",
       statusReady: "準備完了 — Enter または Space で開始",
       statusGetReady: "準備してください...",
       statusCountIn: (b, n = 4) => `カウントイン  ${b} / ${n}`,
@@ -1252,7 +1252,7 @@
         <div class="guide-sec">
           <h3>1. 基本的な練習方法</h3>
           <ul>
-            <li><strong>開始 / 停止</strong>: <kbd>Enter</kbd> または <strong>▶ 開始</strong> で4拍カウントイン（1拍目 緑LED、2〜4拍目 黄LED）のあと演奏が始まります。途中で止めるには <kbd>Esc</kbd> または <strong>■ 停止</strong> を押してください。</li>
+            <li><strong>開始 / 停止</strong>: <kbd>Enter</kbd> または <strong>▶ 開始</strong> で1小節カウントイン（1拍目 緑LED、その他の拍 黄LED）のあと演奏が始まります。途中で止めるには <kbd>Esc</kbd> または <strong>■ 停止</strong> を押してください。</li>
             <li><strong>お手本再生</strong>: <kbd>P</kbd> または <strong>♪ お手本再生</strong> でメトロノームに合わせたベースガイド音（D）を確認できます。</li>
             <li><strong>譜面設定</strong>: 難易度（<kbd>1</kbd> 8分基礎 / <kbd>2</kbd> シンコペーション / <kbd>3</kbd> 16分音符）、小節数（<kbd>L</kbd>、2〜32小節）、BPM（<kbd>+</kbd>/<kbd>−</kbd>）、拍番号 <code>1 2 3 4</code> 表示（<kbd>B</kbd>）を自由に切り替えられます。</li>
             <li><strong>初見（サイトリーディング）特化</strong>: 譜面上に動くカーソルを置かない設計のため、メトロノームとLEDだけで拍を数えながら先読みする練習に最適です。<strong>採点: 終了後（<kbd>G</kbd>）</strong>をオンにすると演奏中は判定を隠し、完走後にまとめて結果を表示します。</li>
