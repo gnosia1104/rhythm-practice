@@ -407,17 +407,22 @@
 
   .cal-dots {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
   }
 
   .cal-dot {
-    width: 14px;
-    height: 14px;
+    width: 12px;
+    height: 12px;
     border-radius: 50%;
     border: 2px solid #cbd5e1;
     background: #f8fafc;
     transition: background 0.08s, border-color 0.08s, transform 0.08s;
+  }
+
+  .cal-dot:nth-child(4n + 5) {
+    margin-left: 5px;
   }
 
   .cal-dot.warmup {
@@ -869,10 +874,18 @@
   <!-- Optional Latency Calibration Bar (hidden unless user clicks ⏱ 보정) -->
   <div id="calBar" class="cal-bar hidden">
     <strong id="lblCalTitle">⏱ 싱크 보정</strong>
-    <button id="btnCalRun" type="button" class="primary">▶ 8박 측정</button>
+    <button id="btnCalRun" type="button" class="primary">▶ 16박 측정</button>
     <div id="calDots" class="cal-dots" aria-label="Calibration beats">
       <span class="cal-dot warmup"></span>
       <span class="cal-dot warmup"></span>
+      <span class="cal-dot warmup"></span>
+      <span class="cal-dot warmup"></span>
+      <span class="cal-dot"></span>
+      <span class="cal-dot"></span>
+      <span class="cal-dot"></span>
+      <span class="cal-dot"></span>
+      <span class="cal-dot"></span>
+      <span class="cal-dot"></span>
       <span class="cal-dot"></span>
       <span class="cal-dot"></span>
       <span class="cal-dot"></span>
@@ -892,7 +905,7 @@
     </label>
     <button id="btnCalReset" type="button">초기화</button>
     <button id="btnCalClose" type="button" class="cal-close" title="닫기">✕</button>
-    <span id="calMsg" class="cal-msg">박자가 일정하게 밀릴 때만 사용하세요 · 메트로놈 8박에 맞춰 Space/J/K 또는 베이스를 튕기면 자동 보정됩니다 (앞 2박은 준비).</span>
+    <span id="calMsg" class="cal-msg">박자가 일정하게 밀릴 때만 사용하세요 · 메트로놈 16박에 맞춰 Space/J/K 또는 베이스를 튕기면 자동 보정됩니다 (앞 4박은 준비).</span>
   </div>
 
   <!-- Audio Input Monitor (shown when AUDIO or BOTH) -->
@@ -1030,15 +1043,15 @@
       btnSyncCal: "⏱ 보정",
       btnGuide: "❓ 설명",
       calTitle: "⏱ 싱크 보정",
-      calStartBtn: "▶ 8박 측정",
+      calStartBtn: "▶ 16박 측정",
       calStopBtn: "■ 중단",
       calResetBtn: "초기화",
-      calIdleMsg: "박자가 일정하게 밀릴 때만 사용하세요 · 메트로놈 8박에 맞춰 Space/J/K 또는 베이스를 튕기면 자동 보정됩니다 (앞 2박은 준비).",
-      calRunningMsg: "메트로놈에 맞춰 일정하게 탭/연주하세요 (1~2박 준비 · 3~8박 측정)...",
+      calIdleMsg: "박자가 일정하게 밀릴 때만 사용하세요 · 메트로놈 16박에 맞춰 Space/J/K 또는 베이스를 튕기면 자동 보정됩니다 (앞 4박은 준비).",
+      calRunningMsg: "메트로놈에 맞춰 일정하게 탭/연주하세요 (1~4박 준비 · 5~16박 측정)...",
       calStatus: (b, n) => `싱크 보정 중  ${b} / ${n}`,
       calBadgeRunning: "보정 측정 중...",
-      calApplied: (src, ms, n, spread) => `보정 완료! ${src} ${ms >= 0 ? "+" : ""}${ms}ms 자동 적용됨 (${n}/6박 측정 · 편차 ±${spread}ms)`,
-      calTooFew: (n) => `입력이 부족합니다 (${n}/6박 · 최소 3박 필요) — 다시 측정해 주세요.`,
+      calApplied: (src, ms, n, spread) => `보정 완료! ${src} ${ms >= 0 ? "+" : ""}${ms}ms 자동 적용됨 (${n}/12박 측정 · 편차 ±${spread}ms)`,
+      calTooFew: (n) => `입력이 부족합니다 (${n}/12박 · 최소 6박 필요) — 다시 측정해 주세요.`,
       calResetMsg: "보정값을 기본값(KEY 0ms / AUD 25ms)으로 초기화했습니다.",
       statusSub: "1박 초록 / 나머지 박 노랑 · 악보 위치 표시 없음",
       statusReady: "준비 완료 — Enter 또는 Space로 시작",
@@ -1169,15 +1182,15 @@
       btnSyncCal: "⏱ Sync",
       btnGuide: "❓ Guide",
       calTitle: "⏱ Sync Cal",
-      calStartBtn: "▶ 8-Beat Test",
+      calStartBtn: "▶ 16-Beat Test",
       calStopBtn: "■ Stop",
       calResetBtn: "Reset",
-      calIdleMsg: "Optional — use if hits feel consistently early/late (e.g. Bluetooth or audio interface). Tap Space/J/K or pluck bass for 8 clicks (first 2 warm-up).",
-      calRunningMsg: "Tap or pluck steadily on every click (beats 1–2 warm-up, 3–8 measured)...",
+      calIdleMsg: "Optional — use if hits feel consistently early/late (e.g. Bluetooth or audio interface). Tap Space/J/K or pluck bass for 16 clicks (first 4 warm-up).",
+      calRunningMsg: "Tap or pluck steadily on every click (beats 1–4 warm-up, 5–16 measured)...",
       calStatus: (b, n) => `Calibrating  ${b} / ${n}`,
       calBadgeRunning: "Calibrating...",
-      calApplied: (src, ms, n, spread) => `Calibrated! Applied ${src} ${ms >= 0 ? "+" : ""}${ms}ms (${n}/6 taps · ±${spread}ms spread)`,
-      calTooFew: (n) => `Not enough taps (${n}/6, need at least 3) — please try again.`,
+      calApplied: (src, ms, n, spread) => `Calibrated! Applied ${src} ${ms >= 0 ? "+" : ""}${ms}ms (${n}/12 taps · ±${spread}ms spread)`,
+      calTooFew: (n) => `Not enough taps (${n}/12, need at least 6) — please try again.`,
       calResetMsg: "Reset offsets to defaults (KEY 0ms / AUD 25ms).",
       statusSub: "Beat 1 Green / Other beats Amber · No moving score cursor",
       statusReady: "Ready — Press Enter or Space to start",
@@ -1308,15 +1321,15 @@
       btnSyncCal: "⏱ 補正",
       btnGuide: "❓ 使い方",
       calTitle: "⏱ 遅延補正",
-      calStartBtn: "▶ 8拍テスト",
+      calStartBtn: "▶ 16拍テスト",
       calStopBtn: "■ 中断",
       calResetBtn: "リセット",
-      calIdleMsg: "判定が一定にずれる時だけお使いください（BluetoothやI/F向け）。メトロノーム8拍に合わせてSpace/J/Kまたはベースを弾くと自動補正します（1〜2拍は準備）。",
-      calRunningMsg: "クリックに合わせて一定にタップ／演奏してください（1〜2拍準備・3〜8拍測定）...",
+      calIdleMsg: "判定が一定にずれる時だけお使いください（BluetoothやI/F向け）。メトロノーム16拍に合わせてSpace/J/Kまたはベースを弾くと自動補正します（1〜4拍は準備）。",
+      calRunningMsg: "クリックに合わせて一定にタップ／演奏してください（1〜4拍準備・5〜16拍測定）...",
       calStatus: (b, n) => `遅延補正中  ${b} / ${n}`,
       calBadgeRunning: "補正測定中...",
-      calApplied: (src, ms, n, spread) => `補正完了！ ${src} ${ms >= 0 ? "+" : ""}${ms}ms を自動適用しました（${n}/6拍測定・ばらつき ±${spread}ms）`,
-      calTooFew: (n) => `入力が足りません（${n}/6拍・最低3拍必要）— もう一度お試しください。`,
+      calApplied: (src, ms, n, spread) => `補正完了！ ${src} ${ms >= 0 ? "+" : ""}${ms}ms を自動適用しました（${n}/12拍測定・ばらつき ±${spread}ms）`,
+      calTooFew: (n) => `入力が足りません（${n}/12拍・最低6拍必要）— もう一度お試しください。`,
       calResetMsg: "補正値を初期値（KEY 0ms / AUD 25ms）に戻しました。",
       statusSub: "1拍目 緑 / その他の拍 黄 · 譜面カーソル表示なし",
       statusReady: "準備完了 — Enter または Space で開始",
@@ -2931,10 +2944,11 @@
     syncTransportButtons();
   }
 
-  // Optional 8-beat tap/pluck latency calibration
+  // Optional 16-beat tap/pluck latency calibration (4 warm-up + 12 measured)
   const calState = {
-    totalClicks: 8,
-    warmupClicks: 2,
+    totalClicks: 16,
+    warmupClicks: 4,
+    minTaps: 6,
     beatSec: 60 / 90,
     startAudioT: 0,
     taps: [],      // { idx, deltaMs, source }
@@ -3024,7 +3038,7 @@
     const msgEl = document.getElementById("calMsg");
 
     const n = calState.taps.length;
-    if (n < 3) {
+    if (n < calState.minTaps) {
       msgEl.style.color = "var(--red)";
       msgEl.textContent = t("calTooFew", n);
       setHitBadge(t("badgeWait"), "");
