@@ -74,7 +74,9 @@
   }
 
   .app {
+    width: 100%;
     max-width: 1160px;
+    min-width: 0;
     margin: 0 auto;
     display: flex;
     flex-direction: column;
@@ -91,13 +93,21 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 10px 14px;
+    gap: 8px 12px;
+    max-width: 100%;
   }
 
   .group {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 6px;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  label.group {
+    flex-wrap: nowrap;
   }
 
   .divider {
@@ -122,6 +132,7 @@
     padding: 6px 11px;
     font-size: 13px;
     font-weight: 600;
+    max-width: 100%;
     cursor: pointer;
     transition: background 0.12s, border-color 0.12s, transform 0.06s;
   }
@@ -216,6 +227,8 @@
     display: flex;
     align-items: center;
     gap: 14px;
+    min-width: 0;
+    flex: 1 1 240px;
   }
 
   .led-ring {
@@ -254,17 +267,23 @@
     display: flex;
     flex-direction: column;
     gap: 2px;
+    min-width: 0;
+    flex: 1;
   }
 
   .status-main {
     font-size: 15px;
     font-weight: 700;
-    min-width: 210px;
+    min-width: 0;
+    word-break: keep-all;
+    overflow-wrap: break-word;
   }
 
   .status-sub {
     font-size: 12px;
     color: var(--muted);
+    word-break: keep-all;
+    overflow-wrap: break-word;
   }
 
   .hit-badge {
@@ -275,8 +294,10 @@
     border-radius: 999px;
     background: #f3f4f6;
     color: var(--muted);
-    min-width: 170px;
+    min-width: 140px;
+    max-width: 100%;
     text-align: center;
+    flex-shrink: 0;
   }
 
   .hit-badge.tight { background: #dcfce7; color: #15803d; }
@@ -297,7 +318,8 @@
   }
 
   .audio-bar select {
-    max-width: 210px;
+    max-width: min(210px, 100%);
+    min-width: 0;
     padding: 4px 22px 4px 8px;
     font-size: 12px;
   }
@@ -309,7 +331,9 @@
 
   .meter-track {
     position: relative;
-    width: 190px;
+    flex: 1 1 150px;
+    min-width: 110px;
+    max-width: 220px;
     height: 12px;
     background: #e5e7eb;
     border-radius: 6px;
@@ -375,8 +399,10 @@
 
   .sheet-header {
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
     align-items: baseline;
+    gap: 6px 14px;
     border-bottom: 1px solid #eceae4;
     padding-bottom: 12px;
     margin-bottom: 18px;
@@ -395,12 +421,14 @@
     font-size: 13px;
     color: #52525b;
     display: flex;
-    gap: 14px;
+    flex-wrap: wrap;
+    gap: 4px 14px;
   }
 
   .score-wrap {
     width: 100%;
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   #scoreSvg {
@@ -437,13 +465,8 @@
   /* Results & Log */
   .results-grid {
     display: grid;
-    grid-template-columns: 1fr 1.4fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
     gap: 14px;
-  }
-
-  @media (max-width: 780px) {
-    .results-grid { grid-template-columns: 1fr; }
-    .sheet-paper { padding: 18px 14px; }
   }
 
   .card {
@@ -451,6 +474,7 @@
     border: 1px solid var(--border);
     border-radius: 12px;
     padding: 14px 16px;
+    min-width: 0;
   }
 
   .card-title {
@@ -468,6 +492,12 @@
     display: block;
   }
 
+  #logContainer {
+    overflow-x: auto;
+    max-width: 100%;
+    -webkit-overflow-scrolling: touch;
+  }
+
   .log-table {
     width: 100%;
     border-collapse: collapse;
@@ -479,6 +509,7 @@
     padding: 5px 6px;
     text-align: left;
     border-bottom: 1px solid #f1f5f9;
+    white-space: nowrap;
   }
 
   .log-table th {
@@ -555,15 +586,24 @@
     padding-bottom: 122px;
   }
 
+  @media (max-width: 960px) {
+    .divider { display: none; }
+  }
+
   @media (max-width: 780px) {
     body { padding: 10px 10px 40px; }
     body.has-dock { padding-bottom: 122px; }
+    .results-grid { grid-template-columns: minmax(0, 1fr); }
     .sheet-paper { padding: 16px 12px; }
     .sheet-title { font-size: 17px; }
     .toolbar { padding: 10px 12px; gap: 8px 10px; }
-    .divider { display: none; }
-    button, select { padding: 8px 11px; font-size: 13px; }
+    button, select { padding: 7px 10px; font-size: 12.5px; }
     .tap-hint { display: none; }
+  }
+
+  @media (max-width: 520px) {
+    .status-strip { padding: 10px 12px; }
+    .hit-badge { width: 100%; min-width: 0; }
   }
 
   /* Collapsible User Guide */
@@ -579,6 +619,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 10px;
     font-size: 13px;
     font-weight: 700;
     color: var(--ink);
@@ -598,6 +639,7 @@
     font-size: 12px;
     font-weight: 600;
     color: var(--muted);
+    flex-shrink: 0;
   }
 
   .guide-card[open] .guide-summary {
@@ -612,6 +654,11 @@
     gap: 16px 22px;
     font-size: 13px;
     color: #27272a;
+  }
+
+  .guide-sec {
+    min-width: 0;
+    overflow-wrap: break-word;
   }
 
   @media (max-width: 780px) {
@@ -663,6 +710,10 @@
     grid-template-columns: auto 1fr;
     gap: 5px 12px;
     align-items: baseline;
+  }
+
+  @media (max-width: 520px) {
+    .shortcut-grid { grid-template-columns: 1fr; gap: 3px 8px; }
   }
 
   .hidden { display: none !important; }
