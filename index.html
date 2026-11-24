@@ -1236,7 +1236,18 @@
     },
   };
 
-  let curLang = "ko";
+  function detectDefaultLang() {
+    const langs = (navigator.languages && navigator.languages.length) ? navigator.languages : [navigator.language || "en"];
+    for (const raw of langs) {
+      const lc = String(raw || "").toLowerCase();
+      if (lc.startsWith("ko")) return "ko";
+      if (lc.startsWith("ja")) return "ja";
+      if (lc.startsWith("en")) return "en";
+    }
+    return "en";
+  }
+
+  let curLang = detectDefaultLang();
   try {
     const saved = localStorage.getItem("rhythm_practice_lang");
     if (saved && I18N[saved]) curLang = saved;
