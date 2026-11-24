@@ -1,0 +1,3223 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Rhythm Sight-Reader — Bass &amp; Rhythm Practice</title>
+<meta name="description" content="Free browser-based rhythm sight-reading trainer for bassists &amp; musicians with Web Audio metronome, audio interface sustain/rest grading, and KO/EN/JA support." />
+<meta property="og:title" content="Rhythm Sight-Reader — Bass &amp; Rhythm Practice" />
+<meta property="og:description" content="Practice rhythm sight-reading with keyboard, touch pads, or your bass audio interface. Includes real-time timing, rest, and sustain grading." />
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23171717'/%3E%3Cellipse cx='26' cy='44' rx='10' ry='7.2' transform='rotate(-22 26 44)' fill='%23ffffff'/%3E%3Crect x='33' y='14' width='4.2' height='29' rx='2' fill='%23ffffff'/%3E%3Cpath d='M35 14 C44 16 49 21 47 30 C45 24 41 21 35 20 Z' fill='%2322c55e'/%3E%3C/svg%3E" />
+<style>
+  :root {
+    --desk-bg: #efede8;
+    --paper-bg: #ffffff;
+    --panel-bg: #ffffff;
+    --ink: #171717;
+    --muted: #6b7280;
+    --border: #e2dfd8;
+    --accent: #1d4ed8;
+    --accent-soft: #eff6ff;
+    --green: #16a34a;
+    --amber: #d97706;
+    --red: #dc2626;
+    --shadow: 0 10px 30px rgba(15, 23, 42, 0.08), 0 1px 3px rgba(15, 23, 42, 0.06);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 20px 16px 40px;
+    background: var(--desk-bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
+    line-height: 1.45;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .app {
+    max-width: 1160px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  /* Control bar */
+  .toolbar {
+    background: var(--panel-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 16px;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 14px;
+  }
+
+  .group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .divider {
+    width: 1px;
+    height: 24px;
+    background: var(--border);
+  }
+
+  .label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+  }
+
+  button, select {
+    appearance: none;
+    border: 1px solid var(--border);
+    background: #fafafa;
+    color: var(--ink);
+    border-radius: 8px;
+    padding: 6px 11px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s, transform 0.06s;
+  }
+
+  select {
+    padding-right: 22px;
+    background-image: linear-gradient(45deg, transparent 50%, #64748b 50%), linear-gradient(135deg, #64748b 50%, transparent 50%);
+    background-position: calc(100% - 11px) 52%, calc(100% - 7px) 52%;
+    background-size: 4px 4px;
+    background-repeat: no-repeat;
+  }
+
+  button:hover, select:hover {
+    background-color: #f1f5f9;
+    border-color: #cbd5e1;
+  }
+
+  button:active {
+    transform: translateY(1px);
+  }
+
+  button.primary {
+    background: var(--ink);
+    color: #fff;
+    border-color: var(--ink);
+  }
+
+  button.primary:hover {
+    background: #2b2b2b;
+  }
+
+  button.active {
+    background: var(--accent-soft);
+    color: var(--accent);
+    border-color: #93c5fd;
+  }
+
+  button.danger {
+    background: #fef2f2;
+    color: var(--red);
+    border-color: #fca5a5;
+  }
+
+  button.danger:hover {
+    background: #fee2e2;
+    border-color: #f87171;
+  }
+
+  button:disabled {
+    opacity: 0.42;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  button:disabled:hover {
+    background-color: #fafafa;
+    border-color: var(--border);
+  }
+
+  button.icon-btn {
+    padding: 5px 9px;
+    min-width: 30px;
+  }
+
+  .bpm-val {
+    font-variant-numeric: tabular-nums;
+    font-size: 15px;
+    font-weight: 700;
+    min-width: 34px;
+    text-align: center;
+  }
+
+  input[type="range"] {
+    accent-color: var(--ink);
+    cursor: pointer;
+  }
+
+  /* Status + Fixed Metronome LED Strip */
+  .status-strip {
+    background: var(--panel-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 18px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .metro-box {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .led-ring {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #f3f4f6;
+    border: 2px solid #d1d5db;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .led-core {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #d1d5db;
+    transition: background 0.03s, box-shadow 0.03s, transform 0.03s;
+  }
+
+  .led-core.beat1 {
+    background: #22c55e;
+    box-shadow: 0 0 18px rgba(34, 197, 94, 0.85);
+    transform: scale(1.16);
+  }
+
+  .led-core.beatn {
+    background: #f59e0b;
+    box-shadow: 0 0 16px rgba(245, 158, 11, 0.8);
+    transform: scale(1.12);
+  }
+
+  .status-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .status-main {
+    font-size: 15px;
+    font-weight: 700;
+    min-width: 210px;
+  }
+
+  .status-sub {
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .hit-badge {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #f3f4f6;
+    color: var(--muted);
+    min-width: 170px;
+    text-align: center;
+  }
+
+  .hit-badge.tight { background: #dcfce7; color: #15803d; }
+  .hit-badge.warn  { background: #fef3c7; color: #b45309; }
+  .hit-badge.err   { background: #fee2e2; color: #b91c1c; }
+
+  /* Audio Input Meter */
+  .audio-bar {
+    background: var(--panel-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 16px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 12px;
+    font-size: 12px;
+  }
+
+  .audio-bar select {
+    max-width: 210px;
+    padding: 4px 22px 4px 8px;
+    font-size: 12px;
+  }
+
+  .audio-bar button {
+    padding: 4px 9px;
+    font-size: 12px;
+  }
+
+  .meter-track {
+    position: relative;
+    width: 190px;
+    height: 12px;
+    background: #e5e7eb;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .meter-fill {
+    height: 100%;
+    width: 0%;
+    background: #64748b;
+    transition: width 0.03s linear;
+  }
+
+  .meter-fill.hot {
+    background: #16a34a;
+  }
+
+  .meter-track.triggered {
+    box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.55);
+  }
+
+  .meter-thr {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #dc2626;
+    left: 24%;
+  }
+
+  .meter-sus-thr {
+    position: absolute;
+    top: 2px;
+    bottom: 2px;
+    width: 2px;
+    background: #2563eb;
+    opacity: 0.7;
+    left: 7%;
+  }
+
+  .audio-level {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--ink);
+    min-width: 96px;
+  }
+
+  .audio-msg {
+    color: var(--muted);
+    flex-basis: 100%;
+  }
+
+  /* PDF Sheet Music Paper */
+  .sheet-paper {
+    background: var(--paper-bg);
+    border: 1px solid #dedad2;
+    border-radius: 6px;
+    box-shadow: var(--shadow);
+    padding: 30px 34px 26px;
+    position: relative;
+  }
+
+  .sheet-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    border-bottom: 1px solid #eceae4;
+    padding-bottom: 12px;
+    margin-bottom: 18px;
+  }
+
+  .sheet-title {
+    font-family: Georgia, "Times New Roman", "Noto Serif KR", serif;
+    font-size: 21px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .sheet-meta {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 13px;
+    color: #52525b;
+    display: flex;
+    gap: 14px;
+  }
+
+  .score-wrap {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  #scoreSvg {
+    width: 100%;
+    height: auto;
+    display: block;
+    user-select: none;
+  }
+
+  .sheet-footer {
+    margin-top: 14px;
+    padding-top: 10px;
+    border-top: 1px solid #f1efe9;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .tap-hint kbd {
+    display: inline-block;
+    padding: 1px 6px;
+    border: 1px solid #d4d4d8;
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    background: #fafafa;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    color: var(--ink);
+  }
+
+  /* Results & Log */
+  .results-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.4fr;
+    gap: 14px;
+  }
+
+  @media (max-width: 780px) {
+    .results-grid { grid-template-columns: 1fr; }
+    .sheet-paper { padding: 18px 14px; }
+  }
+
+  .card {
+    background: var(--panel-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+  }
+
+  .card-title {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  .dist-svg {
+    width: 100%;
+    height: 64px;
+    display: block;
+  }
+
+  .log-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .log-table th, .log-table td {
+    padding: 5px 6px;
+    text-align: left;
+    border-bottom: 1px solid #f1f5f9;
+  }
+
+  .log-table th {
+    color: var(--muted);
+    font-weight: 600;
+  }
+
+  .log-empty {
+    font-size: 12px;
+    color: var(--muted);
+    padding: 8px 0;
+  }
+
+  /* Mobile Two-Finger Touch Pad Dock */
+  .touch-dock {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 50;
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-top: 1px solid var(--border);
+    padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
+    display: none;
+    gap: 12px;
+    box-shadow: 0 -6px 20px rgba(15, 23, 42, 0.08);
+  }
+
+  .touch-dock.visible {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .tap-pad {
+    height: 76px;
+    border-radius: 14px;
+    border: 2px solid #cbd5e1;
+    background: #f8fafc;
+    color: var(--ink);
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    transition: background 0.04s, border-color 0.04s, transform 0.04s;
+  }
+
+  .tap-pad small {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+  }
+
+  .tap-pad.pressed {
+    background: #171717;
+    border-color: #171717;
+    color: #ffffff;
+    transform: scale(0.97);
+  }
+
+  .tap-pad.pressed small {
+    color: #a1a1aa;
+  }
+
+  body.has-dock {
+    padding-bottom: 122px;
+  }
+
+  @media (max-width: 780px) {
+    body { padding: 10px 10px 40px; }
+    body.has-dock { padding-bottom: 122px; }
+    .sheet-paper { padding: 16px 12px; }
+    .sheet-title { font-size: 17px; }
+    .toolbar { padding: 10px 12px; gap: 8px 10px; }
+    .divider { display: none; }
+    button, select { padding: 8px 11px; font-size: 13px; }
+    .tap-hint { display: none; }
+  }
+
+  /* Collapsible User Guide */
+  .guide-card {
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .guide-summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ink);
+    user-select: none;
+    transition: background 0.12s;
+  }
+
+  .guide-summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .guide-summary:hover {
+    background: #f8fafc;
+  }
+
+  .guide-summary .guide-toggle-hint {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+  }
+
+  .guide-card[open] .guide-summary {
+    border-bottom: 1px solid var(--border);
+    background: #fafafa;
+  }
+
+  .guide-body {
+    padding: 16px 18px 18px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px 22px;
+    font-size: 13px;
+    color: #27272a;
+  }
+
+  @media (max-width: 780px) {
+    .guide-body { grid-template-columns: 1fr; }
+  }
+
+  .guide-sec h3 {
+    margin: 0 0 8px;
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+
+  .guide-sec ul {
+    margin: 0;
+    padding-left: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .guide-sec li {
+    line-height: 1.5;
+  }
+
+  .guide-sec kbd {
+    display: inline-block;
+    padding: 1px 6px;
+    border: 1px solid #d4d4d8;
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    background: #fafafa;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    color: var(--ink);
+  }
+
+  .guide-sec code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11.5px;
+    background: #f4f4f5;
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+
+  .shortcut-grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 5px 12px;
+    align-items: baseline;
+  }
+
+  .hidden { display: none !important; }
+
+  @page { margin: 12mm; }
+
+  @media print {
+    body { background: #fff; padding: 0; }
+    .app { max-width: none; }
+    .toolbar, .status-strip, .audio-bar, .results-grid, .guide-card, .sheet-footer, .touch-dock { display: none !important; }
+    .sheet-paper { border: none; box-shadow: none; padding: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Main Control Toolbar -->
+  <div class="toolbar">
+    <div class="group">
+      <button id="btnStart" class="primary" title="Enter">▶ 시작 / 재시도</button>
+      <button id="btnStop" title="Esc" disabled>■ 정지</button>
+      <button id="btnNew" title="n">새 악보</button>
+      <button id="btnDemo" title="p">♪ 정답 듣기</button>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="group">
+      <span class="label">BPM</span>
+      <button id="btnBpmDown" class="icon-btn" title="-">−</button>
+      <span id="bpmVal" class="bpm-val">60</span>
+      <button id="btnBpmUp" class="icon-btn" title="+">+</button>
+      <input id="bpmSlider" type="range" min="40" max="140" step="5" value="60" style="width:82px" />
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="group">
+      <span id="lblLevel" class="label">난이도</span>
+      <button class="lv-btn active" data-lv="1">Lv1 8분 기초</button>
+      <button class="lv-btn" data-lv="2">Lv2 싱코페이션</button>
+      <button class="lv-btn" data-lv="3">Lv3 16분음표</button>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="group">
+      <select id="barsSelect" title="마디 수 (단축키 l)">
+        <option value="2">2마디</option>
+        <option value="4" selected>4마디 (1줄)</option>
+        <option value="8">8마디 (2줄)</option>
+        <option value="12">12마디 (3줄)</option>
+        <option value="16">16마디 (4줄)</option>
+        <option value="32">32마디 (8줄)</option>
+      </select>
+      <button id="btnSound" class="active" title="m">🔊 메트로놈 ON</button>
+      <button id="btnBeatNums" title="마디 위 1 2 3 4 표기 (단축키 b)">박자 1234 OFF</button>
+      <button id="btnBlindGrade" title="채점 시점 전환: 즉시 / 완료후 (단축키 g)">채점: 즉시</button>
+      <button id="btnInputMode" title="i">입력: KEY</button>
+      <button id="btnTouchPad" title="모바일 투핑거 터치 패드">👆 패드</button>
+      <button id="btnPrint" title="PDF 저장 / 인쇄">🖨 PDF</button>
+      <button id="btnGuide" title="사용 방법 및 판정 기준 설명 열기">❓ 설명</button>
+      <select id="langSelect" title="Language / 언어 / 言語">
+        <option value="ko">🌐 Language | 한국어</option>
+        <option value="en">🌐 Language | English</option>
+        <option value="ja">🌐 Language | 日本語</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Fixed Metronome LED & Status -->
+  <div class="status-strip">
+    <div class="metro-box">
+      <div class="led-ring" aria-label="Metronome LED">
+        <div id="ledCore" class="led-core"></div>
+      </div>
+      <div class="status-text">
+        <div id="statusMain" class="status-main">준비 완료 — Enter 또는 Space로 시작</div>
+        <div id="statusSub" class="status-sub">1박 초록 / 2~4박 노랑 · 악보 위치 표시 없음</div>
+      </div>
+    </div>
+    <div id="hitBadge" class="hit-badge">대기 중</div>
+  </div>
+
+  <!-- Audio Input Monitor (shown when AUDIO or BOTH) -->
+  <div id="audioBar" class="audio-bar hidden">
+    <strong id="lblAudioTitle">🎤 오디오 입력</strong>
+    <select id="audioDeviceSelect" title="오디오 입력 장치 선택">
+      <option value="">기본 입력 장치</option>
+    </select>
+    <select id="audioChSelect" title="모니터링 채널 선택">
+      <option value="ALL">전체 채널</option>
+    </select>
+    <button id="btnAudioReconnect" type="button" title="오디오 장치 목록 새로고침 및 재연결">↻ 재연결</button>
+    <button id="btnNoiseCal" type="button" title="연주하지 않은 상태에서 0.6초간 노이즈를 측정해 임계값을 자동 설정">🔇 노이즈 보정</button>
+    <div id="meterTrack" class="meter-track" title="실시간 입력 음량 (빨간선 = 어택 임계값 / 파란선 = 서스테인 유지선)">
+      <div id="meterFill" class="meter-fill"></div>
+      <div id="meterSusThr" class="meter-sus-thr"></div>
+      <div id="meterThr" class="meter-thr"></div>
+    </div>
+    <span id="audioLevelText" class="audio-level">무음</span>
+    <label class="group">
+      <span id="lblGain" class="label">게인</span>
+      <input id="gainSlider" type="range" min="1" max="20" step="1" value="2" style="width:68px" />
+      <span id="gainVal">2x</span>
+    </label>
+    <label class="group">
+      <span id="lblThr" class="label">임계값</span>
+      <input id="thrSlider" type="range" min="2" max="48" step="1" value="16" style="width:68px" />
+      <span id="thrVal">16%</span>
+    </label>
+    <label class="group">
+      <span id="lblLat" class="label">지연보정</span>
+      <input id="latSlider" type="range" min="0" max="200" step="5" value="25" style="width:68px" />
+      <span id="latVal">25ms</span>
+    </label>
+    <span id="audioMsg" class="audio-msg">헤드폰/오인페 라인 입력 권장 (스피커 메트로놈 유입 방지)</span>
+  </div>
+
+  <!-- PDF-Style Vector Sheet Music -->
+  <div class="sheet-paper">
+    <div class="sheet-header">
+      <div class="sheet-title">Rhythm Sight-Reading Study</div>
+      <div class="sheet-meta">
+        <span id="metaTempo">♩ = 60</span>
+        <span id="metaLevel">Level 1 · 8th Basic</span>
+        <span id="metaSeed">Seed #0000</span>
+      </div>
+    </div>
+    <div class="score-wrap">
+      <svg id="scoreSvg" viewBox="0 0 1120 160" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+    <div class="sheet-footer">
+      <div id="tapHint" class="tap-hint">
+        입력: <kbd>Space</kbd> / <kbd>J</kbd> / <kbd>K</kbd> 또는 오디오 ·
+        <kbd>Enter</kbd> 시작 · <kbd>Esc</kbd> 정지 · <kbd>N</kbd> 새 악보 · <kbd>P</kbd> 정답 듣기 ·
+        <kbd>L</kbd> 마디 수 · <kbd>+</kbd><kbd>−</kbd> BPM ·
+        <kbd>M</kbd> 메트로놈 · <kbd>B</kbd> 박자표기 · <kbd>I</kbd> 입력모드 · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> 난이도
+      </div>
+      <div id="legendLine">
+        판정: <strong style="color:var(--green)">★ ≤35ms/쉼표통과</strong> ·
+        <strong style="color:var(--amber)">−/+ ≤80ms</strong> ·
+        <strong style="color:var(--red)">&lt;/&gt; &gt;80ms · × miss/쉼표에러</strong> ·
+        서스테인(AUD): <strong style="color:var(--green)">▬ 양호</strong> /
+        <strong style="color:var(--amber)">▬ 짧음</strong> /
+        <strong style="color:var(--red)">▬ 침범</strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- Timing Distribution & Practice Log -->
+  <div class="results-grid">
+    <div class="card">
+      <div class="card-title">Timing Distribution (−150ms .. 0 .. +150ms)</div>
+      <svg id="distSvg" class="dist-svg" viewBox="0 0 380 64"></svg>
+      <div id="summaryLine" style="font-size:12px;color:var(--muted);margin-top:4px;">연주를 마치면 타이밍 분포가 표시됩니다.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Recent Practice Log</div>
+      <div id="logContainer" class="log-empty">아직 완료된 기록이 없습니다.</div>
+    </div>
+  </div>
+
+  <!-- Collapsible Detailed Guide -->
+  <details id="guideCard" class="card guide-card">
+    <summary class="guide-summary">
+      <span id="guideSummaryTitle">📖 사용 설명서 &amp; 판정 기준 (클릭해서 펼치기)</span>
+      <span id="guideToggleHint" class="guide-toggle-hint">열기 ▾</span>
+    </summary>
+    <div id="guideBody" class="guide-body"></div>
+  </details>
+  <!-- Mobile Two-Finger Touch Pad Dock -->
+  <div id="touchDock" class="touch-dock" aria-label="Two-finger touch pads">
+    <button id="padLeft" class="tap-pad" type="button">
+      <span>TAP L</span>
+      <small id="padLeftSub">검지 · J</small>
+    </button>
+    <button id="padRight" class="tap-pad" type="button">
+      <span>TAP R</span>
+      <small id="padRightSub">중지 · K</small>
+    </button>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  // -------------------------------------------------------------------------
+  // 0. Internationalization (KO / EN / JA)
+  // -------------------------------------------------------------------------
+  const I18N = {
+    ko: {
+      btnStart: "▶ 시작 / 재시도",
+      btnStop: "■ 정지",
+      btnNew: "새 악보",
+      btnDemo: "♪ 정답 듣기",
+      lblLevel: "난이도",
+      lvBtns: { 1: "Lv1 8분 기초", 2: "Lv2 싱코페이션", 3: "Lv3 16분음표" },
+      barsLabels: { 2: "2마디", 4: "4마디 (1줄)", 8: "8마디 (2줄)", 12: "12마디 (3줄)", 16: "16마디 (4줄)", 32: "32마디 (8줄)" },
+      metroOn: "🔊 메트로놈 ON",
+      metroOff: "🔇 메트로놈 OFF",
+      beatsOn: "박자 1234 ON",
+      beatsOff: "박자 1234 OFF",
+      gradeLive: "채점: 즉시",
+      gradeEnd: "채점: 완료후",
+      inputPrefix: "입력",
+      btnPad: "👆 패드",
+      btnPrint: "🖨 PDF",
+      btnGuide: "❓ 설명",
+      statusSub: "1박 초록 / 2~4박 노랑 · 악보 위치 표시 없음",
+      statusReady: "준비 완료 — Enter 또는 Space로 시작",
+      statusGetReady: "준비하세요...",
+      statusCountIn: (b) => `카운트인  ${b} / 4`,
+      statusDemo: "정답 베이스 미리듣기 중...",
+      statusPlay: "연주 중 — 정박 메트로놈에 맞춰 입력하세요",
+      statusDone: "완료! — Enter 재시도 · N 새 악보 · P 정답 듣기",
+      badgeWait: "대기 중",
+      badgeStopped: "정지됨",
+      badgeDemo: "정답 재생 중",
+      badgeCountIn: "카운트인...",
+      badgeBlindPlay: "연주 중 (완료 후 공개)",
+      badgeDone: (hits, total) => `결과 공개 (${hits}/${total})`,
+      badgeDetected: (ch) => `[AUD Ch${ch}] 감지됨!`,
+      audioTitle: "🎤 오디오 입력",
+      sysDefault: "시스템 기본 입력",
+      audioInputN: (n) => `오디오 입력 ${n}`,
+      allChannels: (n) => `전체 채널 (${n}ch)`,
+      btnReconnect: "↻ 재연결",
+      btnNoiseCal: "🔇 노이즈 보정",
+      btnMeasuring: "측정 중...",
+      lblGain: "게인",
+      lblThr: "임계값",
+      lblLat: "지연보정",
+      levelSilent: "무음",
+      levelOff: "꺼짐",
+      audioDefaultMsg: "헤드폰/오인페 라인 입력 권장 (스피커 메트로놈 유입 방지)",
+      audioNoApi: "이 환경에서는 마이크 API를 쓸 수 없습니다. (터미널에서 python3 -m http.server 실행 후 http://localhost:8000 열기 권장)",
+      audioBuiltinFile: (dev) => `⚠️ 현재 내장 마이크(${dev}) 연결됨 — file://에서는 브라우저가 장치 선택을 막습니다. 크롬 설정(chrome://settings/content/microphone)에서 오디오 인터페이스를 선택하거나 localhost로 여세요.`,
+      audioBuiltinSelect: (dev) => `⚠️ 현재 내장 마이크(${dev})에 연결됨 — 위 드롭다운에서 사용할 오디오 인터페이스를 선택하세요.`,
+      audioConnected: (dev, sr, ch) => `연결됨: ${dev} (${sr}kHz · ${ch}ch) — 대기 상태에서 줄을 튕겨 미터 반응을 확인하세요`,
+      audioFail: (err, isFile) => `오디오 입력 연결 실패: ${err}${isFile ? " (file:// 보안 제한일 수 있음 — python3 -m http.server 로 http://localhost 접속 권장)" : " (브라우저/OS 마이크 권한 및 장치 선택 확인)"}`,
+      calMeasuring: "줄을 건드리지 말고 잠시 기다리세요 (바닥 노이즈 측정 중)...",
+      calDone: (pct) => `노이즈 보정 완료 — 임계값 ${pct}%로 자동 설정됨`,
+      tapHintHtml: `입력: <kbd>Space</kbd> / <kbd>J</kbd> / <kbd>K</kbd> 또는 오디오 · <kbd>Enter</kbd> 시작 · <kbd>Esc</kbd> 정지 · <kbd>N</kbd> 새 악보 · <kbd>P</kbd> 정답 듣기 · <kbd>L</kbd> 마디 수 · <kbd>+</kbd><kbd>−</kbd> BPM · <kbd>M</kbd> 메트로놈 · <kbd>B</kbd> 박자표기 · <kbd>G</kbd> 채점시점 · <kbd>I</kbd> 입력모드 · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> 난이도`,
+      legendHtml: `판정: <strong style="color:var(--green)">★ ≤35ms/쉼표통과</strong> · <strong style="color:var(--amber)">−/+ ≤80ms</strong> · <strong style="color:var(--red)">&lt;/&gt; &gt;80ms · × miss/쉼표에러</strong> · 서스테인(AUD): <strong style="color:var(--green)">▬ 양호</strong> / <strong style="color:var(--amber)">▬ 짧음</strong> / <strong style="color:var(--red)">▬ 침범</strong>`,
+      summaryIdle: "연주를 마치면 타이밍 분포가 표시됩니다.",
+      summaryHits: (hits, total, pct, tight, sign, mean, sd, extra, sus, restErrs) => {
+        const susPart = sus && sus.total > 0 ? ` · 서스테인 ${sus.ok}/${sus.total} (짧음 ${sus.short} / 침범 ${sus.long})` : "";
+        const restPart = restErrs > 0 ? ` · 쉼표에러 ${restErrs}` : "";
+        return `적중 ${hits}/${total} (${pct}%) · TIGHT ${tight} · 평균 ${sign}${mean}ms · 편차 ${sd}ms · 여분 ${extra}${susPart}${restPart}`;
+      },
+      summaryZero: (total, extra, restErrs) => `적중 0/${total} · 여분 입력 ${extra}${restErrs > 0 ? ` · 쉼표에러 ${restErrs}` : ""}`,
+      logEmpty: "아직 완료된 기록이 없습니다.",
+      restHitTip: "쉼표에서 연주함 (에러)",
+      restRingTip: "쉼표 구간에 음이 울림 (뮤트 필요)",
+      restPassTip: "쉼표 통과 (양호)",
+      susOkTip: (p) => `서스테인 ${p}% (양호)`,
+      susShortTip: (p) => `서스테인 ${p}% (짧음 — 음을 더 유지하세요)`,
+      susLongTip: (ms) => `서스테인 쉼표 침범 (+${ms}ms — 뮤트가 늦음)`,
+      padLeftSub: "검지 · J",
+      padRightSub: "중지 · K",
+      guideTitle: "📖 사용 설명서 & 판정 기준 (클릭해서 펼치기)",
+      guideOpen: "열기 ▾",
+      guideClose: "접기 ▴",
+      guideHtml: `
+        <div class="guide-sec">
+          <h3>1. 기본 연습 방법</h3>
+          <ul>
+            <li><strong>시작 / 정지</strong>: <kbd>Enter</kbd> 또는 <strong>▶ 시작</strong>을 누르면 4박 카운트인(1박 초록 LED, 2~4박 노랑 LED) 후 연주가 시작됩니다. 중간에 멈추려면 <kbd>Esc</kbd> 또는 <strong>■ 정지</strong>를 누르세요.</li>
+            <li><strong>정답 미리듣기</strong>: <kbd>P</kbd> 또는 <strong>♪ 정답 듣기</strong>를 누르면 메트로놈에 맞춰 베이스 가이드 음(D)이 재생됩니다.</li>
+            <li><strong>악보 커스터마이즈</strong>: 난이도(<kbd>1</kbd> 8분 기초 / <kbd>2</kbd> 싱코페이션 / <kbd>3</kbd> 16분음표), 마디 수(<kbd>L</kbd>, 2~32마디), BPM(<kbd>+</kbd>/<kbd>−</kbd>), 마디 위 <code>1 2 3 4</code> 박자 표시(<kbd>B</kbd>)를 자유롭게 바꿀 수 있습니다.</li>
+            <li><strong>시창(초견) 훈련 설계</strong>: 악보 위에 움직이는 커서가 없으므로 메트로놈과 LED만 보고 직접 박자를 세며 읽는 연습에 최적화되어 있습니다. <strong>채점: 완료후(<kbd>G</kbd>)</strong>를 켜면 연주 중 채점 표시를 숨기고 끝난 뒤 한꺼번에 공개해 보정 없이 순수 박자감만 점검할 수 있습니다.</li>
+          </ul>
+        </div>
+        <div class="guide-sec">
+          <h3>2. 판정 기호 &amp; 서스테인 보는 법</h3>
+          <ul>
+            <li><strong style="color:var(--green)">★</strong> : 음표 정박(<code>±35ms</code> 이내) 또는 <strong>쉼표 통과</strong>(쉼표 끝까지 조용히 유지)</li>
+            <li><strong style="color:var(--amber)">− / +</strong> : 약간 빠름(<code>−35~−80ms</code>) / 약간 느림(<code>+35~+80ms</code>)</li>
+            <li><strong style="color:var(--red)">&lt; / &gt;</strong> : 많이 빠름(<code>&lt; −80ms</code>) / 많이 느림(<code>&gt; +80ms</code>)</li>
+            <li><strong style="color:var(--red)">×</strong> : 음표를 놓침(miss) 또는 <strong>쉼표 구간에 치거나 음이 울림</strong>(쉼표 빨간 음영)</li>
+            <li><strong>오디오 서스테인 바</strong>(<code>AUDIO</code>/<code>BOTH</code> 전용, 음표 아래 막대):
+              <strong style="color:var(--green)">▬ 양호</strong>(충분히 유지) ·
+              <strong style="color:var(--amber)">▬ 짧음</strong>(표기 길이의 62% 미만으로 빨리 끊음) ·
+              <strong style="color:var(--red)">▬ 침범</strong>(뒤 쉼표까지 뮤트가 늦음)
+            </li>
+            <li>기호나 서스테인 바 위에 <strong>마우스를 올리면</strong> 정확한 <code>ms</code> 오차와 서스테인 <code>%</code> 툴팁이 표시됩니다.</li>
+          </ul>
+        </div>
+        <div class="guide-sec">
+          <h3>3. 베이스 / 오디오 인터페이스 연결 팁</h3>
+          <ul>
+            <li><kbd>I</kbd> 키 또는 <strong>입력: KEY</strong> 버튼을 눌러 <code>AUDIO</code> 또는 <code>BOTH</code>로 전환하세요.</li>
+            <li>오디오 바의 장치 목록에서 인터페이스를 고르고, 대기 상태에서 줄을 튕겨 미터와 <code>-XXdB (Ch1)</code> 반응을 확인하세요.</li>
+            <li><strong>안 칠 때도 노이즈가 잡히면</strong>: 줄을 건드리지 않은 상태에서 <strong>🔇 노이즈 보정</strong>을 한 번 누르면 0.6초간 바닥 노이즈를 측정해 임계값을 자동 설정합니다.</li>
+            <li><strong>미터 선 의미</strong>: 빨간선 = 어택 감지 임계값 / 파란선 = 서스테인 유지 하한선.</li>
+            <li><strong>지연보정(ms)</strong>: 정박으로 쳤는데 평균 오차(Mean)가 계속 <code>+30ms</code>처럼 일정하게 늦게 나온다면 지연보정을 그만큼 올려 영점을 맞추세요.</li>
+            <li><strong>내장 마이크만 잡힐 때</strong>: 크롬 주소창에 <code>chrome://settings/content/microphone</code>을 열어 오디오 인터페이스를 선택하거나, 터미널에서 <code>python3 -m http.server 8000 --directory ~/Downloads</code> 실행 후 <code>http://localhost:8000/rhythm_practice.html</code>로 여세요. macOS 메뉴바 주황색 마이크 아이콘의 <strong>마이크 모드 → 표준</strong>도 확인하세요.</li>
+          </ul>
+        </div>
+        <div class="guide-sec">
+          <h3>4. 전체 단축키 (한글 입력 상태에서도 동작)</h3>
+          <div class="shortcut-grid">
+            <div><kbd>Space</kbd> / <kbd>J</kbd> / <kbd>K</kbd></div><div>리듬 입력 (대기 중엔 바로 시작)</div>
+            <div><kbd>Enter</kbd> / <kbd>R</kbd></div><div>시작 / 같은 악보 재시도</div>
+            <div><kbd>Esc</kbd></div><div>즉시 정지</div>
+            <div><kbd>N</kbd> / <kbd>P</kbd></div><div>새 악보 생성 / 정답 베이스 듣기</div>
+            <div><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></div><div>난이도 변경 (8분 / 싱코페이션 / 16분)</div>
+            <div><kbd>L</kbd></div><div>마디 수 변경 (2→4→8→12→16→32)</div>
+            <div><kbd>+</kbd> / <kbd>−</kbd></div><div>BPM ±5 조절</div>
+            <div><kbd>M</kbd> / <kbd>B</kbd> / <kbd>G</kbd></div><div>메트로놈 · 1234 박자표기 · 채점시점(즉시/완료후)</div>
+            <div><kbd>I</kbd></div><div>입력 모드 전환 (KEY → AUDIO → BOTH)</div>
+            <div><kbd>[</kbd> <kbd>]</kbd> / <kbd>,</kbd> <kbd>.</kbd></div><div>오디오 임계값 ±2% / 지연보정 ±5ms</div>
+          </div>
+        </div>`,
+    },
+    en: {
+      btnStart: "▶ Start / Retry",
+      btnStop: "■ Stop",
+      btnNew: "New Score",
+      btnDemo: "♪ Play Demo",
+      lblLevel: "Level",
+      lvBtns: { 1: "Lv1 8th Basic", 2: "Lv2 Syncopation", 3: "Lv3 16th Notes" },
+      barsLabels: { 2: "2 bars", 4: "4 bars (1 line)", 8: "8 bars (2 lines)", 12: "12 bars (3 lines)", 16: "16 bars (4 lines)", 32: "32 bars (8 lines)" },
+      metroOn: "🔊 Metronome ON",
+      metroOff: "🔇 Metronome OFF",
+      beatsOn: "Beats 1234 ON",
+      beatsOff: "Beats 1234 OFF",
+      gradeLive: "Grade: Live",
+      gradeEnd: "Grade: End",
+      inputPrefix: "Input",
+      btnPad: "👆 Pads",
+      btnPrint: "🖨 PDF",
+      btnGuide: "❓ Guide",
+      statusSub: "Beat 1 Green / Beats 2–4 Amber · No moving score cursor",
+      statusReady: "Ready — Press Enter or Space to start",
+      statusGetReady: "Get ready...",
+      statusCountIn: (b) => `Count-in  ${b} / 4`,
+      statusDemo: "Playing demo bass...",
+      statusPlay: "Playing — Follow the metronome click",
+      statusDone: "Done! — Enter Retry · N New · P Demo",
+      badgeWait: "Standby",
+      badgeStopped: "Stopped",
+      badgeDemo: "Demo playing",
+      badgeCountIn: "Count-in...",
+      badgeBlindPlay: "Playing (reveal at end)",
+      badgeDone: (hits, total) => `Results (${hits}/${total})`,
+      badgeDetected: (ch) => `[AUD Ch${ch}] Detected!`,
+      audioTitle: "🎤 Audio Input",
+      sysDefault: "System Default",
+      audioInputN: (n) => `Audio Input ${n}`,
+      allChannels: (n) => `All Channels (${n}ch)`,
+      btnReconnect: "↻ Reconnect",
+      btnNoiseCal: "🔇 Noise Cal",
+      btnMeasuring: "Measuring...",
+      lblGain: "Gain",
+      lblThr: "Thresh",
+      lblLat: "Latency",
+      levelSilent: "Silent",
+      levelOff: "Off",
+      audioDefaultMsg: "Headphones / audio interface line-in recommended (avoids speaker metronome bleed)",
+      audioNoApi: "Microphone API unavailable here. Run `python3 -m http.server` and open http://localhost:8000",
+      audioBuiltinFile: (dev) => `⚠️ Built-in mic (${dev}) active — file:// blocks device switching. Pick your audio interface in chrome://settings/content/microphone or serve via localhost.`,
+      audioBuiltinSelect: (dev) => `⚠️ Built-in mic (${dev}) active — select your audio interface in the dropdown above.`,
+      audioConnected: (dev, sr, ch) => `Connected: ${dev} (${sr}kHz · ${ch}ch) — pluck a string while idle to check the meter`,
+      audioFail: (err, isFile) => `Audio input failed: ${err}${isFile ? " (file:// restriction — try http://localhost via python3 -m http.server)" : " (check browser/OS microphone permissions)"}`,
+      calMeasuring: "Keep strings muted — measuring idle noise floor...",
+      calDone: (pct) => `Noise calibrated — threshold auto-set to ${pct}%`,
+      tapHintHtml: `Play: <kbd>Space</kbd> / <kbd>J</kbd> / <kbd>K</kbd> or Audio · <kbd>Enter</kbd> Start · <kbd>Esc</kbd> Stop · <kbd>N</kbd> New · <kbd>P</kbd> Demo · <kbd>L</kbd> Bars · <kbd>+</kbd><kbd>−</kbd> BPM · <kbd>M</kbd> Click · <kbd>B</kbd> Beats · <kbd>G</kbd> Grading · <kbd>I</kbd> Input · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> Level`,
+      legendHtml: `Grade: <strong style="color:var(--green)">★ ≤35ms/Rest OK</strong> · <strong style="color:var(--amber)">−/+ ≤80ms</strong> · <strong style="color:var(--red)">&lt;/&gt; &gt;80ms · × Miss/Rest Err</strong> · Sustain(AUD): <strong style="color:var(--green)">▬ OK</strong> / <strong style="color:var(--amber)">▬ Short</strong> / <strong style="color:var(--red)">▬ Bleed</strong>`,
+      summaryIdle: "Finish a take to see your timing distribution.",
+      summaryHits: (hits, total, pct, tight, sign, mean, sd, extra, sus, restErrs) => {
+        const susPart = sus && sus.total > 0 ? ` · Sustain ${sus.ok}/${sus.total} (Short ${sus.short} / Bleed ${sus.long})` : "";
+        const restPart = restErrs > 0 ? ` · Rest Err ${restErrs}` : "";
+        return `Hits ${hits}/${total} (${pct}%) · TIGHT ${tight} · Mean ${sign}${mean}ms · SD ${sd}ms · Extra ${extra}${susPart}${restPart}`;
+      },
+      summaryZero: (total, extra, restErrs) => `Hits 0/${total} · Extra ${extra}${restErrs > 0 ? ` · Rest Err ${restErrs}` : ""}`,
+      logEmpty: "No completed takes yet.",
+      restHitTip: "Played during rest (Error)",
+      restRingTip: "String rang into rest (Mute required)",
+      restPassTip: "Rest passed cleanly",
+      susOkTip: (p) => `Sustain ${p}% (Good)`,
+      susShortTip: (p) => `Sustain ${p}% (Too short — hold longer)`,
+      susLongTip: (ms) => `Rest bleed (+${ms}ms — mute earlier)`,
+      padLeftSub: "Index · J",
+      padRightSub: "Middle · K",
+      guideTitle: "📖 User Guide & Grading Reference (Click to expand)",
+      guideOpen: "Open ▾",
+      guideClose: "Close ▴",
+      guideHtml: `
+        <div class="guide-sec">
+          <h3>1. How to Practice</h3>
+          <ul>
+            <li><strong>Start / Stop</strong>: Press <kbd>Enter</kbd> or <strong>▶ Start</strong> for a 4-beat count-in (Beat 1 green LED, Beats 2–4 amber LED). Press <kbd>Esc</kbd> or <strong>■ Stop</strong> anytime to abort while keeping the same sheet.</li>
+            <li><strong>Demo Playback</strong>: Press <kbd>P</kbd> or <strong>♪ Play Demo</strong> to hear the exact rhythm played on bass (D) with the metronome.</li>
+            <li><strong>Customize</strong>: Switch difficulty (<kbd>1</kbd> 8th Basic / <kbd>2</kbd> Syncopation / <kbd>3</kbd> 16th Notes), length (<kbd>L</kbd>, 2–32 bars), BPM (<kbd>+</kbd>/<kbd>−</kbd>), and beat numbers <code>1 2 3 4</code> (<kbd>B</kbd>).</li>
+            <li><strong>True Sight-Reading</strong>: There is intentionally no moving cursor on the score—read ahead and internalize the pulse using only the click and LED. Enable <strong>Grade: End (<kbd>G</kbd>)</strong> to hide all feedback during the take and reveal every result together when finished.</li>
+          </ul>
+        </div>
+        <div class="guide-sec">
+          <h3>2. Grading Symbols &amp; Sustain Bars</h3>
+          <ul>
+            <li><strong style="color:var(--green)">★</strong> : Tight attack (within <code>±35ms</code>) or <strong>Clean Rest</strong> (silent through the full rest)</li>
+            <li><strong style="color:var(--amber)">− / +</strong> : Slightly early (<code>−35 to −80ms</code>) / Slightly late (<code>+35 to +80ms</code>)</li>
+            <li><strong style="color:var(--red)">&lt; / &gt;</strong> : Very early (<code>&lt; −80ms</code>) / Very late (<code>&gt; +80ms</code>)</li>
+            <li><strong style="color:var(--red)">×</strong> : Missed note or <strong>Rest Violation</strong> (played or rang during a rest, shaded red)</li>
+            <li><strong>Audio Sustain Bar</strong> (<code>AUDIO</code>/<code>BOTH</code> only, below each note):
+              <strong style="color:var(--green)">▬ OK</strong> (held well) ·
+              <strong style="color:var(--amber)">▬ Short</strong> (cut off under 62% of written value) ·
+              <strong style="color:var(--red)">▬ Bleed</strong> (rang past the note into a rest)
+            </li>
+            <li><strong>Hover</strong> over any symbol or sustain bar for exact <code>ms</code> error and sustain <code>%</code> tooltips.</li>
+          </ul>
+        </div>
+        <div class="guide-sec">
+          <h3>3. Bass &amp; Audio Interface Setup</h3>
+          <ul>
+            <li>Press <kbd>I</kbd> or click <strong>Input: KEY</strong> to switch to <code>AUDIO</code> or <code>BOTH</code>.</li>
+            <li>Choose your interface in the device dropdown and pluck a string while idle to verify the meter and <code>-XXdB (Ch1)</code> readout.</li>
+            <li><strong>If idle noise triggers hits</strong>: Keep strings muted and click <strong>🔇 Noise Cal</strong> (measures 0.6s noise floor and sets threshold automatically).</li>
+            <li><strong>Meter markers</strong>: Red line = attack threshold / Blue line = sustain hold floor.</li>
+            <li><strong>Latency compensation (ms)</strong>: If playing in the pocket consistently reports a Mean around <code>+30ms</code>, increase Latency by <code>30ms</code> to zero it out.</li>
+            <li><strong>Stuck on Built-in Mic?</strong> Pick your interface in <code>chrome://settings/content/microphone</code>, or run <code>python3 -m http.server 8000 --directory ~/Downloads</code> and open <code>http://localhost:8000/rhythm_practice.html</code>. On macOS, set the orange menu-bar Mic Mode to <strong>Standard</strong> (not Voice Isolation).</li>
+          </ul>
+        </div>
+        <div class="guide-sec">
+          <h3>4. Keyboard Shortcuts (IME-Independent)</h3>
+          <div class="shortcut-grid">
+            <div><kbd>Space</kbd> / <kbd>J</kbd> / <kbd>K</kbd></div><div>Tap rhythm (starts take if ready)</div>
+            <div><kbd>Enter</kbd> / <kbd>R</kbd></div><div>Start / Retry current score</div>
+            <div><kbd>Esc</kbd></div><div>Stop immediately</div>
+            <div><kbd>N</kbd> / <kbd>P</kbd></div><div>New score / Play demo bass</div>
+            <div><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></div><div>Difficulty (8th / Syncopation / 16th)</div>
+            <div><kbd>L</kbd></div><div>Cycle bar count (2→4→8→12→16→32)</div>
+            <div><kbd>+</kbd> / <kbd>−</kbd></div><div>BPM ±5</div>
+            <div><kbd>M</kbd> / <kbd>B</kbd> / <kbd>G</kbd></div><div>Metronome · 1234 beat numbers · Grading (Live/End)</div>
+            <div><kbd>I</kbd></div><div>Cycle input mode (KEY → AUDIO → BOTH)</div>
+            <div><kbd>[</kbd> <kbd>]</kbd> / <kbd>,</kbd> <kbd>.</kbd></div><div>Audio threshold ±2% / Latency ±5ms</div>
+          </div>
+        </div>`,
+    },
+    ja: {
+      btnStart: "▶ 開始 / 再挑戦",
+      btnStop: "■ 停止",
+      btnNew: "新しい譜面",
+      btnDemo: "♪ お手本再生",
+      lblLevel: "難易度",
+      lvBtns: { 1: "Lv1 8分基礎", 2: "Lv2 シンコペ", 3: "Lv3 16分音符" },
+      barsLabels: { 2: "2小節", 4: "4小節 (1段)", 8: "8小節 (2段)", 12: "12小節 (3段)", 16: "16小節 (4段)", 32: "32小節 (8段)" },
+      metroOn: "🔊 メトロノーム ON",
+      metroOff: "🔇 メトロノーム OFF",
+      beatsOn: "拍番号 1234 ON",
+      beatsOff: "拍番号 1234 OFF",
+      gradeLive: "採点: 即時",
+      gradeEnd: "採点: 終了後",
+      inputPrefix: "入力",
+      btnPad: "👆 パッド",
+      btnPrint: "🖨 PDF",
+      btnGuide: "❓ 使い方",
+      statusSub: "1拍目 緑 / 2〜4拍目 黄 · 譜面カーソル表示なし",
+      statusReady: "準備完了 — Enter または Space で開始",
+      statusGetReady: "準備してください...",
+      statusCountIn: (b) => `カウントイン  ${b} / 4`,
+      statusDemo: "お手本ベース再生中...",
+      statusPlay: "演奏中 — メトロノームに合わせて演奏してください",
+      statusDone: "完了! — Enter 再挑戦 · N 新しい譜面 · P お手本",
+      badgeWait: "待機中",
+      badgeStopped: "停止",
+      badgeDemo: "お手本再生中",
+      badgeCountIn: "カウントイン...",
+      badgeBlindPlay: "演奏中（終了後に公開）",
+      badgeDone: (hits, total) => `採点結果 (${hits}/${total})`,
+      badgeDetected: (ch) => `[AUD Ch${ch}] 検出!`,
+      audioTitle: "🎤 オーディオ入力",
+      sysDefault: "システム既定入力",
+      audioInputN: (n) => `オーディオ入力 ${n}`,
+      allChannels: (n) => `全チャンネル (${n}ch)`,
+      btnReconnect: "↻ 再接続",
+      btnNoiseCal: "🔇 ノイズ補正",
+      btnMeasuring: "測定中...",
+      lblGain: "ゲイン",
+      lblThr: "しきい値",
+      lblLat: "遅延補正",
+      levelSilent: "無音",
+      levelOff: "オフ",
+      audioDefaultMsg: "ヘッドホン／オーディオインターフェースのライン入力推奨（クリック音回り込み防止）",
+      audioNoApi: "この環境ではマイクAPIを使用できません。（python3 -m http.server で http://localhost:8000 を開いてください）",
+      audioBuiltinFile: (dev) => `⚠️ 内蔵マイク(${dev})に接続中 — file:// ではブラウザが機器切替を制限します。chrome://settings/content/microphone でI/Fを選ぶか localhost で開いてください。`,
+      audioBuiltinSelect: (dev) => `⚠️ 内蔵マイク(${dev})に接続中 — 上のプルダウンからオーディオインターフェースを選択してください。`,
+      audioConnected: (dev, sr, ch) => `接続済: ${dev} (${sr}kHz · ${ch}ch) — 待機中に弦を弾いてメーター反応を確認してください`,
+      audioFail: (err, isFile) => `オーディオ入力接続失敗: ${err}${isFile ? " (file:// の制限の可能性 — python3 -m http.server で http://localhost 接続推奨)" : " (ブラウザ/OSのマイク権限を確認)"}`,
+      calMeasuring: "弦に触れずにお待ちください（フロアノイズ測定中）...",
+      calDone: (pct) => `ノイズ補正完了 — しきい値を ${pct}% に自動設定しました`,
+      tapHintHtml: `入力: <kbd>Space</kbd> / <kbd>J</kbd> / <kbd>K</kbd> またはオーディオ · <kbd>Enter</kbd> 開始 · <kbd>Esc</kbd> 停止 · <kbd>N</kbd> 新規 · <kbd>P</kbd> お手本 · <kbd>L</kbd> 小節数 · <kbd>+</kbd><kbd>−</kbd> BPM · <kbd>M</kbd> クリック · <kbd>B</kbd> 拍番号 · <kbd>G</kbd> 採点表示 · <kbd>I</kbd> 入力切替 · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> 難易度`,
+      legendHtml: `判定: <strong style="color:var(--green)">★ ≤35ms/休符OK</strong> · <strong style="color:var(--amber)">−/+ ≤80ms</strong> · <strong style="color:var(--red)">&lt;/&gt; &gt;80ms · × ミス/休符エラー</strong> · サステイン(AUD): <strong style="color:var(--green)">▬ 良好</strong> / <strong style="color:var(--amber)">▬ 短い</strong> / <strong style="color:var(--red)">▬ はみ出し</strong>`,
+      summaryIdle: "演奏を終えるとタイミング分布が表示されます。",
+      summaryHits: (hits, total, pct, tight, sign, mean, sd, extra, sus, restErrs) => {
+        const susPart = sus && sus.total > 0 ? ` · サステイン ${sus.ok}/${sus.total} (短い ${sus.short} / はみ出し ${sus.long})` : "";
+        const restPart = restErrs > 0 ? ` · 休符エラー ${restErrs}` : "";
+        return `的中 ${hits}/${total} (${pct}%) · TIGHT ${tight} · 平均 ${sign}${mean}ms · 偏差 ${sd}ms · 余分 ${extra}${susPart}${restPart}`;
+      },
+      summaryZero: (total, extra, restErrs) => `的中 0/${total} · 余分入力 ${extra}${restErrs > 0 ? ` · 休符エラー ${restErrs}` : ""}`,
+      logEmpty: "完了した記録はまだありません。",
+      restHitTip: "休符で演奏しました（エラー）",
+      restRingTip: "休符に音が残っています（ミュートが必要）",
+      restPassTip: "休符クリア（良好）",
+      susOkTip: (p) => `サステイン ${p}%（良好）`,
+      susShortTip: (p) => `サステイン ${p}%（短い — 音をもう少し伸ばしてください）`,
+      susLongTip: (ms) => `休符へのはみ出し (+${ms}ms — ミュートが遅い)`,
+      padLeftSub: "人差指 · J",
+      padRightSub: "中指 · K",
+      guideTitle: "📖 使い方・判定ガイド（クリックで開く）",
+      guideOpen: "開く ▾",
+      guideClose: "閉じる ▴",
+      guideHtml: `
+        <div class="guide-sec">
+          <h3>1. 基本的な練習方法</h3>
+          <ul>
+            <li><strong>開始 / 停止</strong>: <kbd>Enter</kbd> または <strong>▶ 開始</strong> で4拍カウントイン（1拍目 緑LED、2〜4拍目 黄LED）のあと演奏が始まります。途中で止めるには <kbd>Esc</kbd> または <strong>■ 停止</strong> を押してください。</li>
+            <li><strong>お手本再生</strong>: <kbd>P</kbd> または <strong>♪ お手本再生</strong> でメトロノームに合わせたベースガイド音（D）を確認できます。</li>
+            <li><strong>譜面設定</strong>: 難易度（<kbd>1</kbd> 8分基礎 / <kbd>2</kbd> シンコペーション / <kbd>3</kbd> 16分音符）、小節数（<kbd>L</kbd>、2〜32小節）、BPM（<kbd>+</kbd>/<kbd>−</kbd>）、拍番号 <code>1 2 3 4</code> 表示（<kbd>B</kbd>）を自由に切り替えられます。</li>
+            <li><strong>初見（サイトリーディング）特化</strong>: 譜面上に動くカーソルを置かない設計のため、メトロノームとLEDだけで拍を数えながら先読みする練習に最適です。<strong>採点: 終了後（<kbd>G</kbd>）</strong>をオンにすると演奏中は判定を隠し、完走後にまとめて結果を表示します。</li>
+          </ul>
+        </div>
+        <div class="guide-sec">
+          <h3>2. 判定記号とサステインの見方</h3>
+          <ul>
+            <li><strong style="color:var(--green)">★</strong> : ジャスト（<code>±35ms</code>以内）または <strong>休符クリア</strong>（休符の最後まで静かにミュート）</li>
+            <li><strong style="color:var(--amber)">− / +</strong> : やや早い（<code>−35〜−80ms</code>）/ やや遅い（<code>+35〜+80ms</code>）</li>
+            <li><strong style="color:var(--red)">&lt; / &gt;</strong> : かなり早い（<code>&lt; −80ms</code>）/ かなり遅い（<code>&gt; +80ms</code>）</li>
+            <li><strong style="color:var(--red)">×</strong> : 音符ミス、または <strong>休符エラー</strong>（休符中に弾いた・音が鳴り続けた場合は赤ハイライト）</li>
+            <li><strong>オーディオ・サステインバー</strong>（<code>AUDIO</code>/<code>BOTH</code>専用、音符の下のバー）:
+              <strong style="color:var(--green)">▬ 良好</strong>（十分にキープ） ·
+              <strong style="color:var(--amber)">▬ 短い</strong>（音価の62%未満で早く途切れた） ·
+              <strong style="color:var(--red)">▬ はみ出し</strong>（次の休符までミュートが遅れた）
+            </li>
+            <li>記号やバーに <strong>マウスを合わせる</strong> と正確な <code>ms</code> 誤差やサステイン <code>%</code> が表示されます。</li>
+          </ul>
+        </div>
+        <div class="guide-sec">
+          <h3>3. ベース／オーディオインターフェース接続のコツ</h3>
+          <ul>
+            <li><kbd>I</kbd> キーまたは <strong>入力: KEY</strong> ボタンで <code>AUDIO</code> または <code>BOTH</code> に切り替えます。</li>
+            <li>機器プルダウンからインターフェースを選び、待機中に弦を弾いてメーターと <code>-XXdB (Ch1)</code> の反応を確認してください。</li>
+            <li><strong>弾いていないのにノイズが反応する場合</strong>: 弦をミュートした状態で <strong>🔇 ノイズ補正</strong> を押すと、0.6秒間ノイズを測定してしきい値を自動設定します。</li>
+            <li><strong>メーターの基準線</strong>: 赤線 = アタック検出しきい値 / 青線 = サステイン維持ライン。</li>
+            <li><strong>遅延補正(ms)</strong>: ジャストで弾いているのに平均誤差（Mean）が常に <code>+30ms</code> 前後遅れる場合は、遅延補正をその分上げるとゼロ点が合います。</li>
+            <li><strong>内蔵マイクしか選ばれない場合</strong>: Chromeの <code>chrome://settings/content/microphone</code> でインターフェースを選択するか、<code>python3 -m http.server 8000 --directory ~/Downloads</code> 実行後に <code>http://localhost:8000/rhythm_practice.html</code> で開いてください。macOSメニューバーのオレンジ色マイクアイコンの <strong>マイクモード → 標準</strong> もご確認ください。</li>
+          </ul>
+        </div>
+        <div class="guide-sec">
+          <h3>4. ショートカット一覧（日本語・韓国語IMEオンでも動作）</h3>
+          <div class="shortcut-grid">
+            <div><kbd>Space</kbd> / <kbd>J</kbd> / <kbd>K</kbd></div><div>リズム入力（待機中はそのまま開始）</div>
+            <div><kbd>Enter</kbd> / <kbd>R</kbd></div><div>開始 / 同じ譜面で再挑戦</div>
+            <div><kbd>Esc</kbd></div><div>即座に停止</div>
+            <div><kbd>N</kbd> / <kbd>P</kbd></div><div>新しい譜面 / お手本ベース再生</div>
+            <div><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></div><div>難易度切替（8分 / シンコペ / 16分）</div>
+            <div><kbd>L</kbd></div><div>小節数切替（2→4→8→12→16→32）</div>
+            <div><kbd>+</kbd> / <kbd>−</kbd></div><div>BPM ±5 調整</div>
+            <div><kbd>M</kbd> / <kbd>B</kbd> / <kbd>G</kbd></div><div>メトロノーム · 1234 拍番号 · 採点表示（即時/終了後）</div>
+            <div><kbd>I</kbd></div><div>入力モード切替（KEY → AUDIO → BOTH）</div>
+            <div><kbd>[</kbd> <kbd>]</kbd> / <kbd>,</kbd> <kbd>.</kbd></div><div>しきい値 ±2% / 遅延補正 ±5ms</div>
+          </div>
+        </div>`,
+    },
+  };
+
+  let curLang = "ko";
+  try {
+    const saved = localStorage.getItem("rhythm_practice_lang");
+    if (saved && I18N[saved]) curLang = saved;
+  } catch (_) {}
+
+  function t(key, ...args) {
+    const entry = (I18N[curLang] && I18N[curLang][key]) ?? I18N.ko[key];
+    return typeof entry === "function" ? entry(...args) : entry;
+  }
+
+  // -------------------------------------------------------------------------
+  // 1. Multi-Beat Rhythm Patterns: [beatsCells, weight, allowedStartBeats]
+  //    Each event: [slotInBeat, durIn16ths, isRest]
+  // -------------------------------------------------------------------------
+  const PATTERNS_LV1 = [
+    [[[[0, 16, false]], [], [], []], 0.9, [0]],
+    [[[[0, 12, false]], [], []], 1.2, [0, 1]],
+    [[[[0, 8, false]], []], 2.2, [0, 2]],
+    [[[[0, 8, true]], []], 0.8, [0, 2]],
+    [[[[0, 6, false]], [[2, 2, false]]], 2.2, [0, 2]],
+    [[[[0, 4, false]]], 3.0, [0, 1, 2, 3]],
+    [[[[0, 2, false], [2, 2, false]]], 3.8, [0, 1, 2, 3]],
+    [[[[0, 2, true], [2, 2, false]]], 1.8, [0, 1, 2, 3]],
+    [[[[0, 2, false], [2, 2, true]]], 1.5, [0, 1, 2, 3]],
+    [[[[0, 4, true]]], 1.0, [0, 1, 2, 3]],
+  ];
+
+  const PATTERNS_LV2 = [
+    [[[[0, 16, false]], [], [], []], 0.6, [0]],
+    [[[[0, 12, false]], [], []], 1.0, [0, 1]],
+    [[[[0, 8, false]], []], 1.8, [0, 1, 2]],
+    [[[[0, 8, true]], []], 0.6, [0, 2]],
+    [[[[0, 6, false]], [[2, 2, false]]], 2.2, [0, 1, 2]],
+    [[[[0, 2, false], [2, 4, false]], [[2, 2, false]]], 2.2, [0, 2]],
+    [[[[0, 6, true]], [[2, 2, false]]], 1.2, [0, 2]],
+    [[[[0, 2, true], [2, 6, false]], []], 1.5, [0, 2]],
+    [[[[0, 4, false]]], 2.2, [0, 1, 2, 3]],
+    [[[[0, 2, false], [2, 2, false]]], 3.2, [0, 1, 2, 3]],
+    [[[[0, 2, true], [2, 2, false]]], 2.4, [0, 1, 2, 3]],
+    [[[[0, 2, false], [2, 2, true]]], 1.5, [0, 1, 2, 3]],
+    [[[[0, 4, true]]], 0.8, [0, 1, 2, 3]],
+  ];
+
+  const PATTERNS_LV3 = [
+    [[[[0, 16, false]], [], [], []], 0.4, [0]],
+    [[[[0, 12, false]], [], []], 0.6, [0, 1]],
+    [[[[0, 8, false]], []], 1.0, [0, 1, 2]],
+    [[[[0, 6, false]], [[2, 2, false]]], 1.4, [0, 1, 2]],
+    [[[[0, 2, false], [2, 4, false]], [[2, 2, false]]], 1.4, [0, 2]],
+    [[[[0, 6, true]], [[2, 2, false]]], 0.8, [0, 2]],
+    [[[[0, 2, true], [2, 6, false]], []], 1.0, [0, 2]],
+    [[[[0, 4, false]]], 1.2, [0, 1, 2, 3]],
+    [[[[0, 2, false], [2, 2, false]]], 1.6, [0, 1, 2, 3]],
+    [[[[0, 1, false], [1, 1, false], [2, 1, false], [3, 1, false]]], 2.0, [0, 1, 2, 3]],
+    [[[[0, 1, false], [1, 1, false], [2, 2, false]]], 2.0, [0, 1, 2, 3]],
+    [[[[0, 2, false], [2, 1, false], [3, 1, false]]], 2.0, [0, 1, 2, 3]],
+    [[[[0, 2, true], [2, 2, false]]], 1.2, [0, 1, 2, 3]],
+    [[[[0, 3, false], [3, 1, false]]], 2.0, [0, 1, 2, 3]],
+    [[[[0, 1, false], [1, 3, false]]], 1.6, [0, 1, 2, 3]],
+    [[[[0, 1, false], [1, 2, false], [3, 1, false]]], 1.8, [0, 1, 2, 3]],
+    [[[[0, 1, true], [1, 1, false], [2, 2, false]]], 1.4, [0, 1, 2, 3]],
+    [[[[0, 2, false], [2, 1, true], [3, 1, false]]], 1.4, [0, 1, 2, 3]],
+    [[[[0, 2, true], [2, 1, false], [3, 1, false]]], 1.4, [0, 1, 2, 3]],
+    [[[[0, 1, false], [1, 1, false], [2, 2, true]]], 1.2, [0, 1, 2, 3]],
+    [[[[0, 1, true], [1, 2, false], [3, 1, false]]], 1.2, [0, 1, 2, 3]],
+    [[[[0, 1, true], [1, 1, false], [2, 1, true], [3, 1, false]]], 1.0, [0, 1, 2, 3]],
+    [[[[0, 2, true], [2, 1, true], [3, 1, false]]], 1.0, [0, 1, 2, 3]],
+    [[[[0, 1, true], [1, 1, false], [2, 2, true]]], 1.0, [0, 1, 2, 3]],
+  ];
+
+  const LEVEL_POOLS = { 1: PATTERNS_LV1, 2: PATTERNS_LV2, 3: PATTERNS_LV3 };
+  const LEVEL_TITLES = { 1: "Level 1 · 8th Basic", 2: "Level 2 · 8th Syncopation", 3: "Level 3 · 16th Rhythm" };
+  const TIE_PROBS = { 1: 0.0, 2: 0.28, 3: 0.24 };
+  const PRE_DELAY_SEC = 0.5;
+
+  function mulberry32(seed) {
+    let a = seed >>> 0;
+    return () => {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function patternIsAllRest(cells) {
+    return cells.every(c => c.every(ev => ev[2]));
+  }
+
+  function generatePhrase(numBars, level, forcedSeed = null) {
+    const seed = forcedSeed ?? (0x1000 + Math.floor(Math.random() * 0xEFFF));
+    const rand = mulberry32(seed);
+    const pool = LEVEL_POOLS[level];
+    const tieProb = TIE_PROBS[level];
+
+    let bestBars = [];
+    let bestTargets = [];
+    let bestRests = [];
+
+    for (let attempt = 0; attempt < 40; attempt++) {
+      const bars = [];
+      for (let b = 0; b < numBars; b++) {
+        const beats = [];
+        let prevRest = false;
+        while (beats.length < 4) {
+          const bt = beats.length;
+          const rem = 4 - bt;
+          const cands = pool.filter(([cells, _w, starts]) =>
+            cells.length <= rem &&
+            starts.includes(bt) &&
+            !(prevRest && patternIsAllRest(cells))
+          );
+          const totalW = cands.reduce((s, c) => s + c[1], 0);
+          let r = rand() * totalW;
+          let chosen = cands[0][0];
+          for (const [cells, w] of cands) {
+            r -= w;
+            if (r <= 0) { chosen = cells; break; }
+          }
+          for (const cell of chosen) {
+            beats.push(cell.map(([slot, dur, rest]) => ({
+              slot, dur, rest, tiedIn: false, tiedOut: false
+            })));
+          }
+          prevRest = patternIsAllRest(chosen);
+        }
+
+        for (let bt = 1; bt < 4; bt++) {
+          if (!beats[bt - 1].length || !beats[bt].length) continue;
+          const prevEv = beats[bt - 1][beats[bt - 1].length - 1];
+          const currEv = beats[bt][0];
+          if (
+            !prevEv.rest && !currEv.rest && !prevEv.tiedIn &&
+            prevEv.slot + prevEv.dur === 4 && currEv.slot === 0 &&
+            rand() < tieProb
+          ) {
+            prevEv.tiedOut = true;
+            currEv.tiedIn = true;
+          }
+        }
+        bars.push(beats);
+      }
+
+      const targets = [];
+      const rests = [];
+      bars.forEach((beats, bIdx) => {
+        beats.forEach((events, btIdx) => {
+          events.forEach(ev => {
+            if (ev.rest) {
+              rests.push({
+                bar: bIdx,
+                beat: btIdx,
+                slotInBeat: ev.slot,
+                globalSlot: bIdx * 16 + btIdx * 4 + ev.slot,
+                durSlots: ev.dur,
+                timeSec: 0,
+                endSec: 0,
+                error: false,
+                errorKind: null,
+                ringFrames: 0,
+              });
+              return;
+            }
+            if (ev.tiedIn && targets.length) {
+              targets[targets.length - 1].durSlots += ev.dur;
+            } else if (!ev.tiedIn) {
+              targets.push({
+                bar: bIdx,
+                beat: btIdx,
+                slotInBeat: ev.slot,
+                globalSlot: bIdx * 16 + btIdx * 4 + ev.slot,
+                durSlots: ev.dur,
+                timeSec: 0,
+                hit: false,
+                missed: false,
+                errMs: null,
+              });
+            }
+          });
+        });
+      });
+
+      bestBars = bars;
+      bestTargets = targets;
+      bestRests = rests;
+      if (targets.length >= Math.max(4, numBars * 2)) break;
+    }
+
+    return { seed, bars: bestBars, targets: bestTargets, rests: bestRests };
+  }
+
+  // -------------------------------------------------------------------------
+  // 2. Print-Quality SVG Vector Sheet Music Engraver
+  // -------------------------------------------------------------------------
+  const SVG_NS = "http://www.w3.org/2000/svg";
+  function el(tag, attrs = {}, text = null) {
+    const node = document.createElementNS(SVG_NS, tag);
+    for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, String(v));
+    if (text !== null) node.textContent = text;
+    return node;
+  }
+
+  function drawBassClef(g, x, staffTop) {
+    // Crisp vector F-clef centered around line 2 (staffTop + 10)
+    const y2 = staffTop + 10;
+    g.appendChild(el("circle", { cx: x + 6, cy: y2, r: 3.4, fill: "#111" }));
+    g.appendChild(el("path", {
+      d: `M ${x + 4.5} ${y2 + 1} C ${x + 2} ${y2 - 11}, ${x + 19} ${y2 - 13}, ${x + 20} ${y2 + 1}
+          C ${x + 21} ${y2 + 13}, ${x + 11} ${y2 + 22}, ${x + 2} ${y2 + 27}`,
+      fill: "none", stroke: "#111", "stroke-width": 2.8, "stroke-linecap": "round"
+    }));
+    g.appendChild(el("circle", { cx: x + 26, cy: staffTop + 5.5, r: 2.0, fill: "#111" }));
+    g.appendChild(el("circle", { cx: x + 26, cy: staffTop + 14.5, r: 2.0, fill: "#111" }));
+  }
+
+  function drawTimeSig(g, x, staffTop) {
+    const common = {
+      "font-family": 'Georgia, "Times New Roman", serif',
+      "font-weight": "700",
+      "font-size": "24",
+      fill: "#111",
+      "text-anchor": "middle",
+    };
+    g.appendChild(el("text", { ...common, x, y: staffTop + 18.5 }, "4"));
+    g.appendChild(el("text", { ...common, x, y: staffTop + 38.5 }, "4"));
+  }
+
+  function drawRest(g, dur, x, midY) {
+    if (dur >= 8) {
+      // Half rest: solid hat sitting on top of middle line
+      g.appendChild(el("rect", { x: x - 6, y: midY - 5, width: 12, height: 5, fill: "#111", rx: 0.5 }));
+      if (dur === 12) g.appendChild(el("circle", { cx: x + 10.5, cy: midY - 4.5, r: 2.1, fill: "#111" }));
+      return;
+    }
+    if (dur === 4 || dur === 6) {
+      // Engraved quarter rest
+      g.appendChild(el("path", {
+        d: `M ${x - 2.5} ${midY - 14} L ${x + 3.8} ${midY - 5.5}
+            C ${x - 1} ${midY - 1}, ${x - 2.5} ${midY + 2}, ${x + 3.2} ${midY + 8}
+            C ${x - 3.5} ${midY + 5.5}, ${x - 5.2} ${midY + 11.5}, ${x + 1.2} ${midY + 15.5}`,
+        fill: "none", stroke: "#111", "stroke-width": 2.4, "stroke-linecap": "round", "stroke-linejoin": "round"
+      }));
+      if (dur === 6) g.appendChild(el("circle", { cx: x + 10, cy: midY - 4.5, r: 2.1, fill: "#111" }));
+      return;
+    }
+    if (dur === 2 || dur === 3) {
+      // Engraved 8th rest
+      g.appendChild(el("circle", { cx: x - 2.8, cy: midY - 5.5, r: 2.6, fill: "#111" }));
+      g.appendChild(el("path", {
+        d: `M ${x - 2} ${midY - 3.5} Q ${x + 3} ${midY - 1.5}, ${x + 5.5} ${midY - 7.5} L ${x - 1.2} ${midY + 12}`,
+        fill: "none", stroke: "#111", "stroke-width": 1.9, "stroke-linecap": "round"
+      }));
+      if (dur === 3) g.appendChild(el("circle", { cx: x + 9.5, cy: midY - 4.5, r: 2.0, fill: "#111" }));
+      return;
+    }
+    if (dur === 1) {
+      // Engraved 16th rest
+      g.appendChild(el("circle", { cx: x - 2.2, cy: midY - 8.5, r: 2.3, fill: "#111" }));
+      g.appendChild(el("circle", { cx: x - 4.2, cy: midY - 0.5, r: 2.3, fill: "#111" }));
+      g.appendChild(el("path", {
+        d: `M ${x - 1.5} ${midY - 6.8} Q ${x + 3.2} ${midY - 4.8}, ${x + 5.5} ${midY - 10.5} L ${x - 2.8} ${midY + 15}
+            M ${x - 3.5} ${midY + 1.2} Q ${x + 1.2} ${midY + 3.2}, ${x + 3.2} ${midY - 2.5}`,
+        fill: "none", stroke: "#111", "stroke-width": 1.8, "stroke-linecap": "round"
+      }));
+    }
+  }
+
+  function drawNotehead(g, dur, x, y) {
+    if (dur === 16) {
+      // Engraved whole note (wide oval + tilted inner cutout, no stem)
+      g.appendChild(el("ellipse", { cx: x, cy: y, rx: 7.2, ry: 4.5, fill: "#111" }));
+      g.appendChild(el("ellipse", {
+        cx: x, cy: y, rx: 3.6, ry: 2.7, fill: "#fff",
+        transform: `rotate(24 ${x} ${y})`
+      }));
+      return;
+    }
+    if (dur === 8 || dur === 12) {
+      // Engraved half note (tilted hollow oval)
+      g.appendChild(el("ellipse", {
+        cx: x, cy: y, rx: 5.7, ry: 4.0, fill: "#111",
+        transform: `rotate(-22 ${x} ${y})`
+      }));
+      g.appendChild(el("ellipse", {
+        cx: x, cy: y, rx: 3.9, ry: 1.9, fill: "#fff",
+        transform: `rotate(-22 ${x} ${y})`
+      }));
+      if (dur === 12) g.appendChild(el("circle", { cx: x + 9.6, cy: y - 4.5, r: 2.0, fill: "#111" }));
+      return;
+    }
+    // Filled notehead (quarter, dot4, dot8, 8th, 16th)
+    g.appendChild(el("ellipse", {
+      cx: x, cy: y, rx: 5.3, ry: 3.8, fill: "#111",
+      transform: `rotate(-22 ${x} ${y})`
+    }));
+    if (dur === 3 || dur === 6) {
+      g.appendChild(el("circle", { cx: x + 9.2, cy: y - 4.5, r: 1.9, fill: "#111" }));
+    }
+  }
+
+  function drawFlag(g, sx, topY, doubleFlag) {
+    const flagPath = (y0) => el("path", {
+      d: `M ${sx} ${y0} C ${sx + 1.8} ${y0 + 6.5}, ${sx + 11} ${y0 + 9.5}, ${sx + 8.8} ${y0 + 20.5}
+          C ${sx + 9} ${y0 + 14}, ${sx + 3.8} ${y0 + 10}, ${sx} ${y0 + 6} Z`,
+      fill: "#111"
+    });
+    g.appendChild(flagPath(topY));
+    if (doubleFlag) g.appendChild(flagPath(topY + 7));
+  }
+
+  function drawTie(g, x1, x2, y) {
+    const mx = (x1 + x2) / 2;
+    const dip = Math.min(16, Math.max(9, (x2 - x1) * 0.18));
+    g.appendChild(el("path", {
+      d: `M ${x1 + 2} ${y + 7.5} Q ${mx} ${y + 7.5 + dip + 2.2}, ${x2 - 2} ${y + 7.5}
+          Q ${mx} ${y + 7.5 + dip - 0.6}, ${x1 + 2} ${y + 7.5} Z`,
+      fill: "#111"
+    }));
+  }
+
+  function renderScore(svg, phrase) {
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+    const numBars = phrase.bars.length;
+    const isNarrow = window.innerWidth <= 640;
+    const barsPerSystem = numBars <= 2 ? numBars : (isNarrow ? 2 : 4);
+    const numSystems = Math.ceil(numBars / barsPerSystem);
+    const W = isNarrow ? 600 : 1120;
+    const sysH = 148;
+    const H = numSystems * sysH + 10;
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+
+    const leftPad = 14;
+    const rightPad = 16;
+    const clefArea = 72; // Bass clef + 4/4 time sig on first system
+
+    // Map target & rest feedback by (bar, beat, slot)
+    const fbMap = new Map();
+    for (const tgt of phrase.targets) {
+      fbMap.set(`${tgt.bar}:${tgt.beat}:${tgt.slotInBeat}`, tgt);
+    }
+    const restFbMap = new Map();
+    for (const rst of (phrase.rests || [])) {
+      restFbMap.set(`${rst.bar}:${rst.beat}:${rst.slotInBeat}`, rst);
+    }
+
+    for (let sys = 0; sys < numSystems; sys++) {
+      const staffTop = sys * sysH + 52;
+      const midY = staffTop + 20;
+      const stemTopY = midY - 35;
+      const g = el("g");
+      svg.appendChild(g);
+
+      // 5 staff lines
+      for (let li = 0; li < 5; li++) {
+        const ly = staffTop + li * 10;
+        g.appendChild(el("line", {
+          x1: leftPad, y1: ly, x2: W - rightPad, y2: ly,
+          stroke: "#3f3f46", "stroke-width": 1.0
+        }));
+      }
+
+      // Opening barline
+      g.appendChild(el("line", {
+        x1: leftPad, y1: staffTop, x2: leftPad, y2: staffTop + 40,
+        stroke: "#111", "stroke-width": 1.4
+      }));
+
+      // Bass clef (+ 4/4 on first system)
+      drawBassClef(g, leftPad + 6, staffTop);
+      const headerW = sys === 0 ? clefArea : 42;
+      if (sys === 0) drawTimeSig(g, leftPad + 54, staffTop);
+
+      const sysBars = Math.min(barsPerSystem, numBars - sys * barsPerSystem);
+      const usableW = (W - rightPad) - (leftPad + headerW);
+      const barW = usableW / barsPerSystem;
+
+      for (let off = 0; off < sysBars; off++) {
+        const bIdx = sys * barsPerSystem + off;
+        const barX0 = leftPad + headerW + off * barW;
+        const barX1 = barX0 + barW;
+        const innerPadL = barsPerSystem === 4 ? 17 : 26;
+        const innerPadR = barsPerSystem === 4 ? 12 : 18;
+        const beatW = (barW - innerPadL - innerPadR) / 4;
+        const slotX = (bt, slot) => barX0 + innerPadL + bt * beatW + (slot / 4) * beatW;
+
+        // Subtle measure number
+        g.appendChild(el("text", {
+          x: barX0 + 3, y: staffTop - 35,
+          "font-family": "Georgia, serif", "font-size": 10.5, fill: "#9ca3af"
+        }, `${bIdx + 1}`));
+
+        // Subtle beat numbers 1..4 above staff (toggleable)
+        if (app.showBeatNums) {
+          for (let bt = 0; bt < 4; bt++) {
+            g.appendChild(el("text", {
+              x: slotX(bt, 0), y: staffTop - 37,
+              "font-family": "ui-sans-serif, system-ui, sans-serif",
+              "font-size": 10, "font-weight": 600, fill: "#a1a1aa", "text-anchor": "middle"
+            }, String(bt + 1)));
+          }
+        }
+
+        const beats = phrase.bars[bIdx];
+
+        // Draw each beat
+        for (let bt = 0; bt < 4; bt++) {
+          const events = beats[bt];
+          const beamable = [];
+
+          for (const ev of events) {
+            const nx = slotX(bt, ev.slot);
+            if (ev.rest) {
+              drawRest(g, ev.dur, nx, midY);
+            } else {
+              drawNotehead(g, ev.dur, nx, midY);
+              if (ev.dur !== 16) {
+                const sx = nx + 4.7;
+                g.appendChild(el("line", {
+                  x1: sx, y1: midY - 1.5, x2: sx, y2: stemTopY,
+                  stroke: "#111", "stroke-width": 1.35
+                }));
+                if (ev.dur <= 3) beamable.push({ ev, nx, sx });
+              }
+            }
+          }
+
+          // Beams or flags for beamable notes in beat
+          if (beamable.length === 1) {
+            const b0 = beamable[0];
+            drawFlag(g, b0.sx, stemTopY, b0.ev.dur === 1);
+          } else if (beamable.length >= 2) {
+            const xFirst = beamable[0].sx - 0.65;
+            const xLast = beamable[beamable.length - 1].sx + 0.65;
+            // Primary 8th beam
+            g.appendChild(el("rect", {
+              x: xFirst, y: stemTopY, width: xLast - xFirst, height: 4.5, fill: "#111"
+            }));
+
+            // Secondary 16th beams
+            const connected = new Array(beamable.length).fill(false);
+            const y2 = stemTopY + 7.0;
+            for (let i = 0; i < beamable.length - 1; i++) {
+              const a = beamable[i], b = beamable[i + 1];
+              if (a.ev.dur === 1 && b.ev.dur === 1 && a.ev.slot + a.ev.dur === b.ev.slot) {
+                g.appendChild(el("rect", {
+                  x: a.sx - 0.65, y: y2, width: (b.sx - a.sx) + 1.3, height: 4.0, fill: "#111"
+                }));
+                connected[i] = true;
+                connected[i + 1] = true;
+              }
+            }
+            for (let i = 0; i < beamable.length; i++) {
+              const item = beamable[i];
+              if (item.ev.dur === 1 && !connected[i]) {
+                const stubW = 9.5;
+                const sx = i < beamable.length - 1 ? item.sx - 0.65 : item.sx - stubW + 0.65;
+                g.appendChild(el("rect", {
+                  x: sx, y: y2, width: stubW, height: 4.0, fill: "#111"
+                }));
+              }
+            }
+          }
+
+          // Cross-beat tie
+          if (bt > 0 && beats[bt - 1].length && events.length) {
+            const prevEv = beats[bt - 1][beats[bt - 1].length - 1];
+            const currEv = events[0];
+            if (prevEv.tiedOut && currEv.tiedIn) {
+              drawTie(g, slotX(bt - 1, prevEv.slot), slotX(bt, currEv.slot), midY);
+            }
+          }
+
+          // Feedback markers beneath noteheads & rests (hidden during take when blindGrade is ON)
+          const hideFeedback = app.blindGrade && (app.state === "COUNTIN" || app.state === "PLAY");
+          for (const ev of events) {
+            if (hideFeedback) break;
+            if (ev.rest) {
+              const rst = restFbMap.get(`${bIdx}:${bt}:${ev.slot}`);
+              if (rst && rst.error) {
+                const nx = slotX(bt, ev.slot);
+                const fbY = staffTop + 59;
+                const bg = el("rect", {
+                  x: nx - 9, y: midY - 16, width: 18, height: 32, rx: 4,
+                  fill: "rgba(220, 38, 38, 0.14)"
+                });
+                g.appendChild(bg);
+                const rNode = el("text", {
+                  x: nx, y: fbY, fill: "#dc2626",
+                  "font-size": 14, "font-weight": 800, "text-anchor": "middle",
+                  "font-family": "ui-sans-serif, system-ui, sans-serif"
+                }, "×");
+                rNode.appendChild(el("title", {}, rst.errorKind === "HIT" ? t("restHitTip") : t("restRingTip")));
+                g.appendChild(rNode);
+              } else if (rst && rst.passed) {
+                const nx = slotX(bt, ev.slot);
+                const fbY = staffTop + 59;
+                const rNode = el("text", {
+                  x: nx, y: fbY, fill: "#16a34a",
+                  "font-size": 13, "font-weight": 800, "text-anchor": "middle",
+                  "font-family": "ui-sans-serif, system-ui, sans-serif"
+                }, "★");
+                rNode.appendChild(el("title", {}, t("restPassTip")));
+                g.appendChild(rNode);
+              }
+              continue;
+            }
+            if (ev.tiedIn) continue;
+            const tgt = fbMap.get(`${bIdx}:${bt}:${ev.slot}`);
+            if (!tgt) continue;
+            const nx = slotX(bt, ev.slot);
+            const fbY = staffTop + 59;
+            let sym = "", color = "";
+            if (tgt.hit && tgt.errMs !== null) {
+              const ae = Math.abs(tgt.errMs);
+              if (ae <= 35) { sym = "★"; color = "#16a34a"; }
+              else if (ae <= 80) { sym = tgt.errMs > 0 ? "+" : "−"; color = "#d97706"; }
+              else { sym = tgt.errMs > 0 ? ">" : "<"; color = "#dc2626"; }
+            } else if (tgt.missed) {
+              sym = "×"; color = "#dc2626";
+            }
+            if (sym) {
+              const tNode = el("text", {
+                x: nx, y: fbY, fill: color,
+                "font-size": sym === "★" ? 13 : 14,
+                "font-weight": 800, "text-anchor": "middle",
+                "font-family": "ui-sans-serif, system-ui, sans-serif"
+              }, sym);
+              if (tgt.errMs !== null) {
+                const sign = tgt.errMs >= 0 ? "+" : "";
+                tNode.appendChild(el("title", {}, `${sign}${tgt.errMs.toFixed(1)} ms`));
+              }
+              g.appendChild(tNode);
+            }
+
+            // Sustain bar beneath notehead (AUDIO input only)
+            if (tgt.hit && tgt.hitSource === "AUDIO" && tgt.sustainStatus) {
+              const endSlotInBar = bt * 4 + ev.slot + tgt.durSlots;
+              const rawEndX = barX0 + innerPadL + (endSlotInBar / 4) * beatW;
+              const spanW = Math.max(12, Math.min(barX1 - 6, rawEndX) - nx - 3);
+              const susY = staffTop + 65;
+              const barG = el("g");
+              // Expected duration track
+              barG.appendChild(el("rect", {
+                x: nx - 2, y: susY, width: spanW + 2, height: 4, rx: 2, fill: "#e5e7eb"
+              }));
+              const ratio = tgt.sustainRatio ?? 1;
+              let fillColor = "#16a34a";
+              let actualW = Math.max(4, Math.min(1, ratio) * (spanW + 2));
+              let tipText = t("susOkTip", Math.round(ratio * 100));
+              if (tgt.sustainStatus === "SHORT") {
+                fillColor = "#d97706";
+                actualW = Math.max(4, Math.min(0.95, ratio) * (spanW + 2));
+                tipText = t("susShortTip", Math.round(ratio * 100));
+              } else if (tgt.sustainStatus === "LONG") {
+                fillColor = "#dc2626";
+                actualW = Math.min(barX1 - nx, spanW + 8);
+                tipText = t("susLongTip", Math.round(tgt.bleedMs));
+              }
+              barG.appendChild(el("rect", {
+                x: nx - 2, y: susY, width: actualW, height: 4, rx: 2, fill: fillColor
+              }));
+              barG.appendChild(el("title", {}, tipText));
+              g.appendChild(barG);
+            }
+          }
+        }
+
+        // Right barline (final double barline on very last bar)
+        const isFinal = (bIdx === numBars - 1);
+        if (isFinal) {
+          g.appendChild(el("line", {
+            x1: barX1 - 6.5, y1: staffTop, x2: barX1 - 6.5, y2: staffTop + 40,
+            stroke: "#111", "stroke-width": 1.3
+          }));
+          g.appendChild(el("rect", {
+            x: barX1 - 3.2, y: staffTop, width: 3.8, height: 40, fill: "#111"
+          }));
+        } else {
+          g.appendChild(el("line", {
+            x1: barX1, y1: staffTop, x2: barX1, y2: staffTop + 40,
+            stroke: "#111", "stroke-width": 1.3
+          }));
+        }
+      }
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // 3. Web Audio Output Engine (Hardware-clock Metronome & Sustaining Bass)
+  // -------------------------------------------------------------------------
+  let audioCtx = null;
+  let audioUnlocked = false;
+  let scheduledNodes = [];
+
+  function ensureAudioCtx() {
+    if (!audioCtx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      audioCtx = new AC();
+    }
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    if (!audioUnlocked) {
+      try {
+        const buf = audioCtx.createBuffer(1, 1, 22050);
+        const src = audioCtx.createBufferSource();
+        src.buffer = buf;
+        src.connect(audioCtx.destination);
+        src.start(0);
+        audioUnlocked = true;
+      } catch (_) {}
+    }
+    return audioCtx;
+  }
+
+  function stopScheduledAudio() {
+    for (const node of scheduledNodes) {
+      try { node.stop(); } catch (_) {}
+      try { node.disconnect(); } catch (_) {}
+    }
+    scheduledNodes = [];
+  }
+
+  function scheduleClick(ctx, when, freq, amp) {
+    // Stable-pitch metronome click (no downward pitch sweep)
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(freq, when);
+    gain.gain.setValueAtTime(0.0001, when);
+    gain.gain.linearRampToValueAtTime(amp, when + 0.0015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, when + 0.028);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(when);
+    osc.stop(when + 0.032);
+
+    // Subtle octave-up attack transient for crisp rhythmic definition
+    const hiOsc = ctx.createOscillator();
+    const hiGain = ctx.createGain();
+    hiOsc.type = "sine";
+    hiOsc.frequency.setValueAtTime(freq * 2, when);
+    hiGain.gain.setValueAtTime(0.0001, when);
+    hiGain.gain.linearRampToValueAtTime(amp * 0.25, when + 0.001);
+    hiGain.gain.exponentialRampToValueAtTime(0.0001, when + 0.008);
+    hiOsc.connect(hiGain).connect(ctx.destination);
+    hiOsc.start(when);
+    hiOsc.stop(when + 0.010);
+
+    scheduledNodes.push(osc, gain, hiOsc, hiGain);
+  }
+
+  function scheduleBassNote(ctx, when, durSec, freq) {
+    const playDur = Math.max(0.09, durSec * 0.90);
+    const osc1 = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    const filter = ctx.createBiquadFilter();
+    const gain = ctx.createGain();
+
+    osc1.type = "triangle";
+    osc1.frequency.setValueAtTime(freq, when);
+    osc2.type = "sawtooth";
+    osc2.frequency.setValueAtTime(freq, when);
+
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(900, when);
+    filter.frequency.exponentialRampToValueAtTime(240, when + Math.min(0.28, playDur));
+
+    const g2 = ctx.createGain();
+    g2.gain.value = 0.32;
+
+    gain.gain.setValueAtTime(0.0001, when);
+    gain.gain.linearRampToValueAtTime(0.45, when + 0.007);
+    gain.gain.exponentialRampToValueAtTime(0.24, when + Math.min(0.18, playDur * 0.7));
+    gain.gain.setValueAtTime(0.24, Math.max(when + 0.02, when + playDur - 0.025));
+    gain.gain.exponentialRampToValueAtTime(0.0001, when + playDur);
+
+    osc1.connect(filter);
+    osc2.connect(g2).connect(filter);
+    filter.connect(gain).connect(ctx.destination);
+
+    osc1.start(when);
+    osc2.start(when);
+    osc1.stop(when + playDur + 0.01);
+    osc2.stop(when + playDur + 0.01);
+    scheduledNodes.push(osc1, osc2, g2, filter, gain);
+  }
+
+  function scheduleRunAudio(bpm, numBars, startAudioT, playMetronome, demoTargets = null) {
+    stopScheduledAudio();
+    const ctx = ensureAudioCtx();
+    const beatSec = 60 / bpm;
+    const sixteenth = beatSec / 4;
+
+    if (playMetronome || demoTargets) {
+      // Consistent concert-pitch clicks across count-in & bars: E6 (1318.5Hz) on beat 1, A5 (880Hz) on beats 2-4
+      const totalBeats = 4 + numBars * 4;
+      for (let b = 0; b < totalBeats; b++) {
+        const isDownbeat = b % 4 === 0;
+        scheduleClick(ctx, startAudioT + b * beatSec, isDownbeat ? 1318.51 : 880.0, isDownbeat ? 0.32 : 0.22);
+      }
+    }
+    if (demoTargets) {
+      for (const tgt of demoTargets) {
+        const when = startAudioT + 4 * beatSec + tgt.globalSlot * sixteenth;
+        const durSec = tgt.durSlots * sixteenth;
+        // All notes on the middle line of bass clef = D (sounding D2 = 73.42Hz on bass guitar)
+        scheduleBassNote(ctx, when, durSec, 73.42);
+      }
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // 4. Web Audio Input Engine (Mic / Audio Interface Onset Detection)
+  // -------------------------------------------------------------------------
+  const audioIn = {
+    active: false,
+    stream: null,
+    source: null,
+    hpFilter: null,
+    lpFilter: null,
+    splitter: null,
+    analysers: [],
+    zeroGain: null,
+    buf: null,
+    pollId: null,
+    deviceId: "",
+    userPickedDevice: false,
+    channelMode: "ALL", // "ALL" or channel index string "0", "1", ...
+    channelCount: 2,
+    hotChannel: 0,
+    gain: 2,
+    threshold: 0.16,
+    latencyMs: 25,
+    cooldownSec: 0.075,
+    level: 0,
+    rawPeak: 0,
+    prevLevel: 0,
+    recentLevels: [],
+    fluxBase: 0,
+    wasAbove: false,
+    lastOnset: 0,
+    lastTriggerMs: 0,
+    calibrating: false,
+    calMaxLevel: 0,
+    deviceLabel: "",
+  };
+
+  async function resetAudioCtxIfIdle() {
+    if (app.state === "COUNTIN" || app.state === "PLAY" || app.state === "DEMO") return;
+    stopScheduledAudio();
+    if (audioCtx) {
+      try { await audioCtx.close(); } catch (_) {}
+      audioCtx = null;
+      audioUnlocked = false;
+    }
+  }
+
+  const BUILTIN_MIC_RE = /macbook|built-in|internal|내장|iphone|continuity|airpods/i;
+  const EXT_IFACE_RE = /anagram|darkglass|scarlett|focusrite|usb|audio|interface|steinberg|audient|motu|apollo|universal audio|ssl|zoom|helix|hx |cortex|kemper|fractal|boss|presonus|behringer|roland|yamaha|rme|irig|line 6/i;
+
+  async function populateAudioDevices(activeDeviceId = "") {
+    const sel = document.getElementById("audioDeviceSelect");
+    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return { inputs: [], opaqueIds: false };
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const rawInputs = devices.filter(d => d.kind === "audioinput");
+      const inputs = rawInputs.filter(d => d.deviceId !== "default" && d.deviceId !== "communications");
+      const opaqueIds = rawInputs.length > 0 && rawInputs.every(d => !d.deviceId);
+      const prev = activeDeviceId || audioIn.deviceId || sel.value;
+
+      sel.innerHTML = "";
+      const defOpt = document.createElement("option");
+      defOpt.value = "";
+      defOpt.textContent = (opaqueIds && audioIn.deviceLabel) ? audioIn.deviceLabel : t("sysDefault");
+      sel.appendChild(defOpt);
+      if (!opaqueIds) {
+        inputs.forEach((d, idx) => {
+          const opt = document.createElement("option");
+          opt.value = d.deviceId;
+          opt.textContent = d.label || t("audioInputN", idx + 1);
+          sel.appendChild(opt);
+        });
+      }
+      if (!opaqueIds && prev && inputs.some(d => d.deviceId === prev)) {
+        sel.value = prev;
+      } else {
+        sel.value = "";
+      }
+      return { inputs, opaqueIds };
+    } catch (_) {
+      return { inputs: [], opaqueIds: false };
+    }
+  }
+
+  function findPreferredInterface(inputs) {
+    const valid = inputs.filter(d => d.deviceId && d.label);
+    return (
+      valid.find(d => EXT_IFACE_RE.test(d.label)) ||
+      valid.find(d => !BUILTIN_MIC_RE.test(d.label) && !/blackhole|teams|zoomaudio|virtual/i.test(d.label)) ||
+      null
+    );
+  }
+
+  function populateChannelSelect(chCount) {
+    const sel = document.getElementById("audioChSelect");
+    const prev = audioIn.channelMode;
+    sel.innerHTML = "";
+    const allOpt = document.createElement("option");
+    allOpt.value = "ALL";
+    allOpt.textContent = t("allChannels", chCount);
+    sel.appendChild(allOpt);
+    for (let i = 0; i < chCount; i++) {
+      const opt = document.createElement("option");
+      opt.value = String(i);
+      opt.textContent = `Ch ${i + 1}`;
+      sel.appendChild(opt);
+    }
+    if (prev !== "ALL" && Number(prev) < chCount) {
+      sel.value = prev;
+    } else {
+      audioIn.channelMode = "ALL";
+      sel.value = "ALL";
+    }
+  }
+
+  async function startAudioInput(forceReconnect = false) {
+    if (audioIn.active && !forceReconnect) return true;
+    stopAudioInput();
+
+    const msgEl = document.getElementById("audioMsg");
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      msgEl.textContent = t("audioNoApi");
+      return false;
+    }
+    try {
+      await resetAudioCtxIfIdle();
+      const ctx = ensureAudioCtx();
+      if (ctx.state === "suspended") {
+        await ctx.resume();
+      }
+
+      const baseConstraints = {
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false,
+      };
+      if (audioIn.deviceId) {
+        baseConstraints.deviceId = { exact: audioIn.deviceId };
+      }
+
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: { ...baseConstraints, channelCount: { ideal: 8 } }
+        });
+      } catch (firstErr) {
+        // Fallback if deviceId vanished or channelCount constraint was rejected
+        const fallback = {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+        };
+        if (audioIn.deviceId && firstErr.name !== "OverconstrainedError" && firstErr.name !== "NotFoundError") {
+          fallback.deviceId = { ideal: audioIn.deviceId };
+        } else if (firstErr.name === "OverconstrainedError" || firstErr.name === "NotFoundError") {
+          audioIn.deviceId = "";
+        }
+        stream = await navigator.mediaDevices.getUserMedia({ audio: fallback });
+      }
+
+      const track = stream.getAudioTracks()[0];
+      const settings = track && track.getSettings ? track.getSettings() : {};
+      const source = ctx.createMediaStreamSource(stream);
+      const chCount = Math.max(2, Math.min(8, settings.channelCount || source.channelCount || 2));
+
+      // Band-limit detector (35Hz..1200Hz) to strip DC offset, amp-sim hiss, and high-freq fret noise
+      const hpFilter = ctx.createBiquadFilter();
+      hpFilter.type = "highpass";
+      hpFilter.frequency.value = 35;
+      const lpFilter = ctx.createBiquadFilter();
+      lpFilter.type = "lowpass";
+      lpFilter.frequency.value = 1200;
+
+      // Split every input channel and pull through a silent 0-gain sink so Chrome/Safari never stall the analyser
+      const splitter = ctx.createChannelSplitter(chCount);
+      const zeroGain = ctx.createGain();
+      zeroGain.gain.value = 0;
+      zeroGain.connect(ctx.destination);
+
+      source.connect(hpFilter);
+      hpFilter.connect(lpFilter);
+      lpFilter.connect(splitter);
+      const analysers = [];
+      for (let c = 0; c < chCount; c++) {
+        const an = ctx.createAnalyser();
+        an.fftSize = 1024;
+        splitter.connect(an, c);
+        an.connect(zeroGain);
+        analysers.push(an);
+      }
+
+      audioIn.stream = stream;
+      audioIn.source = source;
+      audioIn.hpFilter = hpFilter;
+      audioIn.lpFilter = lpFilter;
+      audioIn.splitter = splitter;
+      audioIn.analysers = analysers;
+      audioIn.zeroGain = zeroGain;
+      audioIn.buf = new Float32Array(1024);
+      audioIn.channelCount = chCount;
+      audioIn.active = true;
+      audioIn.prevLevel = 0;
+      audioIn.recentLevels = [];
+      audioIn.fluxBase = 0;
+      audioIn.wasAbove = false;
+      audioIn.lastOnset = 0;
+
+      audioIn.deviceLabel = track ? (track.label || "Default Input") : "Default Input";
+      const actualId = settings.deviceId || audioIn.deviceId || "";
+
+      populateChannelSelect(chCount);
+      const { inputs, opaqueIds } = await populateAudioDevices(actualId);
+
+      // If browser grabbed the built-in MacBook mic while an external interface (e.g. Anagram) is available, auto-switch once
+      if (!audioIn.userPickedDevice && !opaqueIds && BUILTIN_MIC_RE.test(audioIn.deviceLabel)) {
+        const preferred = findPreferredInterface(inputs);
+        if (preferred && preferred.deviceId !== actualId) {
+          audioIn.deviceId = preferred.deviceId;
+          audioIn.userPickedDevice = true;
+          return startAudioInput(true);
+        }
+      }
+
+      const srKhz = (ctx.sampleRate / 1000).toFixed(1).replace(/\.0$/, "");
+      const isBuiltin = BUILTIN_MIC_RE.test(audioIn.deviceLabel);
+      if (isBuiltin && (opaqueIds || location.protocol === "file:")) {
+        msgEl.style.color = "var(--red)";
+        msgEl.textContent = t("audioBuiltinFile", audioIn.deviceLabel);
+      } else if (isBuiltin) {
+        msgEl.style.color = "var(--amber)";
+        msgEl.textContent = t("audioBuiltinSelect", audioIn.deviceLabel);
+      } else {
+        msgEl.style.color = "var(--muted)";
+        msgEl.textContent = t("audioConnected", audioIn.deviceLabel, srKhz, chCount);
+      }
+
+      audioIn.pollId = window.setInterval(pollAudioInput, 6);
+      return true;
+    } catch (err) {
+      msgEl.textContent = t("audioFail", err.message || err, location.protocol === "file:");
+      return false;
+    }
+  }
+
+  function stopAudioInput() {
+    if (audioIn.pollId !== null) {
+      clearInterval(audioIn.pollId);
+      audioIn.pollId = null;
+    }
+    if (audioIn.source) { try { audioIn.source.disconnect(); } catch (_) {} }
+    if (audioIn.hpFilter) { try { audioIn.hpFilter.disconnect(); } catch (_) {} }
+    if (audioIn.lpFilter) { try { audioIn.lpFilter.disconnect(); } catch (_) {} }
+    if (audioIn.splitter) { try { audioIn.splitter.disconnect(); } catch (_) {} }
+    for (const an of audioIn.analysers) { try { an.disconnect(); } catch (_) {} }
+    if (audioIn.zeroGain) { try { audioIn.zeroGain.disconnect(); } catch (_) {} }
+    if (audioIn.stream) {
+      for (const t of audioIn.stream.getTracks()) t.stop();
+    }
+    audioIn.stream = null;
+    audioIn.source = null;
+    audioIn.hpFilter = null;
+    audioIn.lpFilter = null;
+    audioIn.splitter = null;
+    audioIn.analysers = [];
+    audioIn.zeroGain = null;
+    audioIn.active = false;
+    audioIn.level = 0;
+    audioIn.rawPeak = 0;
+  }
+
+  function measureAnalyser(an, buf) {
+    an.getFloatTimeDomainData(buf);
+    const n = buf.length;
+    const split = Math.floor(n * 0.68); // older ~14.5ms vs newest ~6.8ms attack slice
+    let sqAll = 0, sqHead = 0, sqTail = 0;
+    let peak = 0;
+    let tailFlux = 0;
+    for (let i = 0; i < n; i++) {
+      const v = buf[i];
+      const av = v < 0 ? -v : v;
+      if (av > peak) peak = av;
+      const v2 = v * v;
+      sqAll += v2;
+      if (i < split) {
+        sqHead += v2;
+      } else {
+        sqTail += v2;
+        tailFlux += Math.abs(v - buf[i - 1]);
+      }
+    }
+    const rms = Math.sqrt(sqAll / n);
+    const headRms = Math.sqrt(sqHead / split);
+    const tailRms = Math.sqrt(sqTail / (n - split));
+    const flux = tailFlux / (n - split);
+    // RMS-weighted level ignores single-sample spikes while keeping bass attack crisp
+    return { rms, peak, headRms, tailRms, flux, level: rms * 1.2 + peak * 0.25 };
+  }
+
+  function pollAudioInput() {
+    if (!audioIn.active || !audioIn.analysers.length || !audioCtx) return;
+    if (audioCtx.state === "suspended") audioCtx.resume();
+
+    let best = null;
+    let bestCh = 0;
+
+    if (audioIn.channelMode === "ALL") {
+      for (let c = 0; c < audioIn.analysers.length; c++) {
+        const m = measureAnalyser(audioIn.analysers[c], audioIn.buf);
+        if (!best || m.level > best.level) {
+          best = m;
+          bestCh = c;
+        }
+      }
+    } else {
+      const idx = Math.min(audioIn.analysers.length - 1, Math.max(0, Number(audioIn.channelMode) || 0));
+      best = measureAnalyser(audioIn.analysers[idx], audioIn.buf);
+      bestCh = idx;
+    }
+
+    const level = best.level * audioIn.gain;
+    const tailLevel = best.tailRms * 1.4 * audioIn.gain;
+    const headLevel = best.headRms * 1.4 * audioIn.gain;
+    const fluxScaled = best.flux * audioIn.gain;
+
+    audioIn.level = level;
+    audioIn.rawPeak = best.peak;
+    audioIn.hotChannel = bestCh;
+
+    if (audioIn.calibrating) {
+      if (level > audioIn.calMaxLevel) audioIn.calMaxLevel = level;
+      return;
+    }
+
+    // Track trailing ~30ms minimum level so legato/consecutive plucks trigger reliably even while sustaining
+    audioIn.recentLevels.push(level);
+    if (audioIn.recentLevels.length > 5) audioIn.recentLevels.shift();
+    let minRecent = level;
+    for (let i = 0; i < audioIn.recentLevels.length - 1; i++) {
+      if (audioIn.recentLevels[i] < minRecent) minRecent = audioIn.recentLevels[i];
+    }
+
+    const now = audioCtx.currentTime;
+    const thr = audioIn.threshold;
+    const freshAttack = !audioIn.wasAbove;
+    const legatoJump = (tailLevel >= headLevel * 1.28) || (level >= minRecent * 1.32);
+    const pluckTransient = (audioIn.fluxBase > 0) && (fluxScaled >= audioIn.fluxBase * 2.05) && (tailLevel >= thr * 0.65);
+    const rising = (level >= thr) && (freshAttack || legatoJump || pluckTransient);
+
+    if (rising && (now - audioIn.lastOnset >= audioIn.cooldownSec)) {
+      audioIn.lastOnset = now;
+      audioIn.lastTriggerMs = performance.now();
+      if (app.inputMode === "AUDIO" || app.inputMode === "BOTH") {
+        if (app.state === "COUNTIN" || app.state === "PLAY") {
+          handleHit(now - audioIn.latencyMs / 1000, "AUDIO");
+        } else if (app.state === "READY") {
+          setHitBadge(t("badgeDetected", bestCh + 1), "tight");
+        }
+      }
+    }
+
+    if ((app.inputMode === "AUDIO" || app.inputMode === "BOTH") &&
+        (app.state === "COUNTIN" || app.state === "PLAY")) {
+      const adjT = now - audioIn.latencyMs / 1000;
+      updateAudioSustain(adjT, level);
+      checkAudioRestViolation(adjT, level);
+    }
+
+    audioIn.wasAbove = level >= thr * 0.72;
+    audioIn.prevLevel = level;
+    audioIn.fluxBase = audioIn.fluxBase === 0
+      ? fluxScaled
+      : (audioIn.fluxBase * 0.80 + fluxScaled * 0.20);
+  }
+
+  function markRestsInRange(startSec, endSec, kind) {
+    let changed = false;
+    for (const rst of (app.phrase.rests || [])) {
+      if (endSec > rst.timeSec + 0.01 && startSec < rst.endSec - 0.01) {
+        if (!rst.error || (kind === "HIT" && rst.errorKind !== "HIT")) {
+          rst.error = true;
+          rst.passed = false;
+          rst.errorKind = kind;
+          changed = true;
+        }
+      }
+    }
+    if (changed) app.dirtyScore = true;
+    return changed;
+  }
+
+  function checkAudioRestViolation(hitAudioT, level) {
+    if (app.state !== "PLAY") return;
+    const elapsed = hitAudioT - app.startAudioT;
+    const rests = app.phrase.rests || [];
+    const restNoiseThr = Math.max(audioIn.threshold * 0.70, 0.02);
+    for (const rst of rests) {
+      if (rst.error) continue;
+      // Forward-only check inside the rest [timeSec + brief release grace, endSec]
+      const restDur = rst.endSec - rst.timeSec;
+      if (restDur < 0.14) continue;
+      const graceStart = rst.timeSec + Math.min(0.10, restDur * 0.30);
+      if (elapsed >= graceStart && elapsed <= rst.endSec) {
+        if (level >= restNoiseThr) {
+          rst.ringFrames += 1;
+          if (rst.ringFrames >= 5) {
+            rst.error = true;
+            rst.passed = false;
+            rst.errorKind = "RING";
+            if (!app.blindGrade) {
+              setHitBadge("[AUD] REST ERR !", "err");
+              app.dirtyScore = true;
+            }
+          }
+        } else {
+          rst.ringFrames = 0;
+        }
+      }
+    }
+  }
+
+  function closeSustainTarget(tgt, endSec, stillRingingAtEnd) {
+    if (!tgt || tgt.sustainDone) return;
+    const heldSec = Math.max(0, endSec - tgt.hitTimeSec);
+    const expectedSec = tgt.durSec;
+    const ratio = expectedSec > 0 ? heldSec / expectedSec : 1;
+    tgt.sustainEndSec = endSec;
+    tgt.sustainRatio = ratio;
+
+    const restDurSec = Math.max(0, tgt.restEndSec - tgt.endSec);
+    const muteGraceSec = Math.min(0.16, Math.max(0.095, restDurSec * 0.35));
+    const checkHold = expectedSec >= 0.30;
+    const checkBleed = tgt.hasRestAfter && restDurSec >= 0.18;
+
+    if (checkBleed && (tgt.bleedMs > muteGraceSec * 1000 || (stillRingingAtEnd && (endSec - tgt.endSec) > muteGraceSec))) {
+      tgt.sustainStatus = "LONG";
+      tgt.bleedMs = Math.max(tgt.bleedMs, (endSec - tgt.endSec) * 1000);
+      markRestsInRange(tgt.endSec, Math.max(endSec, tgt.endSec + tgt.bleedMs / 1000), "RING");
+    } else if (checkHold && ratio < 0.62) {
+      tgt.sustainStatus = "SHORT";
+    } else if (checkHold || checkBleed) {
+      tgt.sustainStatus = "OK";
+    }
+
+    tgt.sustainDone = true;
+    if (app.activeSustainTgt === tgt) app.activeSustainTgt = null;
+    app.dirtyScore = true;
+  }
+
+  function updateAudioSustain(hitAudioT, level) {
+    const tgt = app.activeSustainTgt;
+    if (!tgt || tgt.sustainDone) return;
+    const elapsed = hitAudioT - app.startAudioT;
+    if (elapsed < tgt.hitTimeSec + 0.025) return;
+
+    const restDurSec = Math.max(0, tgt.restEndSec - tgt.endSec);
+    const monitorEndSec = tgt.hasRestAfter
+      ? Math.min(tgt.restEndSec - 0.02, tgt.endSec + Math.min(0.32, Math.max(0.18, restDurSec * 0.8)))
+      : tgt.endSec + 0.04;
+
+    if (level >= tgt.sustainFloor) {
+      tgt.quietFrames = 0;
+      tgt.lastAudibleSec = elapsed;
+      if (tgt.hasRestAfter && elapsed > tgt.endSec && level >= tgt.sustainFloor * 1.15) {
+        tgt.bleedMs = Math.max(tgt.bleedMs, (elapsed - tgt.endSec) * 1000);
+      }
+      if (elapsed >= monitorEndSec) {
+        closeSustainTarget(tgt, elapsed, true);
+      }
+    } else {
+      tgt.quietFrames += 1;
+      // ~42ms consecutive silence confirms deliberate mute (ignores bass waveform zero crossings)
+      if (tgt.quietFrames >= 7 && elapsed >= tgt.hitTimeSec + 0.06) {
+        const endT = tgt.lastAudibleSec ?? Math.max(tgt.hitTimeSec, elapsed - 0.042);
+        closeSustainTarget(tgt, endT, false);
+      } else if (elapsed >= monitorEndSec) {
+        const endT = tgt.lastAudibleSec ?? elapsed;
+        closeSustainTarget(tgt, endT, false);
+      }
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // 5. Application State & Timing Controller
+  // -------------------------------------------------------------------------
+  const BAR_OPTIONS = [2, 4, 8, 12, 16, 32];
+  const app = {
+    bpm: 60,
+    level: 1,
+    numBars: 4,
+    soundOn: true,
+    showBeatNums: false,
+    blindGrade: false,
+    inputMode: "KEY", // KEY | AUDIO | BOTH
+    state: "READY",   // READY | COUNTIN | PLAY | DEMO | DONE
+    takeId: 1,
+    phrase: null,
+    startAudioT: 0,
+    activeSustainTgt: null,
+    extraHits: 0,
+    history: [],
+    dirtyScore: true,
+  };
+
+  function hitWindowSec() {
+    const beatSec = 60 / app.bpm;
+    const sixteenth = beatSec / 4;
+    return app.level <= 2 ? Math.min(0.150, (beatSec / 2) * 0.45) : Math.min(0.120, sixteenth * 0.48);
+  }
+
+  function resetTargets() {
+    const beatSec = 60 / app.bpm;
+    const sixteenth = beatSec / 4;
+    const countIn = 4 * beatSec;
+    const targets = app.phrase.targets;
+    const totalSlots = app.numBars * 16;
+    for (let i = 0; i < targets.length; i++) {
+      const tgt = targets[i];
+      const nextTgt = targets[i + 1];
+      const gapSlots = nextTgt
+        ? Math.max(0, nextTgt.globalSlot - (tgt.globalSlot + tgt.durSlots))
+        : Math.max(0, totalSlots - (tgt.globalSlot + tgt.durSlots));
+      tgt.timeSec = countIn + tgt.globalSlot * sixteenth;
+      tgt.durSec = tgt.durSlots * sixteenth;
+      tgt.endSec = tgt.timeSec + tgt.durSec;
+      tgt.hasRestAfter = gapSlots >= 1;
+      tgt.restEndSec = tgt.endSec + gapSlots * sixteenth;
+      tgt.hit = false;
+      tgt.missed = false;
+      tgt.errMs = null;
+      tgt.hitSource = null;
+      tgt.hitTimeSec = null;
+      tgt.sustainFloor = 0;
+      tgt.quietFrames = 0;
+      tgt.lastAudibleSec = null;
+      tgt.sustainEndSec = null;
+      tgt.sustainRatio = null;
+      tgt.sustainStatus = null;
+      tgt.bleedMs = 0;
+      tgt.sustainDone = false;
+    }
+    for (const rst of (app.phrase.rests || [])) {
+      rst.timeSec = countIn + rst.globalSlot * sixteenth;
+      rst.endSec = rst.timeSec + rst.durSlots * sixteenth;
+      rst.error = false;
+      rst.passed = false;
+      rst.errorKind = null;
+      rst.ringFrames = 0;
+    }
+    app.activeSustainTgt = null;
+    app.extraHits = 0;
+    app.dirtyScore = true;
+  }
+
+  function newPhrase() {
+    stopScheduledAudio();
+    app.takeId += 1;
+    app.phrase = generatePhrase(app.numBars, app.level);
+    resetTargets();
+    app.state = "READY";
+    setHitBadge(t("badgeWait"), "");
+    updateMeta();
+  }
+
+  function startRun(demo = false) {
+    const ctx = ensureAudioCtx();
+    stopScheduledAudio();
+    resetTargets();
+    app.startAudioT = ctx.currentTime + PRE_DELAY_SEC;
+    app.state = demo ? "DEMO" : "COUNTIN";
+    setHitBadge(demo ? t("badgeDemo") : t("badgeCountIn"), "");
+    syncTransportButtons();
+    scheduleRunAudio(
+      app.bpm,
+      app.numBars,
+      app.startAudioT,
+      demo ? true : app.soundOn,
+      demo ? app.phrase.targets : null
+    );
+  }
+
+  function stopRun() {
+    if (app.state !== "COUNTIN" && app.state !== "PLAY" && app.state !== "DEMO") return;
+    stopScheduledAudio();
+    resetTargets();
+    app.state = "READY";
+    setHitBadge(t("badgeStopped"), "");
+    syncTransportButtons();
+  }
+
+  function syncTransportButtons() {
+    const running = app.state === "COUNTIN" || app.state === "PLAY" || app.state === "DEMO";
+    const btnStop = document.getElementById("btnStop");
+    const btnDemo = document.getElementById("btnDemo");
+    btnStop.disabled = !running;
+    btnStop.classList.toggle("danger", running);
+    btnDemo.classList.toggle("active", app.state === "DEMO");
+  }
+
+  function setHitBadge(text, cls) {
+    const b = document.getElementById("hitBadge");
+    b.textContent = text;
+    b.className = "hit-badge" + (cls ? " " + cls : "");
+  }
+
+  function handleHit(hitAudioT, source) {
+    if (app.state !== "COUNTIN" && app.state !== "PLAY") return;
+    const beatSec = 60 / app.bpm;
+    const countIn = 4 * beatSec;
+    const elapsed = hitAudioT - app.startAudioT;
+    const win = hitWindowSec();
+    if (elapsed < countIn - win) return;
+
+    let best = null;
+    let bestAbs = 999;
+    for (const tgt of app.phrase.targets) {
+      if (tgt.hit || tgt.missed) continue;
+      const diff = Math.abs(elapsed - tgt.timeSec);
+      if (diff <= win && diff < bestAbs) {
+        bestAbs = diff;
+        best = tgt;
+      }
+    }
+
+    const src = source === "AUDIO" ? "AUD" : "KEY";
+    if (best) {
+      // Close any previously sustaining audio note cleanly at this new attack
+      if (app.activeSustainTgt && !app.activeSustainTgt.sustainDone) {
+        closeSustainTarget(app.activeSustainTgt, elapsed, false);
+      }
+      best.hit = true;
+      best.hitSource = source;
+      best.hitTimeSec = elapsed;
+      best.errMs = (elapsed - best.timeSec) * 1000;
+      if (source === "AUDIO" && (best.durSec >= 0.30 || (best.hasRestAfter && (best.restEndSec - best.endSec) >= 0.18))) {
+        best.sustainFloor = Math.max(audioIn.threshold * 0.28, 0.005);
+        best.quietFrames = 0;
+        best.lastAudibleSec = elapsed;
+        app.activeSustainTgt = best;
+      }
+      if (!app.blindGrade) {
+        const ae = Math.abs(best.errMs);
+        const sign = best.errMs >= 0 ? "+" : "";
+        const tag = ae <= 35 ? "TIGHT" : (best.errMs > 0 ? "LATE" : "EARLY");
+        const cls = ae <= 35 ? "tight" : (ae <= 80 ? "warn" : "err");
+        setHitBadge(`[${src}] ${sign}${best.errMs.toFixed(1)}ms ${tag}`, cls);
+        app.dirtyScore = true;
+      }
+    } else {
+      app.extraHits += 1;
+      // Forward-only rest check: only flag hits inside [rst.timeSec, rst.endSec]
+      let hitRest = null;
+      for (const rst of (app.phrase.rests || [])) {
+        if (elapsed >= rst.timeSec && elapsed <= rst.endSec) {
+          hitRest = rst;
+          break;
+        }
+      }
+      if (hitRest) {
+        hitRest.error = true;
+        hitRest.passed = false;
+        hitRest.errorKind = "HIT";
+        if (!app.blindGrade) app.dirtyScore = true;
+      }
+      if (!app.blindGrade) {
+        setHitBadge(hitRest ? `[${src}] REST ERR !` : `[${src}] EXTRA !`, "err");
+      }
+    }
+  }
+
+  function finalizeRun() {
+    if (app.activeSustainTgt && !app.activeSustainTgt.sustainDone && audioCtx) {
+      const endElapsed = (audioCtx.currentTime - audioIn.latencyMs / 1000) - app.startAudioT;
+      closeSustainTarget(app.activeSustainTgt, endElapsed, audioIn.level >= app.activeSustainTgt.sustainFloor);
+    }
+    for (const rst of (app.phrase.rests || [])) {
+      if (!rst.error) rst.passed = true;
+    }
+    stopScheduledAudio();
+    app.state = "DONE";
+    const errs = app.phrase.targets.filter(t => t.hit && t.errMs !== null).map(t => t.errMs);
+    const total = app.phrase.targets.length;
+    const hits = errs.length;
+    const acc = total ? (hits / total) * 100 : 0;
+    let mean = 0, sd = 0, tight = 0;
+    if (hits > 0) {
+      mean = errs.reduce((a, b) => a + b, 0) / hits;
+      sd = Math.sqrt(errs.reduce((a, b) => a + (b - mean) ** 2, 0) / hits);
+      tight = errs.filter(e => Math.abs(e) <= 35).length;
+    }
+
+    const susTargets = app.phrase.targets.filter(t => t.hit && t.hitSource === "AUDIO" && t.sustainStatus);
+    const susTotal = susTargets.length;
+    const susOk = susTargets.filter(t => t.sustainStatus === "OK").length;
+    const susShort = susTargets.filter(t => t.sustainStatus === "SHORT").length;
+    const susLong = susTargets.filter(t => t.sustainStatus === "LONG").length;
+    const restErrs = (app.phrase.rests || []).filter(r => r.error).length;
+    const sustainStats = { total: susTotal, ok: susOk, short: susShort, long: susLong, restErrs };
+
+    app.history.unshift({
+      take: app.takeId,
+      seed: app.phrase.seed.toString(16).toUpperCase().padStart(4, "0"),
+      bpm: app.bpm,
+      lv: app.level,
+      mode: app.inputMode,
+      hits, total, acc, tight, mean, sd, extra: app.extraHits,
+      susTotal, susOk,
+    });
+    if (app.history.length > 6) app.history.pop();
+
+    drawDistribution(errs, hits, total, mean, sd, tight, sustainStats);
+    renderLog();
+    if (app.blindGrade) {
+      const cls = acc >= 90 ? "tight" : (acc >= 70 ? "warn" : "err");
+      setHitBadge(t("badgeDone", hits, total), cls);
+    }
+    syncTransportButtons();
+    app.dirtyScore = true;
+  }
+
+  function drawDistribution(errs, hits, total, mean, sd, tight, sustainStats = null) {
+    const svg = document.getElementById("distSvg");
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    const W = 380, cy = 30, pad = 28;
+    const mapX = (ms) => pad + ((Math.max(-150, Math.min(150, ms)) + 150) / 300) * (W - pad * 2);
+
+    // Tight zone (-35..+35)
+    svg.appendChild(el("rect", {
+      x: mapX(-35), y: 12, width: mapX(35) - mapX(-35), height: 36,
+      fill: "#dcfce7", rx: 4
+    }));
+    // Axis line & ticks
+    svg.appendChild(el("line", { x1: pad, y1: cy, x2: W - pad, y2: cy, stroke: "#cbd5e1", "stroke-width": 1.5 }));
+    for (const ms of [-150, -80, 0, 80, 150]) {
+      const x = mapX(ms);
+      svg.appendChild(el("line", {
+        x1: x, y1: ms === 0 ? 8 : 22, x2: x, y2: ms === 0 ? 52 : 38,
+        stroke: ms === 0 ? "#16a34a" : "#94a3b8", "stroke-width": ms === 0 ? 2 : 1
+      }));
+      svg.appendChild(el("text", {
+        x, y: 61, "text-anchor": "middle", "font-size": 10, fill: "#64748b",
+        "font-family": "ui-monospace, monospace"
+      }, ms === 0 ? "0" : (ms > 0 ? `+${ms}` : `${ms}`)));
+    }
+    for (const e of errs) {
+      const ae = Math.abs(e);
+      const fill = ae <= 35 ? "#16a34a" : (ae <= 80 ? "#d97706" : "#dc2626");
+      svg.appendChild(el("circle", { cx: mapX(e), cy, r: 5, fill, opacity: 0.85 }));
+    }
+
+    const summary = document.getElementById("summaryLine");
+    if (total === 0) {
+      summary.textContent = t("summaryIdle");
+    } else if (hits > 0) {
+      const sign = mean >= 0 ? "+" : "";
+      const restErrs = sustainStats ? (sustainStats.restErrs || 0) : 0;
+      summary.textContent = t(
+        "summaryHits",
+        hits, total, ((hits / total) * 100).toFixed(1), tight,
+        sign, mean.toFixed(1), sd.toFixed(1), app.extraHits,
+        sustainStats, restErrs
+      );
+    } else {
+      const restErrs = sustainStats ? (sustainStats.restErrs || 0) : 0;
+      summary.textContent = t("summaryZero", total, app.extraHits, restErrs);
+    }
+  }
+
+  function renderLog() {
+    const box = document.getElementById("logContainer");
+    if (!app.history.length) {
+      box.className = "log-empty";
+      box.textContent = t("logEmpty");
+      return;
+    }
+    box.className = "";
+    const rows = app.history.map(h => {
+      const mStr = h.hits ? `${h.mean >= 0 ? "+" : ""}${h.mean.toFixed(1)}ms` : "—";
+      const sStr = h.hits ? `${h.sd.toFixed(1)}ms` : "—";
+      const susStr = h.susTotal ? `${Math.round((h.susOk / h.susTotal) * 100)}%` : "—";
+      return `<tr>
+        <td>#${h.take}</td>
+        <td>${h.bpm}</td>
+        <td>L${h.lv}</td>
+        <td>${h.mode}</td>
+        <td><strong>${h.hits}/${h.total}</strong> (${h.acc.toFixed(0)}%)</td>
+        <td>${h.tight}</td>
+        <td>${susStr}</td>
+        <td>${mStr}</td>
+        <td>${sStr}</td>
+        <td>${h.extra}</td>
+      </tr>`;
+    }).join("");
+    box.innerHTML = `<table class="log-table">
+      <thead><tr><th>#</th><th>BPM</th><th>Lv</th><th>In</th><th>Hit</th><th>Tight</th><th>Sus</th><th>Mean</th><th>SD</th><th>Ext</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+  }
+
+  function updateMeta() {
+    document.getElementById("bpmVal").textContent = String(app.bpm);
+    document.getElementById("bpmSlider").value = String(app.bpm);
+    document.getElementById("metaTempo").textContent = `♩ = ${app.bpm}`;
+    document.getElementById("metaLevel").textContent = LEVEL_TITLES[app.level];
+    document.getElementById("metaSeed").textContent = `Seed #${app.phrase.seed.toString(16).toUpperCase().padStart(4, "0")}`;
+    document.getElementById("barsSelect").value = String(app.numBars);
+    const btnSound = document.getElementById("btnSound");
+    btnSound.textContent = app.soundOn ? t("metroOn") : t("metroOff");
+    btnSound.classList.toggle("active", app.soundOn);
+
+    const btnBeatNums = document.getElementById("btnBeatNums");
+    btnBeatNums.textContent = app.showBeatNums ? t("beatsOn") : t("beatsOff");
+    btnBeatNums.classList.toggle("active", app.showBeatNums);
+
+    const btnBlind = document.getElementById("btnBlindGrade");
+    btnBlind.textContent = app.blindGrade ? t("gradeEnd") : t("gradeLive");
+    btnBlind.classList.toggle("active", app.blindGrade);
+
+    const btnIn = document.getElementById("btnInputMode");
+    btnIn.textContent = `${t("inputPrefix")}: ${app.inputMode}`;
+    btnIn.classList.toggle("active", app.inputMode !== "KEY");
+    document.getElementById("audioBar").classList.toggle("hidden", app.inputMode === "KEY");
+
+    document.querySelectorAll(".lv-btn").forEach(btn => {
+      btn.classList.toggle("active", Number(btn.dataset.lv) === app.level);
+    });
+    syncTransportButtons();
+  }
+
+  function applyLanguage(lang) {
+    if (!I18N[lang]) return;
+    curLang = lang;
+    try { localStorage.setItem("rhythm_practice_lang", lang); } catch (_) {}
+    document.documentElement.lang = lang;
+    document.getElementById("langSelect").value = lang;
+
+    document.getElementById("btnStart").textContent = t("btnStart");
+    document.getElementById("btnStop").textContent = t("btnStop");
+    document.getElementById("btnNew").textContent = t("btnNew");
+    document.getElementById("btnDemo").textContent = t("btnDemo");
+    document.getElementById("lblLevel").textContent = t("lblLevel");
+    const lvMap = t("lvBtns");
+    document.querySelectorAll(".lv-btn").forEach(btn => {
+      btn.textContent = lvMap[Number(btn.dataset.lv)];
+    });
+    const barsMap = t("barsLabels");
+    document.querySelectorAll("#barsSelect option").forEach(opt => {
+      opt.textContent = barsMap[Number(opt.value)];
+    });
+    document.getElementById("btnTouchPad").textContent = t("btnPad");
+    document.getElementById("btnPrint").textContent = t("btnPrint");
+    document.getElementById("btnGuide").textContent = t("btnGuide");
+    document.getElementById("statusSub").textContent = t("statusSub");
+
+    document.getElementById("lblAudioTitle").textContent = t("audioTitle");
+    document.getElementById("btnAudioReconnect").textContent = t("btnReconnect");
+    if (!audioIn.calibrating) {
+      document.getElementById("btnNoiseCal").textContent = t("btnNoiseCal");
+    }
+    document.getElementById("lblGain").textContent = t("lblGain");
+    document.getElementById("lblThr").textContent = t("lblThr");
+    document.getElementById("lblLat").textContent = t("lblLat");
+    if (!audioIn.active) {
+      const msgEl = document.getElementById("audioMsg");
+      msgEl.style.color = "var(--muted)";
+      msgEl.textContent = t("audioDefaultMsg");
+    } else {
+      populateChannelSelect(audioIn.channelCount);
+      populateAudioDevices(audioIn.deviceId);
+    }
+
+    document.getElementById("tapHint").innerHTML = t("tapHintHtml");
+    document.getElementById("legendLine").innerHTML = t("legendHtml");
+    document.getElementById("guideSummaryTitle").textContent = t("guideTitle");
+    document.getElementById("guideBody").innerHTML = t("guideHtml");
+    document.getElementById("padLeftSub").textContent = t("padLeftSub");
+    document.getElementById("padRightSub").textContent = t("padRightSub");
+
+    if (app.state === "READY") {
+      setHitBadge(t("badgeWait"), "");
+    }
+    if (!app.history.length) {
+      document.getElementById("summaryLine").textContent = t("summaryIdle");
+    }
+    renderLog();
+    syncGuideUi();
+    updateMeta();
+    app.dirtyScore = true;
+  }
+
+  async function cycleInputMode() {
+    const order = ["KEY", "AUDIO", "BOTH"];
+    const next = order[(order.indexOf(app.inputMode) + 1) % order.length];
+    app.inputMode = next;
+    updateMeta();
+    if (next === "AUDIO" || next === "BOTH") {
+      const ok = await startAudioInput();
+      if (!ok && next === "AUDIO") {
+        // Keep audio bar visible so user sees message, allow fallback to KEY
+      }
+    } else {
+      stopAudioInput();
+    }
+  }
+
+  function setBpm(val) {
+    app.bpm = Math.max(40, Math.min(140, val));
+    stopScheduledAudio();
+    resetTargets();
+    if (app.state === "COUNTIN" || app.state === "PLAY" || app.state === "DEMO") {
+      app.state = "READY";
+    }
+    updateMeta();
+  }
+
+  // -------------------------------------------------------------------------
+  // 6. Main Animation Loop (60 FPS UI + Fixed Metronome LED)
+  // -------------------------------------------------------------------------
+  const ledCore = document.getElementById("ledCore");
+  const statusMain = document.getElementById("statusMain");
+  const meterFill = document.getElementById("meterFill");
+  const meterTrack = document.getElementById("meterTrack");
+  const audioLevelText = document.getElementById("audioLevelText");
+  const scoreSvg = document.getElementById("scoreSvg");
+
+  function meterPct(val) {
+    // Perceptual (sqrt) meter curve so healthy -24..-18 dBFS bass signals sit cleanly in the mid-upper meter range
+    return Math.min(100, Math.sqrt(Math.max(0, val) / 0.5) * 100);
+  }
+
+  function frame() {
+    // Update live audio meter
+    if (audioIn.active) {
+      const pct = meterPct(audioIn.level);
+      meterFill.style.width = `${pct.toFixed(1)}%`;
+      meterFill.classList.toggle("hot", audioIn.level >= audioIn.threshold);
+      meterTrack.classList.toggle("triggered", (performance.now() - audioIn.lastTriggerMs) < 120);
+      if (audioIn.rawPeak > 0.0003) {
+        const db = Math.max(-72, Math.round(20 * Math.log10(audioIn.rawPeak)));
+        audioLevelText.textContent = `${db}dB (Ch${audioIn.hotChannel + 1})`;
+      } else {
+        audioLevelText.textContent = t("levelSilent");
+      }
+    } else {
+      meterFill.style.width = "0%";
+      meterFill.classList.remove("hot");
+      meterTrack.classList.remove("triggered");
+      audioLevelText.textContent = t("levelOff");
+    }
+
+    // Update run timing & LED
+    let ledClass = "led-core";
+    if ((app.state === "COUNTIN" || app.state === "PLAY" || app.state === "DEMO") && audioCtx) {
+      const now = audioCtx.currentTime;
+      const elapsed = now - app.startAudioT;
+      const beatSec = 60 / app.bpm;
+      const sixteenth = beatSec / 4;
+      const countIn = 4 * beatSec;
+      const win = hitWindowSec();
+      const totalBeats = 4 + app.numBars * 4;
+      const endT = countIn + (app.numBars * 16) * sixteenth + win;
+
+      if (app.state === "COUNTIN" && elapsed >= countIn) {
+        app.state = "PLAY";
+        if (app.blindGrade) setHitBadge(t("badgeBlindPlay"), "");
+      }
+
+      if (app.state === "COUNTIN" || app.state === "PLAY") {
+        let changed = false;
+        for (const tgt of app.phrase.targets) {
+          if (!tgt.hit && !tgt.missed && elapsed > tgt.timeSec + win) {
+            tgt.missed = true;
+            changed = true;
+          }
+        }
+        for (const rst of (app.phrase.rests || [])) {
+          if (!rst.error && !rst.passed && elapsed >= rst.endSec) {
+            rst.passed = true;
+            changed = true;
+          }
+        }
+        if (changed && !app.blindGrade) app.dirtyScore = true;
+      }
+
+      if (elapsed < 0) {
+        statusMain.textContent = t("statusGetReady");
+      } else if (elapsed < countIn) {
+        const ciBeat = Math.min(4, Math.floor(elapsed / beatSec) + 1);
+        statusMain.textContent = t("statusCountIn", ciBeat);
+      } else if (app.state === "DEMO") {
+        statusMain.textContent = t("statusDemo");
+      } else {
+        statusMain.textContent = t("statusPlay");
+      }
+
+      if (elapsed >= 0) {
+        const beatIdx = Math.floor(elapsed / beatSec);
+        const phase = elapsed - beatIdx * beatSec;
+        const flashDur = Math.min(0.13, beatSec * 0.28);
+        if (beatIdx >= 0 && beatIdx < totalBeats && phase < flashDur) {
+          ledClass = beatIdx % 4 === 0 ? "led-core beat1" : "led-core beatn";
+        }
+      }
+
+      if (elapsed >= endT) {
+        if (app.state === "DEMO") {
+          stopScheduledAudio();
+          app.state = "READY";
+          setHitBadge(t("badgeWait"), "");
+          syncTransportButtons();
+        } else {
+          finalizeRun();
+        }
+      }
+    } else if (app.state === "READY") {
+      statusMain.textContent = t("statusReady");
+    } else if (app.state === "DONE") {
+      statusMain.textContent = t("statusDone");
+    }
+
+    if (ledCore.className !== ledClass) ledCore.className = ledClass;
+
+    if (app.dirtyScore) {
+      renderScore(scoreSvg, app.phrase);
+      app.dirtyScore = false;
+    }
+
+    requestAnimationFrame(frame);
+  }
+
+  // -------------------------------------------------------------------------
+  // 7. Wire Controls & Keyboard Shortcuts
+  // -------------------------------------------------------------------------
+  document.getElementById("btnStart").addEventListener("click", () => startRun(false));
+  document.getElementById("btnStop").addEventListener("click", () => stopRun());
+  document.getElementById("btnNew").addEventListener("click", () => newPhrase());
+  document.getElementById("btnDemo").addEventListener("click", () => startRun(true));
+  document.getElementById("btnBpmDown").addEventListener("click", () => setBpm(app.bpm - 5));
+  document.getElementById("btnBpmUp").addEventListener("click", () => setBpm(app.bpm + 5));
+  document.getElementById("bpmSlider").addEventListener("input", e => setBpm(Number(e.target.value)));
+
+  document.querySelectorAll(".lv-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      app.level = Number(btn.dataset.lv);
+      newPhrase();
+    });
+  });
+
+  document.getElementById("barsSelect").addEventListener("change", (e) => {
+    app.numBars = Number(e.target.value);
+    e.target.blur();
+    newPhrase();
+  });
+
+  document.getElementById("btnSound").addEventListener("click", () => {
+    app.soundOn = !app.soundOn;
+    if (!app.soundOn) stopScheduledAudio();
+    updateMeta();
+  });
+
+  document.getElementById("btnBeatNums").addEventListener("click", () => {
+    app.showBeatNums = !app.showBeatNums;
+    app.dirtyScore = true;
+    updateMeta();
+  });
+
+  document.getElementById("btnBlindGrade").addEventListener("click", () => {
+    app.blindGrade = !app.blindGrade;
+    app.dirtyScore = true;
+    if (app.state === "PLAY" && app.blindGrade) setHitBadge(t("badgeBlindPlay"), "");
+    updateMeta();
+  });
+
+  document.getElementById("btnInputMode").addEventListener("click", () => cycleInputMode());
+  document.getElementById("btnPrint").addEventListener("click", () => window.print());
+
+  const guideCard = document.getElementById("guideCard");
+  const btnGuide = document.getElementById("btnGuide");
+  const guideToggleHint = document.getElementById("guideToggleHint");
+  function syncGuideUi() {
+    const opened = guideCard.open;
+    btnGuide.classList.toggle("active", opened);
+    guideToggleHint.textContent = opened ? t("guideClose") : t("guideOpen");
+  }
+  guideCard.addEventListener("toggle", syncGuideUi);
+  btnGuide.addEventListener("click", () => {
+    guideCard.open = !guideCard.open;
+    syncGuideUi();
+    if (guideCard.open) {
+      guideCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  });
+
+  document.getElementById("langSelect").addEventListener("change", (e) => {
+    applyLanguage(e.target.value);
+    e.target.blur();
+  });
+
+  // Mobile two-finger touch pad dock (auto-on for touch/narrow screens)
+  const touchDock = document.getElementById("touchDock");
+  const btnTouchPad = document.getElementById("btnTouchPad");
+  let showTouchDock = window.matchMedia("(pointer: coarse)").matches || window.innerWidth <= 820;
+
+  function syncTouchDock() {
+    touchDock.classList.toggle("visible", showTouchDock);
+    document.body.classList.toggle("has-dock", showTouchDock);
+    btnTouchPad.classList.toggle("active", showTouchDock);
+  }
+  btnTouchPad.addEventListener("click", () => {
+    showTouchDock = !showTouchDock;
+    syncTouchDock();
+  });
+
+  function bindTouchPad(padEl) {
+    const trigger = (e) => {
+      e.preventDefault();
+      ensureAudioCtx();
+      padEl.classList.add("pressed");
+      window.setTimeout(() => padEl.classList.remove("pressed"), 90);
+      if (app.state === "COUNTIN" || app.state === "PLAY") {
+        if ((app.inputMode === "KEY" || app.inputMode === "BOTH") && audioCtx) {
+          handleHit(audioCtx.currentTime, "KEY");
+        }
+      } else if (app.state === "READY") {
+        startRun(false);
+      }
+    };
+    padEl.addEventListener("pointerdown", trigger, { passive: false });
+  }
+  bindTouchPad(document.getElementById("padLeft"));
+  bindTouchPad(document.getElementById("padRight"));
+
+  let lastNarrow = window.innerWidth <= 640;
+  window.addEventListener("resize", () => {
+    const nowNarrow = window.innerWidth <= 640;
+    if (nowNarrow !== lastNarrow) {
+      lastNarrow = nowNarrow;
+      app.dirtyScore = true;
+    }
+  });
+
+  const audioDeviceSelect = document.getElementById("audioDeviceSelect");
+  audioDeviceSelect.addEventListener("change", async (e) => {
+    audioIn.deviceId = e.target.value;
+    audioIn.userPickedDevice = Boolean(e.target.value);
+    e.target.blur();
+    if (app.inputMode === "AUDIO" || app.inputMode === "BOTH") {
+      await startAudioInput(true);
+    }
+  });
+
+  const audioChSelect = document.getElementById("audioChSelect");
+  audioChSelect.addEventListener("change", (e) => {
+    audioIn.channelMode = e.target.value;
+    e.target.blur();
+  });
+
+  document.getElementById("btnAudioReconnect").addEventListener("click", async () => {
+    if (app.inputMode === "AUDIO" || app.inputMode === "BOTH") {
+      await startAudioInput(true);
+    }
+  });
+
+  const btnNoiseCal = document.getElementById("btnNoiseCal");
+  btnNoiseCal.addEventListener("click", () => {
+    if (!audioIn.active || audioIn.calibrating) return;
+    audioIn.calibrating = true;
+    audioIn.calMaxLevel = 0;
+    const msgEl = document.getElementById("audioMsg");
+    btnNoiseCal.disabled = true;
+    btnNoiseCal.textContent = t("btnMeasuring");
+    msgEl.style.color = "var(--accent)";
+    msgEl.textContent = t("calMeasuring");
+    window.setTimeout(() => {
+      audioIn.calibrating = false;
+      btnNoiseCal.disabled = false;
+      btnNoiseCal.textContent = t("btnNoiseCal");
+      // Set threshold comfortably above measured idle noise floor (2.2x + 3% margin)
+      const targetPct = Math.ceil(audioIn.calMaxLevel * 220) + 3;
+      syncThreshold(Math.max(6, Math.min(45, targetPct)));
+      msgEl.style.color = "var(--muted)";
+      msgEl.textContent = t("calDone", Math.round(audioIn.threshold * 100));
+    }, 650);
+  });
+
+  if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
+    navigator.mediaDevices.addEventListener("devicechange", () => {
+      if (audioIn.active) populateAudioDevices(audioIn.deviceId);
+    });
+  }
+
+  const gainSlider = document.getElementById("gainSlider");
+  const gainVal = document.getElementById("gainVal");
+  function syncGain(mult) {
+    const clamped = Math.max(1, Math.min(20, mult));
+    audioIn.gain = clamped;
+    gainSlider.value = String(clamped);
+    gainVal.textContent = `${clamped}x`;
+  }
+  gainSlider.addEventListener("input", e => syncGain(Number(e.target.value)));
+
+  const thrSlider = document.getElementById("thrSlider");
+  const thrVal = document.getElementById("thrVal");
+  const meterThr = document.getElementById("meterThr");
+  const meterSusThr = document.getElementById("meterSusThr");
+  function syncThreshold(pct) {
+    const clamped = Math.max(2, Math.min(48, pct));
+    audioIn.threshold = clamped / 100;
+    thrSlider.value = String(clamped);
+    thrVal.textContent = `${clamped}%`;
+    meterThr.style.left = `${Math.min(98, meterPct(audioIn.threshold)).toFixed(1)}%`;
+    meterSusThr.style.left = `${Math.min(96, meterPct(audioIn.threshold * 0.28)).toFixed(1)}%`;
+  }
+  thrSlider.addEventListener("input", e => syncThreshold(Number(e.target.value)));
+
+  const latSlider = document.getElementById("latSlider");
+  const latVal = document.getElementById("latVal");
+  function syncLatency(ms) {
+    const clamped = Math.max(0, Math.min(200, ms));
+    audioIn.latencyMs = clamped;
+    latSlider.value = String(clamped);
+    latVal.textContent = `${clamped}ms`;
+  }
+  latSlider.addEventListener("input", e => syncLatency(Number(e.target.value)));
+
+  window.addEventListener("keydown", (e) => {
+    if (e.repeat) return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.tagName === "SELECT")) return;
+
+    // Use physical key code (e.code) so all shortcuts work even when Korean IME is active
+    const code = e.code;
+    if (code === "Space" || code === "KeyJ" || code === "KeyK") {
+      e.preventDefault();
+      if (app.state === "COUNTIN" || app.state === "PLAY") {
+        if ((app.inputMode === "KEY" || app.inputMode === "BOTH") && audioCtx) {
+          handleHit(audioCtx.currentTime, "KEY");
+        }
+      } else if (app.state === "READY") {
+        startRun(false);
+      }
+    } else if (code === "Enter" || code === "NumpadEnter" || code === "KeyR") {
+      e.preventDefault();
+      startRun(false);
+    } else if (code === "Escape") {
+      e.preventDefault();
+      stopRun();
+    } else if (code === "KeyN") {
+      e.preventDefault();
+      newPhrase();
+    } else if (code === "KeyP") {
+      e.preventDefault();
+      startRun(true);
+    } else if (code === "Equal" || code === "NumpadAdd" || e.key === "+" || e.key === "=") {
+      e.preventDefault();
+      setBpm(app.bpm + 5);
+    } else if (code === "Minus" || code === "NumpadSubtract" || e.key === "-" || e.key === "_") {
+      e.preventDefault();
+      setBpm(app.bpm - 5);
+    } else if (code === "Digit1" || code === "Numpad1") {
+      app.level = 1;
+      newPhrase();
+    } else if (code === "Digit2" || code === "Numpad2") {
+      app.level = 2;
+      newPhrase();
+    } else if (code === "Digit3" || code === "Numpad3") {
+      app.level = 3;
+      newPhrase();
+    } else if (code === "KeyL") {
+      e.preventDefault();
+      const idx = BAR_OPTIONS.indexOf(app.numBars);
+      app.numBars = BAR_OPTIONS[(idx + 1) % BAR_OPTIONS.length];
+      newPhrase();
+    } else if (code === "KeyM") {
+      e.preventDefault();
+      app.soundOn = !app.soundOn;
+      if (!app.soundOn) stopScheduledAudio();
+      updateMeta();
+    } else if (code === "KeyB") {
+      e.preventDefault();
+      app.showBeatNums = !app.showBeatNums;
+      app.dirtyScore = true;
+      updateMeta();
+    } else if (code === "KeyG") {
+      e.preventDefault();
+      app.blindGrade = !app.blindGrade;
+      app.dirtyScore = true;
+      if (app.state === "PLAY" && app.blindGrade) setHitBadge(t("badgeBlindPlay"), "");
+      updateMeta();
+    } else if (code === "KeyI") {
+      e.preventDefault();
+      cycleInputMode();
+    } else if (code === "BracketLeft") {
+      syncThreshold(Math.round(audioIn.threshold * 100) - 2);
+    } else if (code === "BracketRight") {
+      syncThreshold(Math.round(audioIn.threshold * 100) + 2);
+    } else if (code === "Comma") {
+      syncLatency(audioIn.latencyMs - 5);
+    } else if (code === "Period") {
+      syncLatency(audioIn.latencyMs + 5);
+    }
+  });
+
+  // Boot
+  app.phrase = generatePhrase(app.numBars, app.level);
+  resetTargets();
+  syncGain(2);
+  syncThreshold(16);
+  syncLatency(25);
+  syncTouchDock();
+  drawDistribution([], 0, 0, 0, 0, 0);
+  applyLanguage(curLang);
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
