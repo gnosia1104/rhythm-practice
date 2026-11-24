@@ -387,6 +387,65 @@
     flex-basis: 100%;
   }
 
+  /* Optional Sync / Latency Calibration Bar */
+  .cal-bar {
+    background: var(--panel-bg);
+    border: 1px solid #bfdbfe;
+    border-radius: 10px;
+    padding: 10px 16px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    font-size: 12px;
+  }
+
+  .cal-bar button {
+    padding: 4px 10px;
+    font-size: 12px;
+  }
+
+  .cal-dots {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .cal-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid #cbd5e1;
+    background: #f8fafc;
+    transition: background 0.08s, border-color 0.08s, transform 0.08s;
+  }
+
+  .cal-dot.warmup {
+    border-style: dashed;
+    border-color: #94a3b8;
+    opacity: 0.7;
+  }
+
+  .cal-dot.active {
+    border-color: var(--accent);
+    background: #dbeafe;
+    transform: scale(1.18);
+  }
+
+  .cal-dot.hit {
+    border-color: #16a34a;
+    background: #22c55e;
+  }
+
+  .cal-msg {
+    color: var(--muted);
+    flex-basis: 100%;
+  }
+
+  .cal-close {
+    margin-left: auto;
+  }
+
   /* PDF Sheet Music Paper */
   .sheet-paper {
     background: var(--paper-bg);
@@ -723,7 +782,7 @@
   @media print {
     body { background: #fff; padding: 0; }
     .app { max-width: none; }
-    .toolbar, .status-strip, .audio-bar, .results-grid, .guide-card, .sheet-footer, .touch-dock { display: none !important; }
+    .toolbar, .status-strip, .audio-bar, .cal-bar, .results-grid, .guide-card, .sheet-footer, .touch-dock { display: none !important; }
     .sheet-paper { border: none; box-shadow: none; padding: 0; }
   }
 </style>
@@ -783,6 +842,7 @@
       <button id="btnInputMode" title="i">입력: KEY</button>
       <button id="btnTouchPad" title="모바일 투핑거 터치 패드">👆 패드</button>
       <button id="btnPrint" title="PDF 저장 / 인쇄">🖨 PDF</button>
+      <button id="btnSyncCal" title="타이밍 지연 보정 (블루투스 이어폰 / 오디오 인터페이스)">⏱ 보정</button>
       <button id="btnGuide" title="사용 방법 및 판정 기준 설명 열기">❓ 설명</button>
       <select id="langSelect" title="Language / 언어 / 言語">
         <option value="ko">🌐 Language | 한국어</option>
@@ -804,6 +864,35 @@
       </div>
     </div>
     <div id="hitBadge" class="hit-badge">대기 중</div>
+  </div>
+
+  <!-- Optional Latency Calibration Bar (hidden unless user clicks ⏱ 보정) -->
+  <div id="calBar" class="cal-bar hidden">
+    <strong id="lblCalTitle">⏱ 싱크 보정</strong>
+    <button id="btnCalRun" type="button" class="primary">▶ 8박 측정</button>
+    <div id="calDots" class="cal-dots" aria-label="Calibration beats">
+      <span class="cal-dot warmup"></span>
+      <span class="cal-dot warmup"></span>
+      <span class="cal-dot"></span>
+      <span class="cal-dot"></span>
+      <span class="cal-dot"></span>
+      <span class="cal-dot"></span>
+      <span class="cal-dot"></span>
+      <span class="cal-dot"></span>
+    </div>
+    <label class="group">
+      <span id="lblKeyLat" class="label">KEY</span>
+      <input id="keyLatSlider" type="range" min="-50" max="300" step="5" value="0" style="width:74px" />
+      <span id="keyLatVal">0ms</span>
+    </label>
+    <label class="group">
+      <span id="lblAudLat" class="label">AUD</span>
+      <input id="calAudLatSlider" type="range" min="0" max="300" step="5" value="25" style="width:74px" />
+      <span id="calAudLatVal">25ms</span>
+    </label>
+    <button id="btnCalReset" type="button">초기화</button>
+    <button id="btnCalClose" type="button" class="cal-close" title="닫기">✕</button>
+    <span id="calMsg" class="cal-msg">박자가 일정하게 밀릴 때만 사용하세요 · 메트로놈 8박에 맞춰 Space/J/K 또는 베이스를 튕기면 자동 보정됩니다 (앞 2박은 준비).</span>
   </div>
 
   <!-- Audio Input Monitor (shown when AUDIO or BOTH) -->
@@ -835,7 +924,7 @@
     </label>
     <label class="group">
       <span id="lblLat" class="label">지연보정</span>
-      <input id="latSlider" type="range" min="0" max="200" step="5" value="25" style="width:68px" />
+      <input id="latSlider" type="range" min="0" max="300" step="5" value="25" style="width:68px" />
       <span id="latVal">25ms</span>
     </label>
     <span id="audioMsg" class="audio-msg">헤드폰/오인페 라인 입력 권장 (스피커 메트로놈 유입 방지)</span>
@@ -938,7 +1027,19 @@
       inputPrefix: "입력",
       btnPad: "👆 패드",
       btnPrint: "🖨 PDF",
+      btnSyncCal: "⏱ 보정",
       btnGuide: "❓ 설명",
+      calTitle: "⏱ 싱크 보정",
+      calStartBtn: "▶ 8박 측정",
+      calStopBtn: "■ 중단",
+      calResetBtn: "초기화",
+      calIdleMsg: "박자가 일정하게 밀릴 때만 사용하세요 · 메트로놈 8박에 맞춰 Space/J/K 또는 베이스를 튕기면 자동 보정됩니다 (앞 2박은 준비).",
+      calRunningMsg: "메트로놈에 맞춰 일정하게 탭/연주하세요 (1~2박 준비 · 3~8박 측정)...",
+      calStatus: (b, n) => `싱크 보정 중  ${b} / ${n}`,
+      calBadgeRunning: "보정 측정 중...",
+      calApplied: (src, ms, n, spread) => `보정 완료! ${src} ${ms >= 0 ? "+" : ""}${ms}ms 자동 적용됨 (${n}/6박 측정 · 편차 ±${spread}ms)`,
+      calTooFew: (n) => `입력이 부족합니다 (${n}/6박 · 최소 3박 필요) — 다시 측정해 주세요.`,
+      calResetMsg: "보정값을 기본값(KEY 0ms / AUD 25ms)으로 초기화했습니다.",
       statusSub: "1박 초록 / 나머지 박 노랑 · 악보 위치 표시 없음",
       statusReady: "준비 완료 — Enter 또는 Space로 시작",
       statusGetReady: "준비하세요...",
@@ -1065,7 +1166,19 @@
       inputPrefix: "Input",
       btnPad: "👆 Pads",
       btnPrint: "🖨 PDF",
+      btnSyncCal: "⏱ Sync",
       btnGuide: "❓ Guide",
+      calTitle: "⏱ Sync Cal",
+      calStartBtn: "▶ 8-Beat Test",
+      calStopBtn: "■ Stop",
+      calResetBtn: "Reset",
+      calIdleMsg: "Optional — use if hits feel consistently early/late (e.g. Bluetooth or audio interface). Tap Space/J/K or pluck bass for 8 clicks (first 2 warm-up).",
+      calRunningMsg: "Tap or pluck steadily on every click (beats 1–2 warm-up, 3–8 measured)...",
+      calStatus: (b, n) => `Calibrating  ${b} / ${n}`,
+      calBadgeRunning: "Calibrating...",
+      calApplied: (src, ms, n, spread) => `Calibrated! Applied ${src} ${ms >= 0 ? "+" : ""}${ms}ms (${n}/6 taps · ±${spread}ms spread)`,
+      calTooFew: (n) => `Not enough taps (${n}/6, need at least 3) — please try again.`,
+      calResetMsg: "Reset offsets to defaults (KEY 0ms / AUD 25ms).",
       statusSub: "Beat 1 Green / Other beats Amber · No moving score cursor",
       statusReady: "Ready — Press Enter or Space to start",
       statusGetReady: "Get ready...",
@@ -1192,7 +1305,19 @@
       inputPrefix: "入力",
       btnPad: "👆 パッド",
       btnPrint: "🖨 PDF",
+      btnSyncCal: "⏱ 補正",
       btnGuide: "❓ 使い方",
+      calTitle: "⏱ 遅延補正",
+      calStartBtn: "▶ 8拍テスト",
+      calStopBtn: "■ 中断",
+      calResetBtn: "リセット",
+      calIdleMsg: "判定が一定にずれる時だけお使いください（BluetoothやI/F向け）。メトロノーム8拍に合わせてSpace/J/Kまたはベースを弾くと自動補正します（1〜2拍は準備）。",
+      calRunningMsg: "クリックに合わせて一定にタップ／演奏してください（1〜2拍準備・3〜8拍測定）...",
+      calStatus: (b, n) => `遅延補正中  ${b} / ${n}`,
+      calBadgeRunning: "補正測定中...",
+      calApplied: (src, ms, n, spread) => `補正完了！ ${src} ${ms >= 0 ? "+" : ""}${ms}ms を自動適用しました（${n}/6拍測定・ばらつき ±${spread}ms）`,
+      calTooFew: (n) => `入力が足りません（${n}/6拍・最低3拍必要）— もう一度お試しください。`,
+      calResetMsg: "補正値を初期値（KEY 0ms / AUD 25ms）に戻しました。",
       statusSub: "1拍目 緑 / その他の拍 黄 · 譜面カーソル表示なし",
       statusReady: "準備完了 — Enter または Space で開始",
       statusGetReady: "準備してください...",
@@ -2549,7 +2674,9 @@
     if (rising && (now - audioIn.lastOnset >= audioIn.cooldownSec)) {
       audioIn.lastOnset = now;
       audioIn.lastTriggerMs = performance.now();
-      if (app.inputMode === "AUDIO" || app.inputMode === "BOTH") {
+      if (app.state === "CAL") {
+        recordCalibrationTap(now, "AUDIO");
+      } else if (app.inputMode === "AUDIO" || app.inputMode === "BOTH") {
         if (app.state === "COUNTIN" || app.state === "PLAY") {
           handleHit(now - audioIn.latencyMs / 1000, "AUDIO");
         } else if (app.state === "READY") {
@@ -2693,7 +2820,8 @@
     showBeatNums: false,
     blindGrade: false,
     inputMode: "KEY", // KEY | AUDIO | BOTH
-    state: "READY",   // READY | COUNTIN | PLAY | DEMO | DONE
+    keyLatencyMs: 0,  // optional offset for KEY/Touch (e.g. Bluetooth headphones)
+    state: "READY",   // READY | COUNTIN | PLAY | DEMO | CAL | DONE
     takeId: 1,
     phrase: null,
     startAudioT: 0,
@@ -2761,6 +2889,7 @@
   }
 
   function newPhrase() {
+    if (app.state === "CAL") stopCalibration(false);
     stopScheduledAudio();
     app.takeId += 1;
     app.phrase = generatePhrase(app.numBars, app.level, app.tripletsOn, app.timeSig);
@@ -2771,6 +2900,7 @@
   }
 
   function startRun(demo = false) {
+    if (app.state === "CAL") stopCalibration(false);
     const ctx = ensureAudioCtx();
     stopScheduledAudio();
     resetTargets();
@@ -2789,6 +2919,10 @@
   }
 
   function stopRun() {
+    if (app.state === "CAL") {
+      stopCalibration(true);
+      return;
+    }
     if (app.state !== "COUNTIN" && app.state !== "PLAY" && app.state !== "DEMO") return;
     stopScheduledAudio();
     resetTargets();
@@ -2797,8 +2931,133 @@
     syncTransportButtons();
   }
 
+  // Optional 8-beat tap/pluck latency calibration
+  const calState = {
+    totalClicks: 8,
+    warmupClicks: 2,
+    beatSec: 60 / 90,
+    startAudioT: 0,
+    taps: [],      // { idx, deltaMs, source }
+    captured: {},  // idx -> true
+  };
+
+  function resetCalDots() {
+    const dots = document.querySelectorAll("#calDots .cal-dot");
+    dots.forEach((d, i) => {
+      d.className = i < calState.warmupClicks ? "cal-dot warmup" : "cal-dot";
+    });
+  }
+
+  function startCalibration() {
+    const ctx = ensureAudioCtx();
+    stopScheduledAudio();
+    resetTargets();
+    calState.startAudioT = ctx.currentTime + 0.45;
+    calState.taps = [];
+    calState.captured = {};
+    resetCalDots();
+    app.state = "CAL";
+    setHitBadge(t("calBadgeRunning"), "");
+    document.getElementById("btnCalRun").textContent = t("calStopBtn");
+    document.getElementById("btnCalRun").classList.remove("primary");
+    document.getElementById("btnCalRun").classList.add("danger");
+    const msgEl = document.getElementById("calMsg");
+    msgEl.style.color = "var(--accent)";
+    msgEl.textContent = t("calRunningMsg");
+    syncTransportButtons();
+    for (let c = 0; c < calState.totalClicks; c++) {
+      const isAcc = c % 4 === 0;
+      scheduleClick(ctx, calState.startAudioT + c * calState.beatSec, isAcc ? 1318.51 : 880.0, isAcc ? 0.32 : 0.22);
+    }
+  }
+
+  function stopCalibration(resetBadge = true) {
+    if (app.state !== "CAL") return;
+    stopScheduledAudio();
+    app.state = "READY";
+    const btn = document.getElementById("btnCalRun");
+    btn.textContent = t("calStartBtn");
+    btn.classList.remove("danger");
+    btn.classList.add("primary");
+    resetCalDots();
+    if (resetBadge) {
+      setHitBadge(t("badgeStopped"), "");
+      const msgEl = document.getElementById("calMsg");
+      msgEl.style.color = "var(--muted)";
+      msgEl.textContent = t("calIdleMsg");
+    }
+    syncTransportButtons();
+  }
+
+  function recordCalibrationTap(rawAudioT, source) {
+    if (app.state !== "CAL") return;
+    const elapsed = rawAudioT - calState.startAudioT;
+    const idx = Math.round(elapsed / calState.beatSec);
+    if (idx < 0 || idx >= calState.totalClicks) return;
+    const deltaMs = (elapsed - idx * calState.beatSec) * 1000;
+    if (Math.abs(deltaMs) > 320) return;
+
+    const dots = document.querySelectorAll("#calDots .cal-dot");
+    if (idx < calState.warmupClicks) {
+      if (dots[idx]) dots[idx].classList.add("hit");
+      return;
+    }
+    if (calState.captured[idx]) return;
+    calState.captured[idx] = true;
+    calState.taps.push({ idx, deltaMs, source });
+    if (dots[idx]) dots[idx].classList.add("hit");
+    const sign = deltaMs >= 0 ? "+" : "";
+    setHitBadge(`[${source === "AUDIO" ? "AUD" : "KEY"}] ${sign}${Math.round(deltaMs)}ms`, "tight");
+
+    if (idx === calState.totalClicks - 1) {
+      finishCalibration();
+    }
+  }
+
+  function finishCalibration() {
+    stopScheduledAudio();
+    app.state = "READY";
+    const btn = document.getElementById("btnCalRun");
+    btn.textContent = t("calStartBtn");
+    btn.classList.remove("danger");
+    btn.classList.add("primary");
+    const msgEl = document.getElementById("calMsg");
+
+    const n = calState.taps.length;
+    if (n < 3) {
+      msgEl.style.color = "var(--red)";
+      msgEl.textContent = t("calTooFew", n);
+      setHitBadge(t("badgeWait"), "");
+      syncTransportButtons();
+      return;
+    }
+
+    const sorted = calState.taps.map(x => x.deltaMs).sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    const med = sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+    const mad = sorted.reduce((acc, v) => acc + Math.abs(v - med), 0) / sorted.length;
+    const audCount = calState.taps.filter(x => x.source === "AUDIO").length;
+    const useAudio = audCount * 2 >= n;
+    const rounded = Math.round(med);
+
+    if (useAudio) {
+      const applied = Math.max(0, Math.min(300, rounded));
+      syncLatency(applied, true);
+      msgEl.style.color = "var(--green)";
+      msgEl.textContent = t("calApplied", "AUD", applied, n, Math.round(mad));
+      setHitBadge(`AUD +${applied}ms`, "tight");
+    } else {
+      const applied = Math.max(-50, Math.min(300, rounded));
+      syncKeyLatency(applied, true);
+      msgEl.style.color = "var(--green)";
+      msgEl.textContent = t("calApplied", "KEY", applied, n, Math.round(mad));
+      setHitBadge(`KEY ${applied >= 0 ? "+" : ""}${applied}ms`, "tight");
+    }
+    syncTransportButtons();
+  }
+
   function syncTransportButtons() {
-    const running = app.state === "COUNTIN" || app.state === "PLAY" || app.state === "DEMO";
+    const running = app.state === "COUNTIN" || app.state === "PLAY" || app.state === "DEMO" || app.state === "CAL";
     const btnStop = document.getElementById("btnStop");
     const btnDemo = document.getElementById("btnDemo");
     btnStop.disabled = !running;
@@ -3066,7 +3325,16 @@
     });
     document.getElementById("btnTouchPad").textContent = t("btnPad");
     document.getElementById("btnPrint").textContent = t("btnPrint");
+    document.getElementById("btnSyncCal").textContent = t("btnSyncCal");
     document.getElementById("btnGuide").textContent = t("btnGuide");
+    document.getElementById("lblCalTitle").textContent = t("calTitle");
+    document.getElementById("btnCalRun").textContent = app.state === "CAL" ? t("calStopBtn") : t("calStartBtn");
+    document.getElementById("btnCalReset").textContent = t("calResetBtn");
+    if (app.state !== "CAL") {
+      const calMsg = document.getElementById("calMsg");
+      calMsg.style.color = "var(--muted)";
+      calMsg.textContent = t("calIdleMsg");
+    }
     document.getElementById("statusSub").textContent = t("statusSub");
 
     document.getElementById("lblAudioTitle").textContent = t("audioTitle");
@@ -3121,6 +3389,7 @@
   }
 
   function setBpm(val) {
+    if (app.state === "CAL") stopCalibration(true);
     app.bpm = Math.max(40, Math.min(140, val));
     stopScheduledAudio();
     resetTargets();
@@ -3167,7 +3436,27 @@
 
     // Update run timing & LED
     let ledClass = "led-core";
-    if ((app.state === "COUNTIN" || app.state === "PLAY" || app.state === "DEMO") && audioCtx) {
+    if (app.state === "CAL" && audioCtx) {
+      const elapsed = audioCtx.currentTime - calState.startAudioT;
+      const endT = (calState.totalClicks - 1) * calState.beatSec + 0.34;
+      const dots = document.querySelectorAll("#calDots .cal-dot");
+      if (elapsed < 0) {
+        statusMain.textContent = t("statusGetReady");
+      } else {
+        const clickIdx = Math.floor(elapsed / calState.beatSec);
+        const phase = elapsed - clickIdx * calState.beatSec;
+        const flashDur = Math.min(0.13, calState.beatSec * 0.30);
+        const curBeat = Math.min(calState.totalClicks, clickIdx + 1);
+        statusMain.textContent = t("calStatus", curBeat, calState.totalClicks);
+        dots.forEach((d, i) => d.classList.toggle("active", i === clickIdx));
+        if (clickIdx >= 0 && clickIdx < calState.totalClicks && phase < flashDur) {
+          ledClass = clickIdx % 4 === 0 ? "led-core beat1" : "led-core beatn";
+        }
+      }
+      if (elapsed >= endT) {
+        finishCalibration();
+      }
+    } else if ((app.state === "COUNTIN" || app.state === "PLAY" || app.state === "DEMO") && audioCtx) {
       const now = audioCtx.currentTime;
       const elapsed = now - app.startAudioT;
       const ts = getTimeSig();
@@ -3348,9 +3637,11 @@
       ensureAudioCtx();
       padEl.classList.add("pressed");
       window.setTimeout(() => padEl.classList.remove("pressed"), 90);
-      if (app.state === "COUNTIN" || app.state === "PLAY") {
+      if (app.state === "CAL" && audioCtx) {
+        recordCalibrationTap(audioCtx.currentTime, "KEY");
+      } else if (app.state === "COUNTIN" || app.state === "PLAY") {
         if ((app.inputMode === "KEY" || app.inputMode === "BOTH") && audioCtx) {
-          handleHit(audioCtx.currentTime, "KEY");
+          handleHit(audioCtx.currentTime - app.keyLatencyMs / 1000, "KEY");
         }
       } else if (app.state === "READY") {
         startRun(false);
@@ -3446,13 +3737,61 @@
 
   const latSlider = document.getElementById("latSlider");
   const latVal = document.getElementById("latVal");
-  function syncLatency(ms) {
-    const clamped = Math.max(0, Math.min(200, ms));
+  const calAudLatSlider = document.getElementById("calAudLatSlider");
+  const calAudLatVal = document.getElementById("calAudLatVal");
+  const keyLatSlider = document.getElementById("keyLatSlider");
+  const keyLatVal = document.getElementById("keyLatVal");
+
+  function syncLatency(ms, persist = false) {
+    const clamped = Math.max(0, Math.min(300, Math.round(ms)));
     audioIn.latencyMs = clamped;
     latSlider.value = String(clamped);
     latVal.textContent = `${clamped}ms`;
+    calAudLatSlider.value = String(clamped);
+    calAudLatVal.textContent = `${clamped}ms`;
+    if (persist) {
+      try { localStorage.setItem("rhythm_practice_aud_lat", String(clamped)); } catch (_) {}
+    }
   }
-  latSlider.addEventListener("input", e => syncLatency(Number(e.target.value)));
+  function syncKeyLatency(ms, persist = false) {
+    const clamped = Math.max(-50, Math.min(300, Math.round(ms)));
+    app.keyLatencyMs = clamped;
+    keyLatSlider.value = String(clamped);
+    keyLatVal.textContent = `${clamped > 0 ? "+" : ""}${clamped}ms`;
+    if (persist) {
+      try { localStorage.setItem("rhythm_practice_key_lat", String(clamped)); } catch (_) {}
+    }
+  }
+  latSlider.addEventListener("input", e => syncLatency(Number(e.target.value), true));
+  calAudLatSlider.addEventListener("input", e => syncLatency(Number(e.target.value), true));
+  keyLatSlider.addEventListener("input", e => syncKeyLatency(Number(e.target.value), true));
+
+  const calBar = document.getElementById("calBar");
+  const btnSyncCal = document.getElementById("btnSyncCal");
+  function toggleCalBar(forceOpen = null) {
+    const open = forceOpen !== null ? forceOpen : calBar.classList.contains("hidden");
+    calBar.classList.toggle("hidden", !open);
+    btnSyncCal.classList.toggle("active", open);
+    if (!open && app.state === "CAL") stopCalibration(true);
+  }
+  btnSyncCal.addEventListener("click", (e) => {
+    e.currentTarget.blur();
+    toggleCalBar();
+  });
+  document.getElementById("btnCalClose").addEventListener("click", () => toggleCalBar(false));
+  document.getElementById("btnCalRun").addEventListener("click", (e) => {
+    e.currentTarget.blur();
+    if (app.state === "CAL") stopCalibration(true);
+    else startCalibration();
+  });
+  document.getElementById("btnCalReset").addEventListener("click", (e) => {
+    e.currentTarget.blur();
+    syncKeyLatency(0, true);
+    syncLatency(25, true);
+    const msgEl = document.getElementById("calMsg");
+    msgEl.style.color = "var(--muted)";
+    msgEl.textContent = t("calResetMsg");
+  });
 
   window.addEventListener("keydown", (e) => {
     if (e.repeat) return;
@@ -3463,9 +3802,11 @@
     const code = e.code;
     if (code === "Space" || code === "KeyJ" || code === "KeyK") {
       e.preventDefault();
-      if (app.state === "COUNTIN" || app.state === "PLAY") {
+      if (app.state === "CAL" && audioCtx) {
+        recordCalibrationTap(audioCtx.currentTime, "KEY");
+      } else if (app.state === "COUNTIN" || app.state === "PLAY") {
         if ((app.inputMode === "KEY" || app.inputMode === "BOTH") && audioCtx) {
-          handleHit(audioCtx.currentTime, "KEY");
+          handleHit(audioCtx.currentTime - app.keyLatencyMs / 1000, "KEY");
         }
       } else if (app.state === "READY") {
         startRun(false);
@@ -3537,9 +3878,9 @@
     } else if (code === "BracketRight") {
       syncThreshold(Math.round(audioIn.threshold * 100) + 2);
     } else if (code === "Comma") {
-      syncLatency(audioIn.latencyMs - 5);
+      syncLatency(audioIn.latencyMs - 5, true);
     } else if (code === "Period") {
-      syncLatency(audioIn.latencyMs + 5);
+      syncLatency(audioIn.latencyMs + 5, true);
     }
   });
 
@@ -3548,7 +3889,15 @@
   resetTargets();
   syncGain(2);
   syncThreshold(16);
-  syncLatency(25);
+  let savedKeyLat = 0, savedAudLat = 25;
+  try {
+    const k = localStorage.getItem("rhythm_practice_key_lat");
+    const a = localStorage.getItem("rhythm_practice_aud_lat");
+    if (k !== null && Number.isFinite(Number(k))) savedKeyLat = Number(k);
+    if (a !== null && Number.isFinite(Number(a))) savedAudLat = Number(a);
+  } catch (_) {}
+  syncKeyLatency(savedKeyLat);
+  syncLatency(savedAudLat);
   syncTouchDock();
   drawDistribution([], 0, 0, 0, 0, 0);
   applyLanguage(curLang);
