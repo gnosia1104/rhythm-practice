@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://gnosia1104.github.io/rhythm-practice/sitemap.xml
