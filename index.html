@@ -681,11 +681,25 @@
 
   .result-actions {
     display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  .result-top {
+    display: flex;
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
-    margin-top: 6px;
+    gap: 6px 8px;
+  }
+
+  .result-badges {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
   }
 
   .result-actions button {
@@ -698,6 +712,14 @@
     flex-wrap: wrap;
     align-items: center;
     gap: 6px;
+    margin-left: auto;
+  }
+
+  #summaryLine {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.5;
+    word-break: keep-all;
   }
 
   .rank-pill {
@@ -1987,13 +2009,17 @@
       <div class="card-title">Timing Distribution (−150ms .. 0 .. +150ms)</div>
       <svg id="distSvg" class="dist-svg" viewBox="0 0 380 64"></svg>
       <div class="result-actions">
-        <span id="rankBadge" class="rank-pill hidden">S</span>
-        <span id="scoreBadge" class="score-pill hidden">0 / 0</span>
-        <div id="summaryLine" style="font-size:12px;color:var(--muted);flex:1;min-width:0;">연주를 마치면 타이밍 분포가 표시됩니다.</div>
-        <div class="result-btns">
-          <button id="btnShareResult" type="button" class="hidden">📋 텍스트 자랑</button>
-          <button id="btnBragCard" type="button" class="primary hidden">🖼️ 이미지 자랑</button>
+        <div class="result-top">
+          <div class="result-badges">
+            <span id="rankBadge" class="rank-pill hidden">S</span>
+            <span id="scoreBadge" class="score-pill hidden">0 / 0</span>
+          </div>
+          <div class="result-btns">
+            <button id="btnShareResult" type="button" class="hidden">📋 텍스트 자랑</button>
+            <button id="btnBragCard" type="button" class="primary hidden">🖼️ 이미지 자랑</button>
+          </div>
         </div>
+        <div id="summaryLine">연주를 마치면 타이밍 분포가 표시됩니다.</div>
       </div>
     </div>
     <div class="card">
