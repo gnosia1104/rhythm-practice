@@ -2418,25 +2418,25 @@
     const ds = (dateStr && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) ? dateStr : getTodayDateStr();
     const [y, m, d] = ds.split("-").map(Number);
     const dow = new Date(y, m - 1, d).getDay(); // 0=Sun..6=Sat
-    // Standard Daily: always 4/4 core sight-reading workout
+    // Standard Daily: approachable 4/4 daily sight-reading warm-up (Lv2-5, no triplets)
     const stdSchedule = [
-      { timeSig: "4/4", level: 5, bpm: 75, tripletMode: 0, staccatoOn: true,  ghostOn: false }, // Sun
-      { timeSig: "4/4", level: 3, bpm: 75, tripletMode: 0, staccatoOn: false, ghostOn: false }, // Mon
-      { timeSig: "4/4", level: 4, bpm: 80, tripletMode: 0, staccatoOn: true,  ghostOn: false }, // Tue
-      { timeSig: "4/4", level: 4, bpm: 75, tripletMode: 1, staccatoOn: false, ghostOn: false }, // Wed
-      { timeSig: "4/4", level: 5, bpm: 70, tripletMode: 0, staccatoOn: false, ghostOn: false }, // Thu
-      { timeSig: "4/4", level: 4, bpm: 80, tripletMode: 0, staccatoOn: false, ghostOn: true  }, // Fri
-      { timeSig: "4/4", level: 6, bpm: 75, tripletMode: 0, staccatoOn: false, ghostOn: true  }, // Sat
+      { timeSig: "4/4", level: 3, bpm: 70, tripletMode: 0, staccatoOn: true,  ghostOn: false }, // Sun
+      { timeSig: "4/4", level: 2, bpm: 70, tripletMode: 0, staccatoOn: false, ghostOn: false }, // Mon
+      { timeSig: "4/4", level: 3, bpm: 75, tripletMode: 0, staccatoOn: false, ghostOn: false }, // Tue
+      { timeSig: "4/4", level: 3, bpm: 70, tripletMode: 0, staccatoOn: true,  ghostOn: false }, // Wed
+      { timeSig: "4/4", level: 4, bpm: 70, tripletMode: 0, staccatoOn: false, ghostOn: false }, // Thu
+      { timeSig: "4/4", level: 3, bpm: 70, tripletMode: 0, staccatoOn: false, ghostOn: true  }, // Fri
+      { timeSig: "4/4", level: 5, bpm: 65, tripletMode: 0, staccatoOn: false, ghostOn: false }, // Sat
     ];
-    // Daily+: non-4/4 meters (3/4, 2/4, 5/4, 6/8) + spicy articulations/triplets
+    // Daily+: non-4/4 meters (3/4, 2/4, 5/4, 6/8) at playable Lv3-4 tempos (no triplets)
     const plusSchedule = [
-      { timeSig: "5/4", level: 4, bpm: 75, tripletMode: 0, staccatoOn: true,  ghostOn: false }, // Sun
-      { timeSig: "3/4", level: 3, bpm: 80, tripletMode: 0, staccatoOn: true,  ghostOn: false }, // Mon
-      { timeSig: "6/8", level: 4, bpm: 65, tripletMode: 0, staccatoOn: false, ghostOn: false }, // Tue
-      { timeSig: "5/4", level: 5, bpm: 70, tripletMode: 0, staccatoOn: false, ghostOn: true  }, // Wed
-      { timeSig: "2/4", level: 5, bpm: 80, tripletMode: 1, staccatoOn: false, ghostOn: false }, // Thu
-      { timeSig: "6/8", level: 5, bpm: 65, tripletMode: 0, staccatoOn: true,  ghostOn: false }, // Fri
-      { timeSig: "3/4", level: 6, bpm: 75, tripletMode: 2, staccatoOn: false, ghostOn: true  }, // Sat
+      { timeSig: "3/4", level: 3, bpm: 70, tripletMode: 0, staccatoOn: true,  ghostOn: false }, // Sun
+      { timeSig: "2/4", level: 3, bpm: 70, tripletMode: 0, staccatoOn: false, ghostOn: false }, // Mon
+      { timeSig: "6/8", level: 3, bpm: 60, tripletMode: 0, staccatoOn: false, ghostOn: false }, // Tue
+      { timeSig: "5/4", level: 3, bpm: 70, tripletMode: 0, staccatoOn: false, ghostOn: false }, // Wed
+      { timeSig: "3/4", level: 4, bpm: 70, tripletMode: 0, staccatoOn: false, ghostOn: false }, // Thu
+      { timeSig: "6/8", level: 4, bpm: 60, tripletMode: 0, staccatoOn: true,  ghostOn: false }, // Fri
+      { timeSig: "5/4", level: 4, bpm: 70, tripletMode: 0, staccatoOn: false, ghostOn: true  }, // Sat
     ];
     const picked = (isPlus ? plusSchedule : stdSchedule)[dow];
     return {
