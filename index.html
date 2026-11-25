@@ -119,6 +119,12 @@
     padding-right: 22px;
   }
 
+  .lang-select {
+    margin-left: auto;
+    font-size: 12px;
+    padding: 5px 8px;
+  }
+
   .group {
     display: flex;
     flex-wrap: wrap;
@@ -1536,6 +1542,12 @@
           </div>
         </div>
       </div>
+
+      <select id="langSelect" class="lang-select" title="Language / 언어 / 言語">
+        <option value="ko">🌐 한국어</option>
+        <option value="en">🌐 English</option>
+        <option value="ja">🌐 日本語</option>
+      </select>
     </div>
 
     <div class="toolbar-row secondary">
@@ -1574,11 +1586,6 @@
             <button id="btnGuide" type="button" role="menuitem" title="사용 방법 및 판정 기준 설명 열기">❓ 설명</button>
           </div>
         </div>
-        <select id="langSelect" title="Language / 언어 / 言語">
-          <option value="ko">🌐 Language | 한국어</option>
-          <option value="en">🌐 Language | English</option>
-          <option value="ja">🌐 Language | 日本語</option>
-        </select>
       </div>
     </div>
   </div>
