@@ -2235,6 +2235,20 @@
     return audioCtx;
   }
 
+  async function ensureAudioCtxReady() {
+    const ctx = ensureAudioCtx();
+    if (ctx.state !== "running") {
+      try { await ctx.resume(); } catch (_) {}
+    }
+    // Wait until AudioContext hardware clock is genuinely ticking (prevents cold-start 1st-beat drift)
+    const t0 = ctx.currentTime;
+    const wallStart = performance.now();
+    while (ctx.currentTime <= t0 + 0.012 && (performance.now() - wallStart) < 420) {
+      await new Promise(r => window.setTimeout(r, 16));
+    }
+    return ctx;
+  }
+
   function stopScheduledAudio() {
     for (const node of scheduledNodes) {
       try { node.stop(); } catch (_) {}
@@ -2841,6 +2855,8 @@
     activeSustainTgt: null,
     extraHits: 0,
     history: [],
+    lastResult: null,
+    runSeq: 0,
     dirtyScore: true,
   };
 
@@ -2902,6 +2918,7 @@
   }
 
   function newPhrase() {
+    app.runSeq += 1;
     if (app.state === "CAL") stopCalibration(false);
     stopScheduledAudio();
     app.takeId += 1;
@@ -2912,11 +2929,14 @@
     updateMeta();
   }
 
-  function startRun(demo = false) {
+  async function startRun(demo = false) {
+    const seq = ++app.runSeq;
     if (app.state === "CAL") stopCalibration(false);
-    const ctx = ensureAudioCtx();
     stopScheduledAudio();
     resetTargets();
+    setHitBadge(t("statusGetReady"), "");
+    const ctx = await ensureAudioCtxReady();
+    if (seq !== app.runSeq) return;
     app.startAudioT = ctx.currentTime + PRE_DELAY_SEC;
     app.state = demo ? "DEMO" : "COUNTIN";
     setHitBadge(demo ? t("badgeDemo") : t("badgeCountIn"), "");
@@ -2932,6 +2952,7 @@
   }
 
   function stopRun() {
+    app.runSeq += 1;
     if (app.state === "CAL") {
       stopCalibration(true);
       return;
@@ -2962,10 +2983,12 @@
     });
   }
 
-  function startCalibration() {
-    const ctx = ensureAudioCtx();
+  async function startCalibration() {
+    const seq = ++app.runSeq;
     stopScheduledAudio();
     resetTargets();
+    const ctx = await ensureAudioCtxReady();
+    if (seq !== app.runSeq) return;
     calState.startAudioT = ctx.currentTime + 0.45;
     calState.taps = [];
     calState.captured = {};
@@ -3192,7 +3215,12 @@
     });
     if (app.history.length > 6) app.history.pop();
 
-    drawDistribution(errs, hits, total, mean, sd, tight, sustainStats);
+    app.lastResult = {
+      errs, hits, total, mean, sd, tight,
+      extra: app.extraHits,
+      sustainStats,
+    };
+    drawDistribution(errs, hits, total, mean, sd, tight, sustainStats, app.extraHits);
     renderLog();
     if (app.blindGrade) {
       const cls = acc >= 90 ? "tight" : (acc >= 70 ? "warn" : "err");
@@ -3202,7 +3230,7 @@
     app.dirtyScore = true;
   }
 
-  function drawDistribution(errs, hits, total, mean, sd, tight, sustainStats = null) {
+  function drawDistribution(errs, hits, total, mean, sd, tight, sustainStats = null, extraHits = app.extraHits) {
     const svg = document.getElementById("distSvg");
     while (svg.firstChild) svg.removeChild(svg.firstChild);
     const W = 380, cy = 30, pad = 28;
@@ -3241,12 +3269,12 @@
       summary.textContent = t(
         "summaryHits",
         hits, total, ((hits / total) * 100).toFixed(1), tight,
-        sign, mean.toFixed(1), sd.toFixed(1), app.extraHits,
+        sign, mean.toFixed(1), sd.toFixed(1), extraHits,
         sustainStats, restErrs
       );
     } else {
       const restErrs = sustainStats ? (sustainStats.restErrs || 0) : 0;
-      summary.textContent = t("summaryZero", total, app.extraHits, restErrs);
+      summary.textContent = t("summaryZero", total, extraHits, restErrs);
     }
   }
 
@@ -3378,7 +3406,10 @@
     if (app.state === "READY") {
       setHitBadge(t("badgeWait"), "");
     }
-    if (!app.history.length) {
+    if (app.lastResult) {
+      const r = app.lastResult;
+      drawDistribution(r.errs, r.hits, r.total, r.mean, r.sd, r.tight, r.sustainStats, r.extra);
+    } else {
       document.getElementById("summaryLine").textContent = t("summaryIdle");
     }
     renderLog();
