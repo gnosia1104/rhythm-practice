@@ -1148,8 +1148,9 @@
       staccatoOff: "• 스타카토 OFF",
       ghostOn: "× 고스트 ON",
       ghostOff: "× 고스트 OFF",
-      stacOkTip: (p) => `스타카토 ${p}% (양호 — 깔끔하게 끊음)`,
-      stacLongTip: (p) => `스타카토 ${p}% (길게 울림 — 50% 이하로 짧게 끊으세요)`,
+      stacOkTip: (p) => `스타카토 ${p}% (양호 — 절반 길이 유지 후 깔끔히 컷)`,
+      stacShortTip: (p) => `스타카토 ${p}% (너무 짧음 — 표기 길이의 절반(약 50%)만큼 유지하세요)`,
+      stacLongTip: (p) => `스타카토 ${p}% (너무 긺 — 표기 길이의 절반(50%)에서 끊으세요)`,
       ghostOkTip: (ms) => ms != null ? `고스트 뮤트 양호 (${ms}ms 컷)` : "고스트 뮤트 양호 (×)",
       ghostRingTip: (ms) => ms != null ? `고스트 실패 (${ms}ms 울림 — 왼손 뮤트 퍼커시브로 치세요)` : "고스트 실패 — F/D 키(뮤트)로 입력하세요",
       ghostWrongKeyTip: "일반 음표에 고스트 키(F/D)를 입력했습니다",
@@ -1256,7 +1257,7 @@
               <strong style="color:var(--amber)">▬ 짧음</strong>(표기 길이의 62% 미만으로 빨리 끊음) ·
               <strong style="color:var(--red)">▬ 침범</strong>(뒤 쉼표까지 뮤트가 늦음)
             </li>
-            <li><strong>스타카토(<code>•</code>) &amp; 고스트 노트(<code>×</code>)</strong>: <kbd>Q</kbd>(스타카토)를 켜면 음표 아래 점이 붙어 표기 길이의 <strong>50% 이하로 짧게 끊었는지</strong> 역서스테인으로 채점합니다. <kbd>X</kbd>(고스트)를 켜면 <code>×</code> 데드노트가 등장하며, 오디오 모드에서는 퍼커시브 뮤트 여부를 자동 판별하고 키보드에서는 <kbd>F</kbd>/<kbd>D</kbd>(모바일은 <code>× GHOST</code> 패드)로 입력합니다.</li>
+            <li><strong>스타카토(<code>•</code>) &amp; 고스트 노트(<code>×</code>)</strong>: <kbd>Q</kbd>(스타카토)를 켜면 음표 아래 점이 붙어 표기 길이의 <strong>절반(약 50%)만큼 유지한 뒤 깔끔히 끊었는지</strong>(너무 짧으면 노랑, 절반 넘게 길면 빨강) 채점합니다. <kbd>X</kbd>(고스트)를 켜면 <code>×</code> 데드노트가 등장하며, 오디오 모드에서는 퍼커시브 뮤트 여부를 자동 판별하고 키보드에서는 <kbd>F</kbd>/<kbd>D</kbd>(모바일은 <code>× GHOST</code> 패드)로 입력합니다.</li>
             <li>기호나 서스테인 바 위에 <strong>마우스를 올리면</strong> 정확한 <code>ms</code> 오차와 서스테인 <code>%</code> 툴팁이 표시됩니다.</li>
           </ul>
         </div>
@@ -1314,8 +1315,9 @@
       staccatoOff: "• Staccato OFF",
       ghostOn: "× Ghost ON",
       ghostOff: "× Ghost OFF",
-      stacOkTip: (p) => `Staccato ${p}% (Good — crisp cutoff)`,
-      stacLongTip: (p) => `Staccato ${p}% (Too long — mute under 50% value)`,
+      stacOkTip: (p) => `Staccato ${p}% (Good — held ~half value & cut cleanly)`,
+      stacShortTip: (p) => `Staccato ${p}% (Too short — sustain ~50% of written value before muting)`,
+      stacLongTip: (p) => `Staccato ${p}% (Too long — cut off at ~50% of written value)`,
       ghostOkTip: (ms) => ms != null ? `Ghost mute OK (${ms}ms percussive)` : "Ghost mute OK (×)",
       ghostRingTip: (ms) => ms != null ? `Ghost rang out (${ms}ms — mute string with fretting hand)` : "Missed ghost — use F/D mute key",
       ghostWrongKeyTip: "Used ghost key (F/D) on a regular note",
@@ -1422,7 +1424,7 @@
               <strong style="color:var(--amber)">▬ Short</strong> (cut off under 62% of written value) ·
               <strong style="color:var(--red)">▬ Bleed</strong> (rang past the note into a rest)
             </li>
-            <li><strong>Staccato (<code>•</code>) &amp; Ghost Notes (<code>×</code>)</strong>: Enable <strong>Staccato (<kbd>Q</kbd>)</strong> for reverse-sustain grading (cut notes cleanly under <strong>50%</strong> of written duration). Enable <strong>Ghost Notes (<kbd>X</kbd>)</strong> for percussive dead-notes (<code>×</code>)—auto-detected via fast percussive decay in Audio mode, or played with <kbd>F</kbd>/<kbd>D</kbd> (or the <code>× GHOST</code> touch pad) in Key mode.</li>
+            <li><strong>Staccato (<code>•</code>) &amp; Ghost Notes (<code>×</code>)</strong>: Enable <strong>Staccato (<kbd>Q</kbd>)</strong> to grade half-value articulation (hold ~<strong>50%</strong> of written duration, then mute cleanly—amber if too dead/short, red if held past half). Enable <strong>Ghost Notes (<kbd>X</kbd>)</strong> for percussive dead-notes (<code>×</code>)—auto-detected via fast percussive decay in Audio mode, or played with <kbd>F</kbd>/<kbd>D</kbd> (or the <code>× GHOST</code> touch pad) in Key mode.</li>
             <li><strong>Hover</strong> over any symbol or sustain bar for exact <code>ms</code> error and sustain <code>%</code> tooltips.</li>
           </ul>
         </div>
@@ -1480,8 +1482,9 @@
       staccatoOff: "• スタッカート OFF",
       ghostOn: "× ゴースト ON",
       ghostOff: "× ゴースト OFF",
-      stacOkTip: (p) => `スタッカート ${p}%（良好 — 短く切れています）`,
-      stacLongTip: (p) => `スタッカート ${p}%（長い — 音価の50%以下で短く切ってください）`,
+      stacOkTip: (p) => `スタッカート ${p}%（良好 — 半分の音価で綺麗にカット）`,
+      stacShortTip: (p) => `スタッカート ${p}%（短すぎ — 音価の半分（約50%）まで伸ばしてから切ってください）`,
+      stacLongTip: (p) => `スタッカート ${p}%（長い — 音価の半分（50%）で切ってください）`,
       ghostOkTip: (ms) => ms != null ? `ゴーストミュート良好（${ms}ms カット）` : "ゴーストミュート良好（×）",
       ghostRingTip: (ms) => ms != null ? `ゴースト失敗（${ms}ms 鳴り続け — 左手ミュートで弾いてください）` : "ゴースト失敗 — F/Dキー（ミュート）で入力してください",
       ghostWrongKeyTip: "通常の音符にゴーストキー（F/D）を入力しました",
@@ -1588,7 +1591,7 @@
               <strong style="color:var(--amber)">▬ 短い</strong>（音価の62%未満で早く途切れた） ·
               <strong style="color:var(--red)">▬ はみ出し</strong>（次の休符までミュートが遅れた）
             </li>
-            <li><strong>スタッカート（<code>•</code>）＆ゴーストノート（<code>×</code>）</strong>: <kbd>Q</kbd> でスタッカートをオンにすると音価の <strong>50%以下で短く切れたか</strong> 逆サステイン判定します。<kbd>X</kbd> でゴーストノート（<code>×</code>）をオンにすると、オーディオではパーカッシブなミュート減衰を自動判別し、キーボードでは <kbd>F</kbd>/<kbd>D</kbd>（モバイルは <code>× GHOST</code> パッド）で入力します。</li>
+            <li><strong>スタッカート（<code>•</code>）＆ゴーストノート（<code>×</code>）</strong>: <kbd>Q</kbd> でスタッカートをオンにすると音価の <strong>半分（約50%）伸ばしてから綺麗に切ったか</strong>（短すぎると黄、半分超えで赤）を判定します。<kbd>X</kbd> でゴーストノート（<code>×</code>）をオンにすると、オーディオではパーカッシブなミュート減衰を自動判別し、キーボードでは <kbd>F</kbd>/<kbd>D</kbd>（モバイルは <code>× GHOST</code> パッド）で入力します。</li>
             <li>記号やバーに <strong>マウスを合わせる</strong> と正確な <code>ms</code> 誤差やサステイン <code>%</code> が表示されます。</li>
           </ul>
         </div>
@@ -2551,13 +2554,21 @@
               let tipText = "";
 
               if (tgt.art === "staccato") {
+                // Highlight ideal 50% half-value sustain zone on the track
+                barG.appendChild(el("rect", {
+                  x: nx - 2, y: susY, width: (spanW + 2) * 0.5, height: 4, rx: 2, fill: "#cbd5e1"
+                }));
                 if (tgt.sustainStatus === "OK") {
                   fillColor = "#16a34a";
-                  actualW = Math.max(4, Math.min(0.54, ratio) * (spanW + 2));
+                  actualW = Math.max(4, Math.min(0.58, ratio) * (spanW + 2));
                   tipText = t("stacOkTip", Math.round(ratio * 100));
+                } else if (tgt.sustainStatus === "SHORT") {
+                  fillColor = "#d97706";
+                  actualW = Math.max(3, Math.min(0.26, ratio) * (spanW + 2));
+                  tipText = t("stacShortTip", Math.round(ratio * 100));
                 } else {
                   fillColor = "#dc2626";
-                  actualW = Math.max((spanW + 2) * 0.56, Math.min(1, ratio) * (spanW + 2));
+                  actualW = Math.max((spanW + 2) * 0.58, Math.min(1, ratio) * (spanW + 2));
                   tipText = t("stacLongTip", Math.round(ratio * 100));
                 }
               } else if (tgt.art === "ghost") {
@@ -2812,8 +2823,8 @@
         if (tgt.art === "ghost") {
           scheduleGhostNote(ctx, when);
         } else if (tgt.art === "staccato") {
-          // Short, punchy staccato D2 (~40% written value)
-          scheduleBassNote(ctx, when, Math.min(0.18, durSec * 0.42), 73.42);
+          // Musical staccato: sustain half of the written note value (50%), then cut cleanly
+          scheduleBassNote(ctx, when, Math.max(0.08, durSec * 0.50), 73.42);
         } else {
           // All notes on the middle line of bass clef = D (sounding D2 = 73.42Hz on bass guitar)
           scheduleBassNote(ctx, when, durSec, 73.42);
@@ -3266,16 +3277,18 @@
         tgt.sustainStatus = "LONG";
       }
     } else if (tgt.art === "staccato") {
-      // Reverse-sustain check: cut note cleanly at <= 50% of written duration (small floor for fast tempos)
+      // Musical staccato: sustain ~half written duration (target 50%: OK 25%..58%, SHORT <25% on long notes, LONG >58%)
       const stacBleed = checkBleed && (tgt.bleedMs > muteGraceSec * 1000 || (stillRingingAtEnd && (endSec - tgt.endSec) > muteGraceSec));
-      if (stacBleed) {
+      if (stacBleed || stillRingingAtEnd || (ratio > 0.58 && heldSec > 0.14)) {
         tgt.sustainStatus = "LONG";
-        tgt.bleedMs = Math.max(tgt.bleedMs, (endSec - tgt.endSec) * 1000);
-        markRestsInRange(tgt.endSec, Math.max(endSec, tgt.endSec + tgt.bleedMs / 1000), "RING");
-      } else if (!stillRingingAtEnd && (ratio <= 0.54 || heldSec <= 0.125)) {
-        tgt.sustainStatus = "OK";
+        if (stacBleed) {
+          tgt.bleedMs = Math.max(tgt.bleedMs, (endSec - tgt.endSec) * 1000);
+          markRestsInRange(tgt.endSec, Math.max(endSec, tgt.endSec + tgt.bleedMs / 1000), "RING");
+        }
+      } else if (expectedSec >= 0.50 && ratio < 0.25) {
+        tgt.sustainStatus = "SHORT";
       } else {
-        tgt.sustainStatus = "LONG";
+        tgt.sustainStatus = "OK";
       }
     } else if (checkBleed && (tgt.bleedMs > muteGraceSec * 1000 || (stillRingingAtEnd && (endSec - tgt.endSec) > muteGraceSec))) {
       tgt.sustainStatus = "LONG";
@@ -3635,7 +3648,13 @@
     const heldSec = Math.max(0, releaseElapsed - tgt.hitTimeSec);
     const ratio = tgt.durSec > 0 ? heldSec / tgt.durSec : 0;
     tgt.sustainRatio = ratio;
-    tgt.sustainStatus = (ratio <= 0.55 || heldSec <= 0.14) ? "OK" : "LONG";
+    if (ratio > 0.58 && heldSec > 0.14) {
+      tgt.sustainStatus = "LONG";
+    } else if (tgt.durSec >= 0.50 && ratio < 0.22) {
+      tgt.sustainStatus = "SHORT";
+    } else {
+      tgt.sustainStatus = "OK";
+    }
     tgt.sustainDone = true;
     app.dirtyScore = true;
   }
