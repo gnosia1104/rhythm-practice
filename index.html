@@ -4240,8 +4240,7 @@
     active: false,
     stream: null,
     source: null,
-    hpFilter: null,
-    lpFilter: null,
+    filters: [],
     splitter: null,
     analysers: [],
     zeroGain: null,
@@ -4249,7 +4248,7 @@
     pollId: null,
     deviceId: "",
     userPickedDevice: false,
-    channelMode: "ALL", // "ALL" or channel index string "0", "1", ...
+    channelMode: "ALL", // "ALL", pair "0-1" / "2-3", or single index "0", "1", "2", "3", ...
     channelCount: 2,
     hotChannel: 0,
     gain: 2,
@@ -4333,13 +4332,22 @@
     allOpt.value = "ALL";
     allOpt.textContent = t("allChannels", chCount);
     sel.appendChild(allOpt);
+    if (chCount >= 4) {
+      for (let i = 0; i + 1 < chCount; i += 2) {
+        const pairOpt = document.createElement("option");
+        pairOpt.value = `${i}-${i + 1}`;
+        pairOpt.textContent = `Ch ${i + 1}-${i + 2}`;
+        sel.appendChild(pairOpt);
+      }
+    }
     for (let i = 0; i < chCount; i++) {
       const opt = document.createElement("option");
       opt.value = String(i);
       opt.textContent = `Ch ${i + 1}`;
       sel.appendChild(opt);
     }
-    if (prev !== "ALL" && Number(prev) < chCount) {
+    const validValues = new Set([...sel.options].map(o => o.value));
+    if (validValues.has(prev)) {
       sel.value = prev;
     } else {
       audioIn.channelMode = "ALL";
@@ -4377,24 +4385,70 @@
         baseConstraints.deviceId = { exact: audioIn.deviceId };
       }
 
-      let stream;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          audio: IS_MOBILE ? baseConstraints : { ...baseConstraints, channelCount: { ideal: 8 } }
-        });
-      } catch (firstErr) {
-        // Fallback if deviceId vanished or channelCount constraint was rejected
+      // Multi-channel negotiation ladder:
+      // 1) Request >=4ch (ideal 16) first so CoreAudio/Chrome opens all 4/6/8/16 channels instead of defaulting to 2ch stereo
+      // 2) Fallback to ideal 2ch for 1-2ch interfaces/mics
+      // 3) Final safe fallback if deviceId vanished or channelCount constraint was rejected
+      let stream = null;
+      const attempts = [
+        { ...baseConstraints, channelCount: { ideal: 16, min: 4 } },
+        { ...baseConstraints, channelCount: { ideal: 2 } },
+      ];
+      let lastErr = null;
+      for (const audioConstraint of attempts) {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraint });
+          break;
+        } catch (err) {
+          lastErr = err;
+          if (err && (err.name === "NotAllowedError" || err.name === "PermissionDeniedError")) {
+            throw err;
+          }
+        }
+      }
+      if (!stream) {
         const fallback = {
           echoCancellation: false,
           noiseSuppression: false,
           autoGainControl: false,
         };
-        if (audioIn.deviceId && firstErr.name !== "OverconstrainedError" && firstErr.name !== "NotFoundError") {
+        if (audioIn.deviceId && lastErr && lastErr.name !== "OverconstrainedError" && lastErr.name !== "NotFoundError") {
           fallback.deviceId = { ideal: audioIn.deviceId };
-        } else if (firstErr.name === "OverconstrainedError" || firstErr.name === "NotFoundError") {
+        } else if (lastErr && (lastErr.name === "OverconstrainedError" || lastErr.name === "NotFoundError")) {
           audioIn.deviceId = "";
         }
         stream = await navigator.mediaDevices.getUserMedia({ audio: fallback });
+      }
+
+      // If hardware reports >2 channels (e.g. 4ch/8ch interface) but track opened with fewer, upgrade explicitly
+      let track = stream.getAudioTracks()[0];
+      let settings = track && track.getSettings ? track.getSettings() : {};
+      const caps = track && track.getCapabilities ? track.getCapabilities() : null;
+      const capMax = caps && caps.channelCount && Number.isFinite(caps.channelCount.max)
+        ? Math.min(16, caps.channelCount.max)
+        : 0;
+      if (capMax > (settings.channelCount || 1)) {
+        try {
+          await track.applyConstraints({ channelCount: { exact: capMax } });
+          settings = track.getSettings ? track.getSettings() : settings;
+        } catch (_) {}
+        if ((settings.channelCount || 1) < capMax) {
+          try {
+            const devId = settings.deviceId || audioIn.deviceId;
+            const exactReq = {
+              echoCancellation: false,
+              noiseSuppression: false,
+              autoGainControl: false,
+              channelCount: { exact: capMax },
+            };
+            if (devId) exactReq.deviceId = { exact: devId };
+            const upgraded = await navigator.mediaDevices.getUserMedia({ audio: exactReq });
+            for (const oldT of stream.getTracks()) oldT.stop();
+            stream = upgraded;
+            track = stream.getAudioTracks()[0];
+            settings = track && track.getSettings ? track.getSettings() : {};
+          } catch (_) {}
+        }
       }
 
       // iOS Safari & Android Chrome often interrupt/suspend AudioContext when getUserMedia switches audio session
@@ -4402,41 +4456,41 @@
         try { await ctx.resume(); } catch (_) {}
       }
 
-      const track = stream.getAudioTracks()[0];
-      const settings = track && track.getSettings ? track.getSettings() : {};
       const source = ctx.createMediaStreamSource(stream);
-      const chCount = Math.max(1, Math.min(8, settings.channelCount || source.channelCount || 1));
+      source.channelInterpretation = "discrete";
+      const chCount = Math.max(1, Math.min(16, settings.channelCount || source.channelCount || 1));
 
-      // Band-limit detector (35Hz..1200Hz) to strip DC offset, amp-sim hiss, and high-freq fret noise
-      const hpFilter = ctx.createBiquadFilter();
-      hpFilter.type = "highpass";
-      hpFilter.frequency.value = 35;
-      const lpFilter = ctx.createBiquadFilter();
-      lpFilter.type = "lowpass";
-      lpFilter.frequency.value = 1200;
-
-      // Split every input channel and pull through a silent 0-gain sink so Chrome/Safari never stall the analyser
+      // Split every input channel FIRST with discrete interpretation (prevents 4ch->2ch surround downmix in Web Audio),
+      // then apply dedicated mono 35Hz..1200Hz bass bandpass + analyser per channel.
       const splitter = ctx.createChannelSplitter(chCount);
+      splitter.channelInterpretation = "discrete";
       const zeroGain = ctx.createGain();
       zeroGain.gain.value = 0;
       zeroGain.connect(ctx.destination);
 
-      source.connect(hpFilter);
-      hpFilter.connect(lpFilter);
-      lpFilter.connect(splitter);
+      source.connect(splitter);
+      const filters = [];
       const analysers = [];
       for (let c = 0; c < chCount; c++) {
+        const hp = ctx.createBiquadFilter();
+        hp.type = "highpass";
+        hp.frequency.value = 35;
+        const lp = ctx.createBiquadFilter();
+        lp.type = "lowpass";
+        lp.frequency.value = 1200;
         const an = ctx.createAnalyser();
         an.fftSize = 1024;
-        splitter.connect(an, c);
+        splitter.connect(hp, c);
+        hp.connect(lp);
+        lp.connect(an);
         an.connect(zeroGain);
+        filters.push(hp, lp);
         analysers.push(an);
       }
 
       audioIn.stream = stream;
       audioIn.source = source;
-      audioIn.hpFilter = hpFilter;
-      audioIn.lpFilter = lpFilter;
+      audioIn.filters = filters;
       audioIn.splitter = splitter;
       audioIn.analysers = analysers;
       audioIn.zeroGain = zeroGain;
@@ -4492,8 +4546,7 @@
       audioIn.pollId = null;
     }
     if (audioIn.source) { try { audioIn.source.disconnect(); } catch (_) {} }
-    if (audioIn.hpFilter) { try { audioIn.hpFilter.disconnect(); } catch (_) {} }
-    if (audioIn.lpFilter) { try { audioIn.lpFilter.disconnect(); } catch (_) {} }
+    for (const flt of (audioIn.filters || [])) { try { flt.disconnect(); } catch (_) {} }
     if (audioIn.splitter) { try { audioIn.splitter.disconnect(); } catch (_) {} }
     for (const an of audioIn.analysers) { try { an.disconnect(); } catch (_) {} }
     if (audioIn.zeroGain) { try { audioIn.zeroGain.disconnect(); } catch (_) {} }
@@ -4502,8 +4555,7 @@
     }
     audioIn.stream = null;
     audioIn.source = null;
-    audioIn.hpFilter = null;
-    audioIn.lpFilter = null;
+    audioIn.filters = [];
     audioIn.splitter = null;
     audioIn.analysers = [];
     audioIn.zeroGain = null;
@@ -4551,18 +4603,23 @@
     let best = null;
     let bestCh = 0;
 
+    let chIndices;
     if (audioIn.channelMode === "ALL") {
-      for (let c = 0; c < audioIn.analysers.length; c++) {
-        const m = measureAnalyser(audioIn.analysers[c], audioIn.buf);
-        if (!best || m.level > best.level) {
-          best = m;
-          bestCh = c;
-        }
-      }
+      chIndices = audioIn.analysers.map((_, i) => i);
+    } else if (String(audioIn.channelMode).includes("-")) {
+      const [a, b] = String(audioIn.channelMode).split("-").map(Number);
+      chIndices = [a, b].filter(i => Number.isFinite(i) && i >= 0 && i < audioIn.analysers.length);
+      if (!chIndices.length) chIndices = [0];
     } else {
       const idx = Math.min(audioIn.analysers.length - 1, Math.max(0, Number(audioIn.channelMode) || 0));
-      best = measureAnalyser(audioIn.analysers[idx], audioIn.buf);
-      bestCh = idx;
+      chIndices = [idx];
+    }
+    for (const c of chIndices) {
+      const m = measureAnalyser(audioIn.analysers[c], audioIn.buf);
+      if (!best || m.level > best.level) {
+        best = m;
+        bestCh = c;
+      }
     }
 
     const level = best.level * audioIn.gain;
