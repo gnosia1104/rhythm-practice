@@ -719,6 +719,41 @@
   .rank-pill.rank-b  { background: #f3f4f6; color: #374151; border: 1px solid #cbd5e1; }
   .rank-pill.rank-c  { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
 
+  .score-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .meta-max-pill {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #1d4ed8;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    padding: 1px 7px;
+    border-radius: 999px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    cursor: help;
+  }
+
+  .log-score {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-weight: 700;
+    color: var(--ink);
+  }
+
   /* PDF Sheet Music Paper */
   .sheet-paper {
     background: var(--paper-bg);
@@ -1918,6 +1953,7 @@
       <div class="sheet-meta sheet-meta-left">
         <span id="metaTempo">♩ = 60</span>
         <span id="metaLevel">4/4 · Lv1 Quarter &amp; Rest Basics</span>
+        <span id="metaMaxScore" class="meta-max-pill" title="현재 악보·옵션 기준 이론상 만점">Max 0</span>
       </div>
       <div class="sheet-meta sheet-meta-right">
         <span id="metaSeed">Seed #0000</span>
@@ -1952,6 +1988,7 @@
       <svg id="distSvg" class="dist-svg" viewBox="0 0 380 64"></svg>
       <div class="result-actions">
         <span id="rankBadge" class="rank-pill hidden">S</span>
+        <span id="scoreBadge" class="score-pill hidden">0 / 0</span>
         <div id="summaryLine" style="font-size:12px;color:var(--muted);flex:1;min-width:0;">연주를 마치면 타이밍 분포가 표시됩니다.</div>
         <div class="result-btns">
           <button id="btnShareResult" type="button" class="hidden">📋 텍스트 자랑</button>
@@ -3142,6 +3179,7 @@
           }
           if (ev.tiedIn && targets.length) {
             targets[targets.length - 1].durSlots += ev.dur;
+            targets[targets.length - 1].tied = true;
           } else if (!ev.tiedIn) {
             targets.push({
               bar: bIdx,
@@ -3150,6 +3188,8 @@
               globalSlot,
               durSlots: ev.dur,
               art: ev.art || null,
+              tuplet: ev.tuplet || null,
+              tied: Boolean(ev.tiedOut),
               timeSec: 0,
               hit: false,
               missed: false,
@@ -5166,6 +5206,118 @@
     return flags.length ? `${inp} · ${flags.join(" · ")}` : inp;
   }
 
+  // -------------------------------------------------------------------------
+  // Difficulty-Weighted Precision Scoring Engine (Chart Max + Mod + Groove)
+  // -------------------------------------------------------------------------
+  const METER_SCORE_MULT = { "4/4": 1.00, "2/4": 1.05, "3/4": 1.05, "6/8": 1.12, "5/4": 1.22 };
+
+  function getNoteDifficultyWeight(tgt, prevTgt) {
+    const slot = tgt.slotInBeat || 0;
+    const dur = tgt.durSlots || 12;
+    let w = 1.0;
+    if (tgt.tuplet === "4t" || dur === 8) {
+      w = 1.85;
+    } else if (tgt.tuplet === "8t" || dur === 4 || slot === 4 || slot === 8) {
+      w = 1.55;
+    } else if (slot % 6 !== 0 && slot % 4 !== 0) {
+      // 16th-note off-beat ("e" or "a")
+      w = 2.00;
+    } else if (dur === 3 || dur === 9) {
+      // 16th-note on-beat or dotted-8th
+      w = 1.65;
+    } else if (slot === 6 || tgt.tied || dur === 18) {
+      // 8th off-beat / syncopation / cross-beat tie / dotted quarter
+      w = 1.45;
+    } else if (dur === 6) {
+      // Straight on-beat 8th
+      w = 1.15;
+    } else {
+      // Quarter / half / whole on-beat
+      w = 1.00;
+    }
+    if (tgt.art === "staccato") w += 0.25;
+    else if (tgt.art === "ghost") w += 0.30;
+    // Rest-to-note re-entry difficulty bonus
+    const hasRestBefore = prevTgt
+      ? (tgt.globalSlot > prevTgt.globalSlot + prevTgt.durSlots)
+      : (tgt.globalSlot > 0);
+    if (hasRestBefore) w += 0.15;
+    return w;
+  }
+
+  function computeChartMaxInfo(phrase = app.phrase, cfg = null) {
+    const c = cfg || {
+      timeSig: app.timeSig,
+      bpm: app.bpm,
+      inputMode: app.inputMode,
+      soundOn: app.soundOn,
+      showBeatNums: app.showBeatNums,
+      showCursor: app.showCursor,
+      blindGrade: app.blindGrade,
+      gapClick: app.gapClick,
+      fadeBeats: app.fadeBeats,
+    };
+    const tgts = (phrase && phrase.targets) ? phrase.targets : [];
+    const weights = tgts.map((t, i) => getNoteDifficultyWeight(t, i > 0 ? tgts[i - 1] : null));
+    const rawWeightSum = weights.reduce((a, b) => a + b, 0);
+    const meterMult = METER_SCORE_MULT[c.timeSig] || 1.0;
+    // Logarithmic BPM curve: musical groove focus (no reward for sloppy 180 BPM farming, no penalty for slow 40-60 BPM)
+    const bpmMult = 1 + 0.28 * Math.log(Math.max(60, c.bpm || 60) / 60);
+
+    let modMult = 1.0;
+    const modTags = [];
+    if (c.inputMode === "AUDIO" || c.inputMode === "BOTH") { modMult *= 1.15; modTags.push("AUD ×1.15"); }
+    if (c.showBeatNums) { modMult *= 0.94; modTags.push("+B ×0.94"); }
+    if (c.showCursor) { modMult *= 0.90; modTags.push("+C ×0.90"); }
+    if (c.blindGrade) { modMult *= 1.05; modTags.push("Blind ×1.05"); }
+    if (c.gapClick === "1+1") { modMult *= 1.08; modTags.push("Gap1+1 ×1.08"); }
+    else if (c.gapClick === "2+2") { modMult *= 1.10; modTags.push("Gap2+2 ×1.10"); }
+    else if (c.gapClick === "1+3") { modMult *= 1.18; modTags.push("Gap1+3 ×1.18"); }
+    else if (c.soundOn === false) { modMult *= 1.12; modTags.push("M× ×1.12"); }
+    if (c.fadeBeats === 1) { modMult *= 1.08; modTags.push("Fade1b ×1.08"); }
+    else if (c.fadeBeats === 2) { modMult *= 1.15; modTags.push("Fade2b ×1.15"); }
+
+    const unitScale = 100 * meterMult * bpmMult * modMult;
+    const baseMax = Math.round(rawWeightSum * 100 * meterMult * bpmMult);
+    const maxScore = Math.round(rawWeightSum * unitScale);
+    return { weights, rawWeightSum, meterMult, bpmMult, modMult, modTags, unitScale, baseMax, maxScore };
+  }
+
+  function computeAttackPrecision(absMs) {
+    // Musician-friendly forgiving pocket curve:
+    // <=18ms: 100% | 18..35ms: 100%->92% | 35..60ms: 92%->74% | 60..80ms: 74%->56% | >80ms: 56%->25%
+    const ae = Math.max(0, Number(absMs) || 0);
+    if (ae <= 18) return 1.0;
+    if (ae <= 35) return 1.0 - ((ae - 18) / 17) * 0.08;
+    if (ae <= 60) return 0.92 - ((ae - 35) / 25) * 0.18;
+    if (ae <= 80) return 0.74 - ((ae - 60) / 20) * 0.18;
+    return Math.max(0.25, 0.56 - ((ae - 80) / 70) * 0.31);
+  }
+
+  function computeDetailedScore(phrase, hits, total, sd, extraHits, restErrs) {
+    const info = computeChartMaxInfo(phrase);
+    if (!total || !info.maxScore) {
+      return { score: 0, maxScore: info.maxScore, pct: 0, penalty: 0, sdBonus: 0, info };
+    }
+    let rawEarned = 0;
+    for (let i = 0; i < phrase.targets.length; i++) {
+      const tgt = phrase.targets[i];
+      if (!tgt.hit || tgt.errMs === null) continue;
+      let ratio = computeAttackPrecision(Math.abs(tgt.errMs));
+      if (tgt.sustainStatus === "SHORT") ratio *= 0.85;
+      else if (tgt.sustainStatus === "LONG") ratio *= 0.72;
+      rawEarned += info.weights[i] * info.unitScale * ratio;
+    }
+    const avgNotePts = info.maxScore / total;
+    const penalty = Math.round(restErrs * avgNotePts * 0.55 + extraHits * avgNotePts * 0.35);
+    const sdBonus = (hits >= Math.ceil(total * 0.8) && sd <= 20)
+      ? Math.round(((20 - sd) / 20) * 0.02 * info.maxScore)
+      : 0;
+    const score = Math.max(0, Math.min(info.maxScore, Math.round(rawEarned + sdBonus - penalty)));
+    const pct = (score / info.maxScore) * 100;
+    return { score, maxScore: info.maxScore, pct, penalty, sdBonus, info };
+  }
+
   function computeScoreRank(r) {
     if (!r || !r.total) return { grade: "C", cls: "rank-c", color: "#ef4444" };
     const acc = (r.hits / r.total) * 100;
@@ -5220,7 +5372,8 @@
     const susTxt = (r.sustainStats && r.sustainStats.total > 0)
       ? ` · Sus ${Math.round((r.sustainStats.ok / r.sustainStats.total) * 100)}%`
       : "";
-    const stat = `🏅 Rank ${rank.grade} · ${r.hits}/${r.total} (${pct}%) · TIGHT ${r.tight}${r.hits ? ` · Mean ${sign}${r.mean.toFixed(1)}ms` : ""}${susTxt}`;
+    const scoreTxt = (r.maxScore > 0) ? ` · 🎯 ${r.score.toLocaleString()}/${r.maxScore.toLocaleString()}` : "";
+    const stat = `🏅 Rank ${rank.grade}${scoreTxt} · ${r.hits}/${r.total} (${pct}%) · TIGHT ${r.tight}${r.hits ? ` · Mean ${sign}${r.mean.toFixed(1)}ms` : ""}${susTxt}`;
     const grades = r.noteGrades || [];
     const emojis = grades.map(g => g === "tight" ? "🟩" : (g === "ok" ? "🟨" : "🟥"));
     const rows = [];
@@ -5325,10 +5478,15 @@
     c.fillStyle = "#94a3b8";
     c.font = '700 16px -apple-system, sans-serif';
     c.textAlign = "center";
-    c.fillText("RANK", 174, 208);
+    c.fillText("RANK", 174, 202);
     c.fillStyle = rank.color;
-    c.font = '800 108px ui-monospace, Menlo, Consolas, monospace';
-    c.fillText(rank.grade, 174, 326, 200);
+    c.font = '800 96px ui-monospace, Menlo, Consolas, monospace';
+    c.fillText(rank.grade, 174, 304, 200);
+    if (r.maxScore > 0) {
+      c.fillStyle = "#e2e8f0";
+      c.font = '700 17px ui-monospace, Menlo, Consolas, monospace';
+      c.fillText(`${r.score.toLocaleString()} / ${r.maxScore.toLocaleString()}`, 174, 352, 200);
+    }
     c.textAlign = "left";
 
     // Right Metrics Grid (4 clean stat tiles)
@@ -5781,6 +5939,7 @@
     const sustainStats = { total: susTotal, ok: susOk, short: susShort, long: susLong, restErrs };
 
     const rankNow = computeScoreRank({ hits, total, tight, sustainStats });
+    const scoreDetail = computeDetailedScore(app.phrase, hits, total, sd, app.extraHits, restErrs);
     app.history.unshift({
       take: app.takeId,
       tsIso: new Date().toISOString(),
@@ -5807,6 +5966,8 @@
       rushOn: app.rushOn,
       rank: rankNow.grade,
       rankCls: rankNow.cls,
+      score: scoreDetail.score,
+      maxScore: scoreDetail.maxScore,
       hits, total, acc, tight, mean, sd, extra: app.extraHits, restErrs,
       susTotal, susOk,
     });
@@ -5824,6 +5985,8 @@
       errs, hits, total, mean, sd, tight,
       extra: app.extraHits,
       sustainStats,
+      score: scoreDetail.score,
+      maxScore: scoreDetail.maxScore,
       noteGrades: app.phrase.targets.map(tgt => {
         if (!tgt.hit || tgt.errMs === null) return "miss";
         const ae = Math.abs(tgt.errMs);
@@ -5849,6 +6012,13 @@
     const rankEl = document.getElementById("rankBadge");
     rankEl.textContent = rank.grade;
     rankEl.className = `rank-pill ${rank.cls}`;
+    const scoreEl = document.getElementById("scoreBadge");
+    scoreEl.textContent = `${scoreDetail.score.toLocaleString()} / ${scoreDetail.maxScore.toLocaleString()}`;
+    const sdTip = scoreDetail.sdBonus > 0 ? ` · SD +${scoreDetail.sdBonus}` : "";
+    const penTip = scoreDetail.penalty > 0 ? ` · Pen -${scoreDetail.penalty}` : "";
+    const modTipStr = scoreDetail.info.modTags.length ? ` · ${scoreDetail.info.modTags.join(", ")}` : "";
+    scoreEl.title = `Score ${scoreDetail.pct.toFixed(1)}% (Meter ×${scoreDetail.info.meterMult.toFixed(2)} · BPM ×${scoreDetail.info.bpmMult.toFixed(2)}${modTipStr}${sdTip}${penTip})`;
+    scoreEl.classList.remove("hidden");
     document.getElementById("btnShareResult").classList.remove("hidden");
     document.getElementById("btnBragCard").classList.remove("hidden");
     renderLog();
@@ -5978,9 +6148,13 @@
         ? { grade: h.rank, cls: h.rankCls || "rank-b" }
         : computeScoreRank({ hits: h.hits, total: h.total, tight: h.tight, sustainStats: { total: h.susTotal || 0, ok: h.susOk || 0, restErrs: h.restErrs || 0 } });
       const extStr = (h.restErrs && h.restErrs > 0) ? `${h.extra}/${h.restErrs}r` : `${h.extra}`;
+      const scoreCell = Number.isFinite(h.score)
+        ? `<td class="log-score" title="${h.score.toLocaleString()} / ${(h.maxScore || 0).toLocaleString()} pts">${h.score.toLocaleString()}</td>`
+        : `<td class="log-score">—</td>`;
       return `<tr>
         <td>#${h.take}</td>
         <td><span class="log-rank ${rk.cls}">${rk.grade}</span></td>
+        ${scoreCell}
         <td class="log-lv${canReplay ? " replayable" : ""}"${canReplay ? ` data-replay-idx="${idx}"` : ""} title="${lvTip}">${lvLabel}</td>
         <td>${h.bpm}</td>
         <td title="${modTip}">${modStr}</td>
@@ -5993,7 +6167,7 @@
       </tr>`;
     }).join("");
     box.innerHTML = `<table class="log-table">
-      <thead><tr><th>#</th><th>Rank</th><th>Lv</th><th>BPM</th><th>Opt</th><th>Hit</th><th>Tight</th><th>Sus</th><th>Mean</th><th>SD</th><th>Ext</th></tr></thead>
+      <thead><tr><th>#</th><th>Rank</th><th>Score</th><th>Lv</th><th>BPM</th><th>Opt</th><th>Hit</th><th>Tight</th><th>Sus</th><th>Mean</th><th>SD</th><th>Ext</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
   }
@@ -6038,6 +6212,11 @@
       document.getElementById("metaLevel").textContent = `${app.timeSig} · ${baseTitle} · [${playMods}]`;
       document.getElementById("metaSeed").textContent = `#${currentFullSeedCode()}`;
     }
+    const chartMax = computeChartMaxInfo(app.phrase);
+    const maxEl = document.getElementById("metaMaxScore");
+    maxEl.textContent = `Max ${chartMax.maxScore.toLocaleString()}`;
+    const modDesc = chartMax.modTags.length ? ` · ${chartMax.modTags.join(", ")}` : "";
+    maxEl.title = `Chart Max: ${chartMax.maxScore.toLocaleString()} pts (Notes × Meter ×${chartMax.meterMult.toFixed(2)} · Log BPM ×${chartMax.bpmMult.toFixed(2)}${modDesc})`;
     document.getElementById("btnDaily").classList.toggle("active", Boolean(app.dailyDate && !app.dailyPlus));
     document.getElementById("btnDailyPlus").classList.toggle("active", Boolean(app.dailyDate && app.dailyPlus));
     document.getElementById("levelSelect").value = String(app.level);
