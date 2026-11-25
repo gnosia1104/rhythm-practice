@@ -1414,10 +1414,10 @@
       edUrlCopied: "커스텀 악보 공유 링크가 클립보드에 복사되었습니다!",
       edSeedCopied: "현재 악보 공유 링크(시드+설정)가 클립보드에 복사되었습니다!",
       edLoadedOk: "커스텀 악보를 불러왔습니다! Enter로 바로 연주해 보세요.",
-      edSeedLoadedOk: (s) => `시드 #${s} 악보를 불러왔습니다! Enter로 바로 연주해 보세요.`,
-      edLoadFail: "유효하지 않은 시드/코드/링크입니다. 4자리 시드(#A1B2), 커스텀 코드(C1_...), 또는 공유 URL을 입력하세요.",
-      seedPrompt: "불러올 시드 번호(예: A1B2), 커스텀 코드(C1_...), 또는 공유 URL을 입력하세요:",
-      seedTooltip: "클릭해서 시드 번호(#A1B2) 또는 공유 링크 직접 입력",
+      edSeedLoadedOk: (s) => `시드 ${s} (박자·난이도·마디수·BPM 포함) 불러오기 완료!`,
+      edLoadFail: "유효하지 않은 시드/코드/링크입니다. 시드 코드(예: 44-L4SG-4B-80-A1B2), 커스텀 코드(C1_...), 또는 공유 URL을 입력하세요.",
+      seedPrompt: "불러올 시드 코드(예: 44-L4SG-4B-80-A1B2), 커스텀 코드(C1_...), 또는 공유 URL을 입력하세요:",
+      seedTooltip: "클릭해서 시드 코드 복사/입력 (박자·난이도·마디수·BPM 전부 포함)",
       dailyLoaded: (date, streak, isPlus) => `${isPlus ? "🔥 오늘의 데일리+" : "🏆 오늘의 데일리"} (${date})${streak > 0 ? ` · 연속 ${streak}일` : ""}`,
       dailyBest: (acc, tight) => `오늘 최고: ${acc}% (TIGHT ${tight})`,
       resultCopied: "✓ 결과 복사됨!",
@@ -1610,10 +1610,10 @@
       edUrlCopied: "Custom score link copied to clipboard!",
       edSeedCopied: "Shareable score link (seed + settings) copied to clipboard!",
       edLoadedOk: "Custom score loaded! Press Enter to play.",
-      edSeedLoadedOk: (s) => `Seed #${s} loaded! Press Enter to play.`,
-      edLoadFail: "Invalid seed, custom code, or URL. Enter a 4-char hex seed (#A1B2), C1_... code, or shared URL.",
-      seedPrompt: "Enter a Seed (e.g. A1B2), Custom Code (C1_...), or Shared URL:",
-      seedTooltip: "Click to load a specific Seed (#A1B2) or shared link",
+      edSeedLoadedOk: (s) => `Loaded ${s} (meter, level, bars, BPM & toggles synced)!`,
+      edLoadFail: "Invalid seed, custom code, or URL. Enter a seed code (e.g. 44-L4SG-4B-80-A1B2), C1_... code, or shared URL.",
+      seedPrompt: "Enter a Seed Code (e.g. 44-L4SG-4B-80-A1B2), Custom Code (C1_...), or Shared URL:",
+      seedTooltip: "Click to copy or load a full Seed Code (includes meter, level, bars & BPM)",
       dailyLoaded: (date, streak, isPlus) => `${isPlus ? "🔥 Daily+" : "🏆 Daily"} Challenge (${date})${streak > 0 ? ` · ${streak}-day streak` : ""}`,
       dailyBest: (acc, tight) => `Today's best: ${acc}% (TIGHT ${tight})`,
       resultCopied: "✓ Copied!",
@@ -1806,10 +1806,10 @@
       edUrlCopied: "カスタム譜面の共有URLをコピーしました！",
       edSeedCopied: "現在の譜面URL（シード＋設定）をコピーしました！",
       edLoadedOk: "カスタム譜面を読み込みました！Enterで演奏できます。",
-      edSeedLoadedOk: (s) => `シード #${s} を読み込みました！Enterで演奏できます。`,
-      edLoadFail: "無効なシード／コード／URLです。4桁シード(#A1B2)・C1_コード・共有URLを確認してください。",
-      seedPrompt: "読み込むシード番号（例: A1B2）、カスタムコード（C1_...）、または共有URLを入力:",
-      seedTooltip: "クリックしてシード番号(#A1B2)や共有URLを直接入力",
+      edSeedLoadedOk: (s) => `シード ${s}（拍子・難易度・小節数・BPM含む）を読み込みました！`,
+      edLoadFail: "無効なシード／コード／URLです。シードコード（例: 44-L4SG-4B-80-A1B2）・C1_コード・共有URLを確認してください。",
+      seedPrompt: "シードコード（例: 44-L4SG-4B-80-A1B2）、カスタムコード（C1_...）、または共有URLを入力:",
+      seedTooltip: "クリックしてシードコードをコピー／入力（拍子・難易度・小節数・BPMすべて含む）",
       dailyLoaded: (date, streak, isPlus) => `${isPlus ? "🔥 デイリー+" : "🏆 デイリー"} (${date})${streak > 0 ? ` · ${streak}日連続` : ""}`,
       dailyBest: (acc, tight) => `本日のベスト: ${acc}% (TIGHT ${tight})`,
       resultCopied: "✓ コピー済!",
@@ -2362,6 +2362,37 @@
     } catch (_) {
       return null;
     }
+  }
+
+  // Self-contained Full Seed Code: e.g. "44-L4T1SG-8B-80-A1B2"
+  // Encodes meter, level, T1/T2/S/G toggles, bar count, BPM, and 4-hex RNG seed in one short string
+  function encodeFullSeedCode(cfg) {
+    const tsCode = TS_TO_CODE[cfg.timeSig] || "44";
+    const ts = TIME_SIGS[cfg.timeSig] || TIME_SIGS["4/4"];
+    const effTri = (!ts.compound && cfg.level >= 2) ? (Number(cfg.tripletMode) || 0) : 0;
+    const tTag = effTri === 2 ? "T2" : (effTri === 1 ? "T1" : "");
+    const flags = `${tTag}${cfg.staccatoOn ? "S" : ""}${cfg.ghostOn ? "G" : ""}`;
+    const hex = (Number(cfg.seed) >>> 0).toString(16).toUpperCase().padStart(4, "0");
+    return `${tsCode}-L${cfg.level}${flags}-${cfg.numBars}B-${Math.round(cfg.bpm)}-${hex}`;
+  }
+
+  function decodeFullSeedCode(raw) {
+    if (!raw || typeof raw !== "string") return null;
+    const s = raw.trim().replace(/^seed\s*/i, "").replace(/^#/, "").toUpperCase();
+    const m = s.match(/^(44|34|24|54|68)-L([1-6])(T[12])?(S)?(G)?-(\d{1,2})B-(\d{2,3})-([0-9A-F]{1,8})$/);
+    if (!m) return null;
+    const timeSig = CODE_TO_TS[m[1]];
+    const level = Number(m[2]);
+    const tripletMode = m[3] === "T2" ? 2 : (m[3] === "T1" ? 1 : 0);
+    const staccatoOn = Boolean(m[4]);
+    const ghostOn = Boolean(m[5]);
+    const numBars = Number(m[6]);
+    const bpm = Number(m[7]);
+    const seed = parseInt(m[8], 16);
+    if (!timeSig || !BAR_OPTIONS.includes(numBars) || bpm < 40 || bpm > 140 || !Number.isFinite(seed) || seed <= 0) {
+      return null;
+    }
+    return { timeSig, level, tripletMode, staccatoOn, ghostOn, numBars, bpm, seed };
   }
 
   // Deterministic Daily Challenge (same 8-bar score worldwide per calendar date YYYY-MM-DD)
@@ -4016,6 +4047,19 @@
     } catch (_) {}
   }
 
+  function currentFullSeedCode() {
+    return encodeFullSeedCode({
+      timeSig: app.timeSig,
+      level: app.level,
+      tripletMode: app.tripletMode,
+      staccatoOn: app.staccatoOn,
+      ghostOn: app.ghostOn,
+      numBars: app.numBars,
+      bpm: app.bpm,
+      seed: app.phrase ? app.phrase.seed : 0x1000,
+    });
+  }
+
   function buildShareUrl() {
     const base = location.protocol === "file:"
       ? "https://gnosia1104.github.io/rhythm-practice/"
@@ -4027,15 +4071,7 @@
     } else if (app.dailyDate) {
       qs.set(app.dailyPlus ? "dailyplus" : "daily", app.dailyDate);
     } else {
-      qs.set("ts", app.timeSig);
-      qs.set("lv", String(app.level));
-      qs.set("b", String(app.numBars));
-      qs.set("bpm", String(app.bpm));
-      const effTri = tripletsAllowed() ? app.tripletMode : 0;
-      if (effTri) qs.set("t", String(effTri));
-      if (app.staccatoOn) qs.set("s", "1");
-      if (app.ghostOn) qs.set("g", "1");
-      qs.set("seed", app.phrase.seed.toString(16).toUpperCase().padStart(4, "0"));
+      qs.set("seed", currentFullSeedCode());
     }
     return `${base}?${qs.toString()}`;
   }
@@ -4073,7 +4109,7 @@
       ? `🎸 Rhythm Sight-Reader — ${app.dailyPlus ? "🔥 Daily+" : "🏆 Daily"} ${app.dailyDate}`
       : (app.customMode
         ? `🎸 Rhythm Sight-Reader — ✏️ Custom Score`
-        : `🎸 Rhythm Sight-Reader — Seed #${app.phrase.seed.toString(16).toUpperCase().padStart(4, "0")}`);
+        : `🎸 Rhythm Sight-Reader — #${currentFullSeedCode()}`);
     const meta = app.customMode
       ? `${app.timeSig} · ${app.numBars} bars · ${app.bpm} BPM · ${app.inputMode}`
       : `${app.timeSig} · Lv${app.level}${lvFlags} · ${app.bpm} BPM · ${app.inputMode}`;
@@ -4584,7 +4620,7 @@
       document.getElementById("metaSeed").textContent = `${app.dailyPlus ? "Daily+" : "Daily"} #${app.phrase.seed.toString(16).toUpperCase().padStart(4, "0")}`;
     } else {
       document.getElementById("metaLevel").textContent = `${app.timeSig} · ${baseTitle}`;
-      document.getElementById("metaSeed").textContent = `Seed #${app.phrase.seed.toString(16).toUpperCase().padStart(4, "0")}`;
+      document.getElementById("metaSeed").textContent = `#${currentFullSeedCode()}`;
     }
     document.getElementById("btnDaily").classList.toggle("active", Boolean(app.dailyDate && !app.dailyPlus));
     document.getElementById("btnDailyPlus").classList.toggle("active", Boolean(app.dailyDate && app.dailyPlus));
@@ -5807,6 +5843,21 @@
     }
   });
 
+  function applyFullSeedObj(cfg) {
+    app.timeSig = cfg.timeSig;
+    app.level = cfg.level;
+    app.tripletMode = cfg.tripletMode;
+    app.staccatoOn = cfg.staccatoOn;
+    app.ghostOn = cfg.ghostOn;
+    app.numBars = cfg.numBars;
+    app.bpm = cfg.bpm;
+    toggleEditorBar(false);
+    newPhrase(cfg.seed, false);
+    const full = currentFullSeedCode();
+    setHitBadge(`#${full}`, "tight");
+    return full;
+  }
+
   function applySeedQueryParams(params) {
     const customParam = params.get("custom");
     if (customParam) {
@@ -5828,6 +5879,13 @@
     }
     const seedParam = params.get("seed");
     if (seedParam) {
+      // Support self-contained full seed code: ?seed=44-L4SG-8B-80-A1B2
+      const fullCfg = decodeFullSeedCode(seedParam);
+      if (fullCfg) {
+        applyFullSeedObj(fullCfg);
+        return true;
+      }
+      // Backward compatibility: legacy ?ts=4/4&lv=4&b=4&bpm=80&seed=A1B2
       const tsP = params.get("ts");
       if (tsP && TIME_SIGS[tsP]) app.timeSig = tsP;
       const lvP = Number(params.get("lv"));
@@ -5845,7 +5903,7 @@
       if (/^[0-9a-fA-F]{1,8}$/.test(cleanHex) && Number.isFinite(parsedSeed) && parsedSeed > 0) {
         toggleEditorBar(false);
         newPhrase(parsedSeed, false);
-        setHitBadge(`Seed #${parsedSeed.toString(16).toUpperCase().padStart(4, "0")}`, "tight");
+        setHitBadge(`#${currentFullSeedCode()}`, "tight");
         return true;
       }
     }
@@ -5873,32 +5931,43 @@
       return true;
     }
 
-    // 2. Try full share URL (?seed=... / ?daily=... / ?dailyplus=...)
+    // 2. Try self-contained full seed code (e.g. "44-L4T1SG-8B-80-A1B2") — syncs ALL settings!
+    const fullCfg = decodeFullSeedCode(trimmed);
+    if (fullCfg) {
+      const fullStr = applyFullSeedObj(fullCfg);
+      if (msgEl) {
+        msgEl.style.color = "var(--green)";
+        msgEl.textContent = t("edSeedLoadedOk", "#" + fullStr);
+      }
+      return true;
+    }
+
+    // 3. Try full share URL (?seed=... / ?daily=... / ?dailyplus=...)
     if (trimmed.includes("seed=") || trimmed.includes("daily=") || trimmed.includes("dailyplus=")) {
       try {
         const u = new URL(trimmed.startsWith("http") ? trimmed : "https://x.local/?" + trimmed.replace(/^\?/, ""));
         if (applySeedQueryParams(u.searchParams)) {
           if (msgEl) {
             msgEl.style.color = "var(--green)";
-            msgEl.textContent = t("edSeedLoadedOk", app.phrase.seed.toString(16).toUpperCase().padStart(4, "0"));
+            msgEl.textContent = t("edSeedLoadedOk", "#" + currentFullSeedCode());
           }
           return true;
         }
       } catch (_) {}
     }
 
-    // 3. Try bare hex seed (e.g. "A1B2", "#A1B2", "Seed #A1B2")
+    // 4. Try bare hex seed (e.g. "A1B2", "#A1B2") using current settings
     const seedMatch = trimmed.match(/^(?:seed\s*)?#?([0-9a-fA-F]{1,8})$/i);
     if (seedMatch) {
       const parsedSeed = parseInt(seedMatch[1], 16);
       if (Number.isFinite(parsedSeed) && parsedSeed > 0) {
         toggleEditorBar(false);
         newPhrase(parsedSeed, false);
-        const hexStr = parsedSeed.toString(16).toUpperCase().padStart(4, "0");
-        setHitBadge(`Seed #${hexStr}`, "tight");
+        const fullStr = currentFullSeedCode();
+        setHitBadge(`#${fullStr}`, "tight");
         if (msgEl) {
           msgEl.style.color = "var(--green)";
-          msgEl.textContent = t("edSeedLoadedOk", hexStr);
+          msgEl.textContent = t("edSeedLoadedOk", "#" + fullStr);
         }
         return true;
       }
@@ -5914,7 +5983,7 @@
   document.getElementById("metaSeed").addEventListener("click", () => {
     const curVal = app.customMode && app.phrase.customCode
       ? app.phrase.customCode
-      : app.phrase.seed.toString(16).toUpperCase().padStart(4, "0");
+      : currentFullSeedCode();
     const entered = window.prompt(t("seedPrompt"), curVal);
     if (entered === null || !entered.trim()) return;
     if (!loadCustomFromInput(entered)) {
