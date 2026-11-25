@@ -1389,6 +1389,36 @@
     opacity: 0.02;
   }
 
+  /* 3-Way Input Toggle Group (⌨️ 키 · 🎤 오디오 · 👆 패드) */
+  .input-toggles {
+    display: inline-flex;
+    align-items: center;
+    background: #f4f4f5;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 2px;
+    gap: 2px;
+  }
+
+  .input-toggles button {
+    border: none;
+    background: transparent;
+    border-radius: 7px;
+    padding: 4px 9px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .input-toggles button:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.7);
+    color: var(--ink);
+  }
+
+  .input-toggles button.active {
+    background: #171717;
+    color: #ffffff;
+  }
+
   /* Toolbar Categorized Dropdowns (🎼 리듬 옵션 · ⚙️ 연습 옵션 · ⋯ 도구) */
   .tools-wrap {
     position: relative;
@@ -1668,8 +1698,11 @@
       <div class="divider"></div>
 
       <div class="group">
-        <button id="btnInputMode" title="i">입력: KEY</button>
-        <button id="btnTouchPad" title="모바일 투핑거 터치 패드">👆 패드</button>
+        <div id="inputGroup" class="input-toggles" role="group" aria-label="Input methods">
+          <button id="btnInKey" type="button" class="active" title="키보드 입력 ON/OFF (Space/J/K · 단축키 i)">⌨️ 키</button>
+          <button id="btnInAudio" type="button" title="오디오 인터페이스 / 마이크 입력 ON/OFF (단축키 i)">🎤 오디오</button>
+          <button id="btnTouchPad" type="button" title="모바일 / 화면 터치 패드 ON/OFF">👆 패드</button>
+        </div>
         <div id="toolsWrap" class="tools-wrap">
           <button id="btnToolsMenu" type="button" aria-haspopup="true" aria-expanded="false" title="에디터 · 특수훈련 · 싱크보정 · PDF · 튜토리얼 · 설명"><span id="btnToolsText">⋯ 도구</span><span id="toolsActiveDot" class="tools-dot hidden"></span></button>
           <div id="toolsDropdown" class="tools-dropdown hidden" role="menu">
@@ -2000,6 +2033,8 @@
       gradeLive: "채점: 즉시",
       gradeEnd: "채점: 완료후",
       inputPrefix: "입력",
+      btnInKey: "⌨️ 키",
+      btnInAudio: "🎤 오디오",
       btnPad: "👆 패드",
       btnPrint: "🖨 PDF",
       btnSyncCal: "⏱ 보정",
@@ -2032,7 +2067,7 @@
           body: "Lv1 정박 기초부터 Lv6 16분음표 심화까지 단계별로 연습하고, 3연음 · • 스타카토(짧게 끊기) · × 고스트 노트(F/D 키)와 4/4·3/4·2/4·5/4·6/8 박자표를 자유롭게 조합할 수 있습니다.",
         },
         {
-          target: "#btnInputMode",
+          target: "#inputGroup",
           title: "🎤 키보드 · 터치 패드 · 실제 베이스 연결",
           body: "입력: KEY / AUDIO / BOTH 전환으로 오디오 인터페이스나 마이크를 연결해 실제 베이스 연주(어택·서스테인·쉼표 뮤트)를 채점할 수 있습니다. 블루투스 이어폰 등 지연이 느껴지면 ⏱ 보정(16박)으로 간편하게 맞추세요.",
         },
@@ -2260,7 +2295,9 @@
       gradeLive: "Grade: Live",
       gradeEnd: "Grade: End",
       inputPrefix: "Input",
-      btnPad: "👆 Pads",
+      btnInKey: "⌨️ Key",
+      btnInAudio: "🎤 Audio",
+      btnPad: "👆 Pad",
       btnPrint: "🖨 PDF",
       btnSyncCal: "⏱ Sync",
       btnTour: "🧭 Tour",
@@ -2292,7 +2329,7 @@
           body: "Progress from Lv1 Quarter Basics to Lv6 16th Notes Advanced, and mix in Triplets, • Staccato (short 50% release), × Ghost Notes (F/D keys), and 4/4 · 3/4 · 2/4 · 5/4 · 6/8 meters.",
         },
         {
-          target: "#btnInputMode",
+          target: "#inputGroup",
           title: "🎤 Keyboard, Touch Pads, or Real Bass",
           body: "Switch Input: KEY / AUDIO / BOTH to plug in your audio interface or mic and grade real bass attacks, sustain length, and rest mutes. Notice latency on Bluetooth headphones? Use ⏱ Sync (16 beats) to calibrate.",
         },
@@ -2520,6 +2557,8 @@
       gradeLive: "採点: 即時",
       gradeEnd: "採点: 終了後",
       inputPrefix: "入力",
+      btnInKey: "⌨️ キー",
+      btnInAudio: "🎤 音声",
       btnPad: "👆 パッド",
       btnPrint: "🖨 PDF",
       btnSyncCal: "⏱ 補正",
@@ -2552,7 +2591,7 @@
           body: "Lv1の基礎からLv6の16分音符応用まで段階的に上達でき、3連符・• スタッカート・× ゴーストノート（F/Dキー）や 4/4・3/4・2/4・5/4・6/8 拍子も自由に組み合わせられます。",
         },
         {
-          target: "#btnInputMode",
+          target: "#inputGroup",
           title: "🎤 キーボード・パッド・生ベース接続",
           body: "入力: KEY / AUDIO / BOTH 切替でオーディオI/Fやマイクから生ベースのアタック・サステイン・休符ミュートまで採点可能。Bluetooth等でズレを感じたら ⏱ 補正（16拍）で簡単に調整できます。",
         },
@@ -4738,7 +4777,9 @@
     rushMinAcc: 90,   // 85 | 90 | 95
     rushRound: 0,
     rushTimerId: null,
-    inputMode: "KEY", // KEY | AUDIO | BOTH
+    keyOn: true,
+    audioOn: false,
+    inputMode: "KEY", // derived: KEY | PAD | AUDIO | BOTH
     keyLatencyMs: 0,  // optional offset for KEY/Touch (e.g. Bluetooth headphones)
     state: "READY",   // READY | COUNTIN | PLAY | DEMO | CAL | DONE
     takeId: 1,
@@ -5500,7 +5541,7 @@
       }
     }
 
-    const src = source === "AUDIO" ? "AUD" : "KEY";
+    const src = source === "AUDIO" ? "AUD" : (source === "PAD" ? "PAD" : "KEY");
     if (best) {
       // Close any previously sustaining audio or keyboard staccato note at this new attack
       if (app.activeSustainTgt && !app.activeSustainTgt.sustainDone) {
@@ -5898,10 +5939,11 @@
     if (typeof syncAllDropdownBadges === "function") syncAllDropdownBadges();
     btnBlind.classList.toggle("active", app.blindGrade);
 
-    const btnIn = document.getElementById("btnInputMode");
-    btnIn.textContent = `${t("inputPrefix")}: ${app.inputMode}`;
-    btnIn.classList.toggle("active", app.inputMode !== "KEY");
-    document.getElementById("audioBar").classList.toggle("hidden", app.inputMode === "KEY");
+    app.inputMode = deriveInputMode();
+    document.getElementById("btnInKey").classList.toggle("active", app.keyOn);
+    document.getElementById("btnInAudio").classList.toggle("active", app.audioOn);
+    document.getElementById("btnTouchPad").classList.toggle("active", showTouchDock);
+    document.getElementById("audioBar").classList.toggle("hidden", !app.audioOn);
 
     syncTransportButtons();
   }
@@ -5929,6 +5971,8 @@
     document.querySelectorAll("#barsSelect option").forEach(opt => {
       opt.textContent = barsMap[Number(opt.value)];
     });
+    document.getElementById("btnInKey").textContent = t("btnInKey");
+    document.getElementById("btnInAudio").textContent = t("btnInAudio");
     document.getElementById("btnTouchPad").textContent = t("btnPad");
     document.getElementById("btnPrint").textContent = t("btnPrint");
     document.getElementById("btnSyncCal").textContent = t("btnSyncCal");
@@ -6028,18 +6072,43 @@
     app.dirtyScore = true;
   }
 
-  async function cycleInputMode() {
-    const order = ["KEY", "AUDIO", "BOTH"];
-    const next = order[(order.indexOf(app.inputMode) + 1) % order.length];
-    app.inputMode = next;
+  function deriveInputMode() {
+    const tap = app.keyOn || (typeof showTouchDock !== "undefined" && showTouchDock);
+    if (app.audioOn && tap) return "BOTH";
+    if (app.audioOn) return "AUDIO";
+    if (typeof showTouchDock !== "undefined" && showTouchDock && !app.keyOn) return "PAD";
+    return "KEY";
+  }
+
+  async function applyInputToggles(nextKey, nextAudio, nextPad) {
+    // Keep at least one input method active
+    if (!nextKey && !nextAudio && !nextPad) {
+      nextKey = true;
+    }
+    const prevAudio = app.audioOn;
+    app.keyOn = Boolean(nextKey);
+    app.audioOn = Boolean(nextAudio);
+    if (typeof showTouchDock !== "undefined") {
+      showTouchDock = Boolean(nextPad);
+      syncTouchDock();
+    }
+    app.inputMode = deriveInputMode();
     updateMeta();
-    if (next === "AUDIO" || next === "BOTH") {
-      const ok = await startAudioInput();
-      if (!ok && next === "AUDIO") {
-        // Keep audio bar visible so user sees message, allow fallback to KEY
-      }
-    } else {
+    if (app.audioOn && !prevAudio) {
+      await startAudioInput();
+    } else if (!app.audioOn && prevAudio) {
       stopAudioInput();
+    }
+  }
+
+  async function cycleInputMode() {
+    // Keyboard shortcut 'i' cycles: KEY -> AUDIO -> BOTH -> KEY
+    if (app.keyOn && !app.audioOn) {
+      await applyInputToggles(false, true, showTouchDock);
+    } else if (!app.keyOn && app.audioOn) {
+      await applyInputToggles(true, true, showTouchDock);
+    } else {
+      await applyInputToggles(true, false, showTouchDock);
     }
   }
 
@@ -6339,7 +6408,14 @@
     updateMeta();
   });
 
-  document.getElementById("btnInputMode").addEventListener("click", () => cycleInputMode());
+  document.getElementById("btnInKey").addEventListener("click", (e) => {
+    e.currentTarget.blur();
+    applyInputToggles(!app.keyOn, app.audioOn, showTouchDock);
+  });
+  document.getElementById("btnInAudio").addEventListener("click", (e) => {
+    e.currentTarget.blur();
+    applyInputToggles(app.keyOn, !app.audioOn, showTouchDock);
+  });
   document.getElementById("btnPrint").addEventListener("click", () => window.print());
 
   const guideCard = document.getElementById("guideCard");
@@ -6368,15 +6444,16 @@
   const touchDock = document.getElementById("touchDock");
   const btnTouchPad = document.getElementById("btnTouchPad");
   let showTouchDock = window.matchMedia("(pointer: coarse)").matches || window.innerWidth <= 820;
+  if (showTouchDock) app.keyOn = false;
 
   function syncTouchDock() {
     touchDock.classList.toggle("visible", showTouchDock);
     document.body.classList.toggle("has-dock", showTouchDock);
     btnTouchPad.classList.toggle("active", showTouchDock);
   }
-  btnTouchPad.addEventListener("click", () => {
-    showTouchDock = !showTouchDock;
-    syncTouchDock();
+  btnTouchPad.addEventListener("click", (e) => {
+    e.currentTarget.blur();
+    applyInputToggles(app.keyOn, app.audioOn, !showTouchDock);
   });
 
   function bindTouchPad(padEl, hitKind = "NORMAL") {
@@ -6388,8 +6465,8 @@
       if (app.state === "CAL" && audioCtx) {
         recordCalibrationTap(audioCtx.currentTime, "KEY");
       } else if (app.state === "COUNTIN" || app.state === "PLAY") {
-        if ((app.inputMode === "KEY" || app.inputMode === "BOTH") && audioCtx) {
-          handleHit(audioCtx.currentTime - app.keyLatencyMs / 1000, "KEY", hitKind, null);
+        if (showTouchDock && audioCtx) {
+          handleHit(audioCtx.currentTime - app.keyLatencyMs / 1000, "PAD", hitKind, null);
         }
       } else if (app.state === "READY") {
         startRun(false);
@@ -6568,7 +6645,7 @@
       if (app.state === "CAL" && audioCtx) {
         recordCalibrationTap(audioCtx.currentTime, "KEY");
       } else if (app.state === "COUNTIN" || app.state === "PLAY") {
-        if ((app.inputMode === "KEY" || app.inputMode === "BOTH") && audioCtx) {
+        if (app.keyOn && audioCtx) {
           handleHit(audioCtx.currentTime - app.keyLatencyMs / 1000, "KEY", hitKind, code);
         }
       } else if (app.state === "READY") {
