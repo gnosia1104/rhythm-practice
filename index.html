@@ -1431,6 +1431,23 @@
     color: #ffffff;
   }
 
+  .click-vol-group {
+    background: #fafafa;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 3px 9px;
+    gap: 6px;
+  }
+
+  .click-vol-val {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--ink);
+    min-width: 34px;
+    text-align: right;
+  }
+
   /* Toolbar Categorized Dropdowns (🎼 리듬 옵션 · ⚙️ 연습 옵션 · ⋯ 도구) */
   .tools-wrap {
     position: relative;
@@ -1708,6 +1725,11 @@
           <button id="btnInAudio" type="button" title="오디오 인터페이스 / 마이크 입력 ON/OFF (단축키 i)">🎤 오디오</button>
           <button id="btnTouchPad" type="button" title="모바일 / 화면 터치 패드 ON/OFF">👆 패드</button>
         </div>
+        <label class="group click-vol-group" title="메트로놈 클릭 볼륨 (0~200%)">
+          <span id="lblClickVol" class="label">🔊 클릭</span>
+          <input id="clickVolSlider" type="range" min="0" max="200" step="5" value="100" style="width:72px" />
+          <span id="clickVolVal" class="click-vol-val">100%</span>
+        </label>
         <div id="toolsWrap" class="tools-wrap">
           <button id="btnToolsMenu" type="button" aria-haspopup="true" aria-expanded="false" title="에디터 · 특수훈련 · 싱크보정 · PDF · 튜토리얼 · 설명"><span id="btnToolsText">⋯ 도구</span><span id="toolsActiveDot" class="tools-dot hidden"></span></button>
           <div id="toolsDropdown" class="tools-dropdown hidden" role="menu">
@@ -2048,6 +2070,7 @@
       btnInKey: "⌨️ 키",
       btnInAudio: "🎤 오디오",
       btnPad: "👆 패드",
+      lblClickVol: "🔊 클릭",
       btnPrint: "🖨 PDF",
       btnSyncCal: "⏱ 보정",
       btnTour: "🧭 튜토리얼",
@@ -2310,6 +2333,7 @@
       btnInKey: "⌨️ Key",
       btnInAudio: "🎤 Audio",
       btnPad: "👆 Pad",
+      lblClickVol: "🔊 Click",
       btnPrint: "🖨 PDF",
       btnSyncCal: "⏱ Sync",
       btnTour: "🧭 Tour",
@@ -2572,6 +2596,7 @@
       btnInKey: "⌨️ キー",
       btnInAudio: "🎤 音声",
       btnPad: "👆 パッド",
+      lblClickVol: "🔊 クリック",
       btnPrint: "🖨 PDF",
       btnSyncCal: "⏱ 補正",
       btnTour: "🧭 ツアー",
@@ -4080,9 +4105,21 @@
     scheduledNodes = [];
   }
 
+  let clickMasterGain = null;
+
+  function getClickMasterGain(ctx) {
+    if (!clickMasterGain || clickMasterGain.context !== ctx) {
+      clickMasterGain = ctx.createGain();
+      clickMasterGain.gain.value = (typeof app !== "undefined" ? app.clickVol : 100) / 100;
+      clickMasterGain.connect(ctx.destination);
+    }
+    return clickMasterGain;
+  }
+
   function scheduleClick(ctx, when, freq, amp) {
     // Compensate for iOS/Android PlayAndRecord volume ducking while mic is open
     const effAmp = (IS_MOBILE && audioIn && audioIn.active) ? Math.min(0.85, amp * 2.1) : amp;
+    const outNode = getClickMasterGain(ctx);
     // Stable-pitch metronome click (no downward pitch sweep)
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
@@ -4091,7 +4128,7 @@
     gain.gain.setValueAtTime(0.0001, when);
     gain.gain.linearRampToValueAtTime(effAmp, when + 0.0015);
     gain.gain.exponentialRampToValueAtTime(0.0001, when + 0.028);
-    osc.connect(gain).connect(ctx.destination);
+    osc.connect(gain).connect(outNode);
     osc.start(when);
     osc.stop(when + 0.032);
 
@@ -4103,7 +4140,7 @@
     hiGain.gain.setValueAtTime(0.0001, when);
     hiGain.gain.linearRampToValueAtTime(effAmp * 0.25, when + 0.001);
     hiGain.gain.exponentialRampToValueAtTime(0.0001, when + 0.008);
-    hiOsc.connect(hiGain).connect(ctx.destination);
+    hiOsc.connect(hiGain).connect(outNode);
     hiOsc.start(when);
     hiOsc.stop(when + 0.010);
 
@@ -4837,6 +4874,7 @@
     dailyPlus: false, // false = 4/4 Daily, true = non-4/4 Daily+
     customMode: false,
     soundOn: true,
+    clickVol: 100,    // 0..200 (%) real-time metronome click volume
     showBeatNums: false,
     showCursor: false,
     blindGrade: false,
@@ -6043,6 +6081,7 @@
     document.getElementById("btnInKey").textContent = t("btnInKey");
     document.getElementById("btnInAudio").textContent = t("btnInAudio");
     document.getElementById("btnTouchPad").textContent = t("btnPad");
+    document.getElementById("lblClickVol").textContent = t("lblClickVol");
     document.getElementById("btnPrint").textContent = t("btnPrint");
     document.getElementById("btnSyncCal").textContent = t("btnSyncCal");
     document.getElementById("btnDaily").textContent = t("btnDaily");
@@ -7951,21 +7990,49 @@
     if (elBtn) elBtn.addEventListener("click", () => window.setTimeout(syncAllDropdownBadges, 0));
   });
 
+  function syncClickVol(val, persist = true) {
+    const v = Math.max(0, Math.min(200, Math.round(Number(val) || 0)));
+    app.clickVol = v;
+    document.getElementById("clickVolSlider").value = String(v);
+    document.getElementById("clickVolVal").textContent = `${v}%`;
+    if (audioCtx && clickMasterGain && clickMasterGain.context === audioCtx) {
+      clickMasterGain.gain.setTargetAtTime(v / 100, audioCtx.currentTime, 0.015);
+    }
+    if (persist) {
+      try { localStorage.setItem("rhythm_practice_click_vol", String(v)); } catch (_) {}
+    }
+  }
+
+  document.getElementById("clickVolSlider").addEventListener("input", (e) => {
+    syncClickVol(e.target.value, true);
+  });
+  document.getElementById("clickVolSlider").addEventListener("change", (e) => {
+    syncClickVol(e.target.value, true);
+    e.target.blur();
+    if ((app.state === "READY" || app.state === "DONE") && app.clickVol > 0) {
+      const ctx = ensureAudioCtx();
+      scheduleClick(ctx, ctx.currentTime + 0.02, 1318.51, 0.32);
+    }
+  });
+
   // Boot
   const bootParams = new URLSearchParams(location.search || "");
   const arrivedViaSharedLink = ["seed", "daily", "dailyplus", "custom"].some(k => bootParams.has(k));
   bootInitialScore();
   syncGain(2);
   syncThreshold(16);
-  let savedKeyLat = 0, savedAudLat = 25;
+  let savedKeyLat = 0, savedAudLat = 25, savedClickVol = 100;
   try {
     const k = localStorage.getItem("rhythm_practice_key_lat");
     const a = localStorage.getItem("rhythm_practice_aud_lat");
+    const cv = localStorage.getItem("rhythm_practice_click_vol");
     if (k !== null && Number.isFinite(Number(k))) savedKeyLat = Number(k);
     if (a !== null && Number.isFinite(Number(a))) savedAudLat = Number(a);
+    if (cv !== null && Number.isFinite(Number(cv))) savedClickVol = Number(cv);
   } catch (_) {}
   syncKeyLatency(savedKeyLat);
   syncLatency(savedAudLat);
+  syncClickVol(savedClickVol, false);
   // Restore persisted recent practice log (leaderboard-ready history)
   try {
     const rawHist = localStorage.getItem("rhythm_practice_history_v1");
