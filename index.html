@@ -4617,7 +4617,7 @@
     } else if (app.dailyDate) {
       const dTag = app.dailyPlus ? "🔥 Daily+" : "🏆 Daily";
       document.getElementById("metaLevel").textContent = `${dTag} ${app.dailyDate} · ${app.timeSig} · ${baseTitle}`;
-      document.getElementById("metaSeed").textContent = `${app.dailyPlus ? "Daily+" : "Daily"} #${app.phrase.seed.toString(16).toUpperCase().padStart(4, "0")}`;
+      document.getElementById("metaSeed").textContent = `#${currentFullSeedCode()}`;
     } else {
       document.getElementById("metaLevel").textContent = `${app.timeSig} · ${baseTitle}`;
       document.getElementById("metaSeed").textContent = `#${currentFullSeedCode()}`;
