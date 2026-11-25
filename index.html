@@ -818,9 +818,36 @@
 
   #logContainer {
     overflow-x: auto;
+    overflow-y: auto;
+    max-height: 220px;
     max-width: 100%;
     -webkit-overflow-scrolling: touch;
   }
+
+  .log-lv {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  .log-rank {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    padding: 1px 5px;
+    border-radius: 999px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 10.5px;
+    font-weight: 800;
+  }
+
+  .log-rank.rank-sp { background: #fef3c7; color: #b45309; border: 1px solid #f59e0b; }
+  .log-rank.rank-s  { background: #dcfce7; color: #15803d; border: 1px solid #4ade80; }
+  .log-rank.rank-a  { background: #dbeafe; color: #1d4ed8; border: 1px solid #60a5fa; }
+  .log-rank.rank-b  { background: #f3f4f6; color: #374151; border: 1px solid #cbd5e1; }
+  .log-rank.rank-c  { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
 
   .log-table {
     width: 100%;
@@ -4716,14 +4743,14 @@
   function formatPlayModsCompact(h) {
     const inp = h.mode === "AUDIO" ? "AUD" : (h.mode || "KEY");
     const flags = [];
-    if (h.soundOn === false) flags.push("M×");
-    if (h.blindGrade) flags.push("Bl");
+    if (h.gapClick && h.gapClick !== "OFF") flags.push(`Gap${h.gapClick}`);
+    else flags.push(h.soundOn === false ? "M×" : "M✓");
+    if (h.blindGrade) flags.push("Blind");
     if (h.showBeatNums) flags.push("+B");
     if (h.showCursor) flags.push("+C");
-    if (h.gapClick && h.gapClick !== "OFF") flags.push(`G${h.gapClick}`);
-    if (h.fadeBeats > 0) flags.push(`F${h.fadeBeats}b`);
-    if (h.rushOn) flags.push("Ru");
-    return flags.length ? `${inp} ${flags.join(" ")}` : inp;
+    if (h.fadeBeats > 0) flags.push(`Fade${h.fadeBeats}b`);
+    if (h.rushOn) flags.push("Rush");
+    return `${inp} · ${flags.join(" · ")}`;
   }
 
   function computeScoreRank(r) {
@@ -5340,16 +5367,21 @@
     const restErrs = (app.phrase.rests || []).filter(r => r.error).length;
     const sustainStats = { total: susTotal, ok: susOk, short: susShort, long: susLong, restErrs };
 
+    const rankNow = computeScoreRank({ hits, total, tight, sustainStats });
     app.history.unshift({
       take: app.takeId,
+      tsIso: new Date().toISOString(),
       seed: app.phrase.seed.toString(16).toUpperCase().padStart(4, "0"),
+      fullSeed: app.customMode ? (app.phrase.customCode || "Custom") : currentFullSeedCode(),
       bpm: app.bpm,
+      bars: app.numBars,
       lv: app.level,
       tripletMode: tripletsAllowed() ? app.tripletMode : 0,
       staccato: app.staccatoOn,
       ghost: app.ghostOn,
       daily: Boolean(app.dailyDate),
       dailyPlus: Boolean(app.dailyDate && app.dailyPlus),
+      dailyDate: app.dailyDate || null,
       custom: app.customMode,
       ts: app.timeSig,
       mode: app.inputMode,
@@ -5360,10 +5392,13 @@
       gapClick: app.gapClick,
       fadeBeats: app.fadeBeats,
       rushOn: app.rushOn,
-      hits, total, acc, tight, mean, sd, extra: app.extraHits,
+      rank: rankNow.grade,
+      rankCls: rankNow.cls,
+      hits, total, acc, tight, mean, sd, extra: app.extraHits, restErrs,
       susTotal, susOk,
     });
-    if (app.history.length > 6) app.history.pop();
+    if (app.history.length > 12) app.history.pop();
+    try { localStorage.setItem("rhythm_practice_history_v1", JSON.stringify(app.history)); } catch (_) {}
 
     if (app.dailyDate) {
       saveDailyBest(app.dailyDate, acc, tight, app.dailyPlus);
@@ -5516,25 +5551,34 @@
       const susStr = h.susTotal ? `${Math.round((h.susOk / h.susTotal) * 100)}%` : "—";
       const tTag = h.tripletMode === 2 ? "T2" : (h.tripletMode === 1 ? "T1" : (h.triplets ? "T" : ""));
       const lvFlags = `${tTag}${h.staccato ? "S" : ""}${h.ghost ? "G" : ""}`;
-      const lvLabel = h.custom ? "✏️" : `${h.dailyPlus ? "🔥" : (h.daily ? "🏆" : "")}L${h.lv}${lvFlags}`;
-      const lvTip = lvFlags ? ` title="T1=8th Triplets · T2=+2-Beat Triplets · S=Staccato · G=Ghost"` : "";
+      const barsTag = h.bars ? `${h.bars}B` : "";
+      const modePrefix = h.custom ? "✏️" : (h.dailyPlus ? "🔥" : (h.daily ? "🏆" : ""));
+      const lvCore = h.custom ? "Custom" : `Lv${h.lv}${lvFlags}`;
+      const lvLabel = `${modePrefix}${modePrefix ? " " : ""}${lvCore} · ${h.ts || "4/4"}${barsTag ? ` · ${barsTag}` : ""}`;
+      const lvTip = `${h.fullSeed ? `#${h.fullSeed} · ` : ""}${lvCore} (${h.ts || "4/4"}${barsTag ? ` ${barsTag}` : ""}) | T1=8th Triplets · T2=+2-Beat Triplets · S=Staccato · G=Ghost`;
       const modStr = formatPlayModsCompact(h);
-      const modTip = `M(Metro):${h.soundOn === false ? "OFF" : "ON"} · B(Beats):${h.showBeatNums ? "ON" : "OFF"} · C(Cursor):${h.showCursor ? "ON" : "OFF"} · G(Grade):${h.blindGrade ? "End" : "Live"} · I:${h.mode}`;
+      const metroTxt = (h.gapClick && h.gapClick !== "OFF") ? `Gap ${h.gapClick}` : (h.soundOn === false ? "OFF" : "ON");
+      const modTip = `Input:${h.mode || "KEY"} | Metro:${metroTxt} | Beats:${h.showBeatNums ? "ON" : "OFF"} | Cursor:${h.showCursor ? "ON" : "OFF"} | Grade:${h.blindGrade ? "End" : "Live"} | Fade:${h.fadeBeats ? `${h.fadeBeats}b` : "OFF"} | Rush:${h.rushOn ? "ON" : "OFF"}`;
+      const rk = h.rank
+        ? { grade: h.rank, cls: h.rankCls || "rank-b" }
+        : computeScoreRank({ hits: h.hits, total: h.total, tight: h.tight, sustainStats: { total: h.susTotal || 0, ok: h.susOk || 0, restErrs: h.restErrs || 0 } });
+      const extStr = (h.restErrs && h.restErrs > 0) ? `${h.extra}/${h.restErrs}r` : `${h.extra}`;
       return `<tr>
         <td>#${h.take}</td>
+        <td><span class="log-rank ${rk.cls}">${rk.grade}</span></td>
+        <td class="log-lv" title="${lvTip}">${lvLabel}</td>
         <td>${h.bpm}</td>
-        <td${lvTip}>${lvLabel} ${h.ts || "4/4"}</td>
         <td title="${modTip}">${modStr}</td>
         <td><strong>${h.hits}/${h.total}</strong> (${h.acc.toFixed(0)}%)</td>
         <td>${h.tight}</td>
         <td>${susStr}</td>
         <td>${mStr}</td>
         <td>${sStr}</td>
-        <td>${h.extra}</td>
+        <td>${extStr}</td>
       </tr>`;
     }).join("");
     box.innerHTML = `<table class="log-table">
-      <thead><tr><th>#</th><th>BPM</th><th>Lv</th><th>In</th><th>Hit</th><th>Tight</th><th>Sus</th><th>Mean</th><th>SD</th><th>Ext</th></tr></thead>
+      <thead><tr><th>#</th><th>Rank</th><th>Lv</th><th>BPM</th><th>Opt</th><th>Hit</th><th>Tight</th><th>Sus</th><th>Mean</th><th>SD</th><th>Ext</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
   }
@@ -7397,9 +7441,22 @@
   } catch (_) {}
   syncKeyLatency(savedKeyLat);
   syncLatency(savedAudLat);
+  // Restore persisted recent practice log (leaderboard-ready history)
+  try {
+    const rawHist = localStorage.getItem("rhythm_practice_history_v1");
+    if (rawHist) {
+      const parsed = JSON.parse(rawHist);
+      if (Array.isArray(parsed) && parsed.length) {
+        app.history = parsed.slice(0, 12);
+        const maxTake = app.history.reduce((m, h) => Math.max(m, Number(h.take) || 0), 0);
+        if (maxTake >= app.takeId) app.takeId = maxTake + 1;
+      }
+    }
+  } catch (_) {}
   syncTouchDock();
   drawDistribution([], 0, 0, 0, 0, 0);
   applyLanguage(curLang);
+  renderLog();
   requestAnimationFrame(frame);
   if (!hasSeenTour()) {
     window.setTimeout(() => openTour(0), 260);
