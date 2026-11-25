@@ -6548,11 +6548,13 @@
     e.target.blur();
   });
 
-  // Mobile two-finger touch pad dock (auto-on for touch/narrow screens)
+  // Mobile two-finger touch pad dock (auto-on only for touch devices; never disable keyboard on desktop split-screen)
   const touchDock = document.getElementById("touchDock");
   const btnTouchPad = document.getElementById("btnTouchPad");
-  let showTouchDock = window.matchMedia("(pointer: coarse)").matches || window.innerWidth <= 820;
-  if (showTouchDock) app.keyOn = false;
+  const isCoarsePointer = window.matchMedia("(pointer: coarse)").matches;
+  const isTouchOnly = isCoarsePointer && !window.matchMedia("(any-pointer: fine)").matches;
+  let showTouchDock = isCoarsePointer;
+  if (isTouchOnly) app.keyOn = false;
 
   function syncTouchDock() {
     touchDock.classList.toggle("visible", showTouchDock);
