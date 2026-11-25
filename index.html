@@ -5268,7 +5268,6 @@
     const isAudio = (c.inputMode === "AUDIO" || c.inputMode === "BOTH");
     let modMult = 1.0;
     const modTags = [];
-    if (isAudio) modTags.push("AUD Sus +25%");
     if (c.showBeatNums) { modMult *= 0.94; modTags.push("+B ×0.94"); }
     if (c.showCursor) { modMult *= 0.90; modTags.push("+C ×0.90"); }
     if (c.blindGrade) { modMult *= 1.05; modTags.push("Blind ×1.05"); }
@@ -5280,21 +5279,31 @@
     else if (c.fadeBeats === 2) { modMult *= 1.15; modTags.push("Fade2b ×1.15"); }
 
     const attackUnitScale = 100 * meterMult * bpmMult * modMult;
-    const sustainUnitScale = isAudio ? attackUnitScale * 0.25 : 0;
-    const unitScale = attackUnitScale + sustainUnitScale;
+    const sustainPtsPerNote = isAudio ? (50 * meterMult * modMult) : 0;
+    const sustainEligible = tgts.map(t => {
+      if (!isAudio) return false;
+      if (t.art === "staccato" || t.art === "ghost") return true;
+      if (Number.isFinite(t.durSec) && t.durSec >= 0.30) return true;
+      if (t.hasRestAfter && Number.isFinite(t.restEndSec) && (t.restEndSec - t.endSec) >= 0.18) return true;
+      return !Number.isFinite(t.durSec) && (t.durSlots || 0) >= 6;
+    });
+    const sustainCount = sustainEligible.filter(Boolean).length;
     const baseMax = Math.round(rawWeightSum * 100 * meterMult * bpmMult);
-    const attackMax = Math.round(rawWeightSum * attackUnitScale);
-    const sustainMax = isAudio ? Math.round(rawWeightSum * sustainUnitScale) : 0;
-    const maxScore = attackMax + sustainMax;
-    return { weights, rawWeightSum, meterMult, bpmMult, modMult, modTags, isAudio, attackUnitScale, sustainUnitScale, unitScale, baseMax, attackMax, sustainMax, maxScore };
+    const noteMax = Math.round(rawWeightSum * attackUnitScale);
+    const sustainMax = isAudio ? Math.round(sustainCount * sustainPtsPerNote) : 0;
+    const maxScore = noteMax + sustainMax;
+    return {
+      weights, rawWeightSum, meterMult, bpmMult, modMult, modTags, isAudio,
+      attackUnitScale, sustainPtsPerNote, sustainEligible, sustainCount,
+      baseMax, noteMax, sustainMax, maxScore
+    };
   }
 
   function computeSustainQuality(tgt) {
     // Graduated real-instrument sustain & articulation mastery (0..1)
-    if (!tgt.sustainStatus) return 1.0; // Short notes without sustain tracking keep full credit on clean hit
+    if (!tgt.sustainStatus) return 1.0;
     const ratio = Number.isFinite(tgt.sustainRatio) ? tgt.sustainRatio : 1.0;
     if (tgt.art === "staccato") {
-      // Staccato target ~50% (clean range 25%..58%)
       if (tgt.sustainStatus === "OK") {
         const dist = Math.abs(ratio - 0.45);
         return dist <= 0.10 ? 1.0 : Math.max(0.85, 1.0 - (dist - 0.10) * 0.9);
@@ -5304,16 +5313,14 @@
     if (tgt.art === "ghost") {
       return tgt.sustainStatus === "OK" ? 1.0 : 0.30;
     }
-    // Normal sustained bass note (target: hold cleanly >= 82% for full mastery, >= 62% OK)
     if (tgt.sustainStatus === "OK") {
       if (ratio >= 0.82) return 1.0;
       return 0.80 + Math.max(0, (ratio - 0.62) / 0.20) * 0.20;
     }
     if (tgt.sustainStatus === "SHORT") {
-      return Math.max(0.30, Math.min(0.75, 0.30 + (ratio / 0.62) * 0.45));
+      return Math.max(0.35, Math.min(0.75, 0.35 + (ratio / 0.62) * 0.40));
     }
-    // LONG (bled past rest boundary)
-    return 0.25;
+    return 0.30;
   }
 
   function getTimingThresholds(bpm = app.bpm) {
@@ -5342,7 +5349,7 @@
   function computeDetailedScore(phrase, hits, total, sd, extraHits, restErrs) {
     const info = computeChartMaxInfo(phrase);
     if (!total || !info.maxScore) {
-      return { score: 0, maxScore: info.maxScore, sustainEarned: 0, sustainMax: info.sustainMax, pct: 0, penalty: 0, sdBonus: 0, info };
+      return { score: 0, maxScore: info.maxScore, noteScore: 0, noteMax: info.noteMax, sustainEarned: 0, sustainMax: info.sustainMax, pct: 0, penalty: 0, sdBonus: 0, info };
     }
     let rawAttack = 0;
     let rawSustain = 0;
@@ -5350,26 +5357,30 @@
       const tgt = phrase.targets[i];
       if (!tgt.hit || tgt.errMs === null) continue;
       let atkRatio = computeAttackPrecision(Math.abs(tgt.errMs));
-      if (info.isAudio) {
-        // Real instrument: full attack credit + dedicated +25% Sustain Mastery Pool
-        rawAttack += info.weights[i] * info.attackUnitScale * atkRatio;
-        rawSustain += info.weights[i] * info.sustainUnitScale * computeSustainQuality(tgt);
-      } else {
+      if (!info.isAudio) {
         // KEY / PAD: staccato release / ghost key accuracy scales attack note directly
         if (tgt.sustainStatus === "SHORT") atkRatio *= 0.88;
         else if (tgt.sustainStatus === "LONG") atkRatio *= 0.78;
-        rawAttack += info.weights[i] * info.attackUnitScale * atkRatio;
+      }
+      rawAttack += info.weights[i] * info.attackUnitScale * atkRatio;
+      if (info.isAudio && info.sustainEligible[i]) {
+        rawSustain += info.sustainPtsPerNote * computeSustainQuality(tgt);
       }
     }
-    const sustainEarned = Math.round(rawSustain);
-    const avgNotePts = info.maxScore / total;
-    const penalty = Math.round(restErrs * avgNotePts * 0.55 + extraHits * avgNotePts * 0.35);
+    // Fair penalty: never double-count rest hits as both extraHits & restErrs, and cap so pickup noise never nukes a good run
+    const restHitErrs = (phrase.rests || []).filter(r => r.error && r.errorKind === "HIT").length;
+    const nonRestExtras = Math.max(0, extraHits - restHitErrs);
+    const avgNotePts = info.noteMax / Math.max(1, total);
+    const rawPen = restErrs * avgNotePts * 0.15 + nonRestExtras * avgNotePts * 0.08;
+    const penalty = Math.min(Math.round(rawAttack * 0.22), Math.round(rawPen));
     const sdBonus = (hits >= Math.ceil(total * 0.8) && sd <= 20)
-      ? Math.round(((20 - sd) / 20) * 0.02 * info.maxScore)
+      ? Math.round(((20 - sd) / 20) * 0.02 * info.noteMax)
       : 0;
-    const score = Math.max(0, Math.min(info.maxScore, Math.round(rawAttack + rawSustain + sdBonus - penalty)));
+    const noteScore = Math.max(0, Math.min(info.noteMax, Math.round(rawAttack + sdBonus - penalty)));
+    const sustainEarned = Math.max(0, Math.min(info.sustainMax, Math.round(rawSustain)));
+    const score = noteScore + sustainEarned;
     const pct = (score / info.maxScore) * 100;
-    return { score, maxScore: info.maxScore, sustainEarned, sustainMax: info.sustainMax, pct, penalty, sdBonus, info };
+    return { score, maxScore: info.maxScore, noteScore, noteMax: info.noteMax, sustainEarned, sustainMax: info.sustainMax, pct, penalty, sdBonus, info };
   }
 
   function computeScoreRank(r) {
@@ -6070,9 +6081,12 @@
     rankEl.textContent = rank.grade;
     rankEl.className = `rank-pill ${rank.cls}`;
     const scoreEl = document.getElementById("scoreBadge");
-    const susTagInline = scoreDetail.sustainMax > 0 ? ` (Sus +${scoreDetail.sustainEarned.toLocaleString()})` : "";
-    scoreEl.textContent = `${scoreDetail.score.toLocaleString()} / ${scoreDetail.maxScore.toLocaleString()}${susTagInline}`;
-    const susTip = scoreDetail.sustainMax > 0 ? ` · Sus +${scoreDetail.sustainEarned}/${scoreDetail.sustainMax}` : "";
+    if (scoreDetail.sustainMax > 0) {
+      scoreEl.textContent = `${scoreDetail.noteScore.toLocaleString()} + Sus ${scoreDetail.sustainEarned.toLocaleString()} = ${scoreDetail.score.toLocaleString()} / ${scoreDetail.maxScore.toLocaleString()}`;
+    } else {
+      scoreEl.textContent = `${scoreDetail.score.toLocaleString()} / ${scoreDetail.maxScore.toLocaleString()}`;
+    }
+    const susTip = scoreDetail.sustainMax > 0 ? ` · Note ${scoreDetail.noteScore}/${scoreDetail.noteMax} + Sus ${scoreDetail.sustainEarned}/${scoreDetail.sustainMax}` : "";
     const sdTip = scoreDetail.sdBonus > 0 ? ` · SD +${scoreDetail.sdBonus}` : "";
     const penTip = scoreDetail.penalty > 0 ? ` · Pen -${scoreDetail.penalty}` : "";
     const modTipStr = scoreDetail.info.modTags.length ? ` · ${scoreDetail.info.modTags.join(", ")}` : "";
@@ -6274,9 +6288,12 @@
     }
     const chartMax = computeChartMaxInfo(app.phrase);
     const maxEl = document.getElementById("metaMaxScore");
-    maxEl.textContent = `Max ${chartMax.maxScore.toLocaleString()}`;
+    maxEl.textContent = chartMax.sustainMax > 0
+      ? `Max ${chartMax.noteMax.toLocaleString()} + Sus ${chartMax.sustainMax.toLocaleString()}`
+      : `Max ${chartMax.maxScore.toLocaleString()}`;
     const modDesc = chartMax.modTags.length ? ` · ${chartMax.modTags.join(", ")}` : "";
-    maxEl.title = `Chart Max: ${chartMax.maxScore.toLocaleString()} pts (Notes × Meter ×${chartMax.meterMult.toFixed(2)} · Log BPM ×${chartMax.bpmMult.toFixed(2)}${modDesc})`;
+    const susDesc = chartMax.sustainMax > 0 ? ` · Note ${chartMax.noteMax.toLocaleString()} + Sus ${chartMax.sustainMax.toLocaleString()} (${chartMax.sustainCount} notes)` : "";
+    maxEl.title = `Chart Max: ${chartMax.maxScore.toLocaleString()} pts (Meter ×${chartMax.meterMult.toFixed(2)} · Log BPM ×${chartMax.bpmMult.toFixed(2)}${modDesc}${susDesc})`;
     const twMeta = getTimingThresholds(app.bpm);
     document.getElementById("legendLine").innerHTML = t("legendHtml")
       .replace(/35ms/g, `${twMeta.tight}ms`)
