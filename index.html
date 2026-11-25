@@ -479,6 +479,151 @@
     margin-left: auto;
   }
 
+  /* Custom Score Editor Drawer (hidden unless user clicks ✏️ 에디터) */
+  .editor-bar {
+    background: var(--panel-bg);
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    font-size: 12px;
+    box-shadow: 0 3px 10px rgba(15, 23, 42, 0.05);
+  }
+
+  .ed-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+  }
+
+  .ed-bar button {
+    padding: 4px 9px;
+    font-size: 12px;
+  }
+
+  .ed-beats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    align-items: center;
+  }
+
+  .ed-bar-group {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 3px 5px;
+  }
+
+  .ed-bar-lbl {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--muted);
+    margin-right: 2px;
+  }
+
+  .ed-beat-btn {
+    min-width: 26px;
+    padding: 3px 6px !important;
+    font-size: 11.5px !important;
+    border-radius: 6px !important;
+  }
+
+  .ed-beat-btn.selected {
+    background: var(--accent) !important;
+    color: #fff !important;
+    border-color: var(--accent) !important;
+  }
+
+  .ed-beat-btn.cont {
+    opacity: 0.55;
+    font-style: italic;
+  }
+
+  .ed-palette {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+
+  .ed-stamp {
+    padding: 5px 8px !important;
+    font-size: 12px !important;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  .ed-note-tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+  }
+
+  .ed-note-chip {
+    padding: 3px 8px !important;
+    font-size: 11.5px !important;
+  }
+
+  .ed-note-chip.art-stac {
+    background: #eff6ff;
+    border-color: #60a5fa;
+    color: #1d4ed8;
+  }
+
+  .ed-note-chip.art-ghost {
+    background: #f1f5f9;
+    border-style: dashed;
+    border-color: #64748b;
+    color: #334155;
+  }
+
+  .ed-code-input {
+    flex: 1 1 200px;
+    min-width: 0;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 5px 9px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 11.5px;
+    color: var(--ink);
+    background: #fafafa;
+  }
+
+  .ed-msg {
+    color: var(--muted);
+    font-size: 11.5px;
+  }
+
+  .daily-btn.active {
+    background: #fef3c7 !important;
+    color: #b45309 !important;
+    border-color: #f59e0b !important;
+  }
+
+  .result-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 6px;
+  }
+
+  .result-actions button {
+    padding: 4px 10px;
+    font-size: 11.5px;
+  }
+
   /* PDF Sheet Music Paper */
   .sheet-paper {
     background: var(--paper-bg);
@@ -858,7 +1003,7 @@
   @media print {
     body { background: #fff; padding: 0; }
     .app { max-width: none; }
-    .toolbar, .status-strip, .audio-bar, .cal-bar, .results-grid, .guide-card, .sheet-footer, .touch-dock { display: none !important; }
+    .toolbar, .status-strip, .audio-bar, .cal-bar, .editor-bar, .results-grid, .guide-card, .sheet-footer, .touch-dock { display: none !important; }
     .sheet-paper { border: none; box-shadow: none; padding: 0; }
   }
 </style>
@@ -929,6 +1074,9 @@
       <div class="divider"></div>
 
       <div class="group">
+        <button id="btnDaily" class="daily-btn" title="오늘의 데일리 챌린지 (고정 8마디 시드)">🏆 데일리</button>
+        <button id="btnEditor" title="커스텀 악보 에디터 열기/닫기">✏️ 에디터</button>
+        <button id="btnShareUrl" title="현재 악보 공유 링크 복사">🔗 공유</button>
         <button id="btnInputMode" title="i">입력: KEY</button>
         <button id="btnTouchPad" title="모바일 투핑거 터치 패드">👆 패드</button>
         <button id="btnSyncCal" title="타이밍 지연 보정 (블루투스 이어폰 / 오디오 인터페이스)">⏱ 보정</button>
@@ -1029,6 +1177,28 @@
     <span id="audioMsg" class="audio-msg">헤드폰/오인페 라인 입력 권장 (스피커 메트로놈 유입 방지)</span>
   </div>
 
+  <!-- Custom Rhythm Score Editor (hidden unless user clicks ✏️ 에디터) -->
+  <div id="editorBar" class="editor-bar hidden">
+    <div class="ed-row">
+      <strong id="lblEdTitle">✏️ 커스텀 악보 에디터</strong>
+      <button id="btnEdBarMinus" type="button" class="icon-btn">−</button>
+      <span id="edBarsVal" class="label">4마디</span>
+      <button id="btnEdBarPlus" type="button" class="icon-btn">+</button>
+      <button id="btnEdImportCur" type="button">현재 악보 가져오기</button>
+      <button id="btnEdClear" type="button">초기화</button>
+      <button id="btnEdClose" type="button" class="cal-close" title="닫기">✕</button>
+    </div>
+    <div id="edBeatStrip" class="ed-beats"></div>
+    <div id="edPalette" class="ed-palette"></div>
+    <div id="edNoteTools" class="ed-note-tools"></div>
+    <div class="ed-row">
+      <input id="edCodeInput" class="ed-code-input" type="text" placeholder="커스텀 코드 또는 공유 URL 붙여넣기..." />
+      <button id="btnEdCopyUrl" type="button" class="primary">🔗 커스텀 링크 복사</button>
+      <button id="btnEdLoadCode" type="button">📥 코드 불러오기</button>
+    </div>
+    <span id="edMsg" class="ed-msg">마디의 박자를 클릭한 뒤 리듬 패턴을 찍어 나만의 악보를 만들고 링크로 공유하세요 (서버 없이 URL에 저장됨).</span>
+  </div>
+
   <!-- PDF-Style Vector Sheet Music -->
   <div class="sheet-paper">
     <div class="sheet-header">
@@ -1065,7 +1235,10 @@
     <div class="card">
       <div class="card-title">Timing Distribution (−150ms .. 0 .. +150ms)</div>
       <svg id="distSvg" class="dist-svg" viewBox="0 0 380 64"></svg>
-      <div id="summaryLine" style="font-size:12px;color:var(--muted);margin-top:4px;">연주를 마치면 타이밍 분포가 표시됩니다.</div>
+      <div class="result-actions">
+        <div id="summaryLine" style="font-size:12px;color:var(--muted);flex:1;min-width:0;">연주를 마치면 타이밍 분포가 표시됩니다.</div>
+        <button id="btnShareResult" type="button" class="hidden">📋 결과 카드 복사</button>
+      </div>
     </div>
     <div class="card">
       <div class="card-title">Recent Practice Log</div>
@@ -1162,6 +1335,30 @@
       btnPrint: "🖨 PDF",
       btnSyncCal: "⏱ 보정",
       btnGuide: "❓ 설명",
+      btnDaily: "🏆 데일리",
+      btnEditor: "✏️ 에디터",
+      btnShareUrl: "🔗 공유",
+      btnShareCopied: "✓ 복사됨!",
+      btnShareResult: "📋 결과 카드 복사",
+      edTitle: "✏️ 커스텀 악보 에디터",
+      edBarsLbl: (n) => `${n}마디`,
+      edImportCur: "현재 악보 가져오기",
+      edClear: "초기화",
+      edCopyUrl: "🔗 커스텀 링크 복사",
+      edLoadCode: "📥 코드 불러오기",
+      edCodePlaceholder: "커스텀 코드 또는 공유 URL 붙여넣기...",
+      edDefaultMsg: "박자를 선택해 리듬을 찍고, 음표 칩 클릭으로 스타카토(•)/고스트(×)를 전환하세요. URL에 통째로 저장되어 바로 공유할 수 있습니다.",
+      edTiePrev: "⌒ 앞 박과 타이",
+      edNoteHint: "음표 클릭(일반→•→×):",
+      edRestOnly: "쉼표 박자 (음표 없음)",
+      edContBeat: "앞 박에서 이어지는 장음입니다 — 시작 박자를 선택해 편집하세요.",
+      edUrlCopied: "커스텀 악보 공유 링크가 클립보드에 복사되었습니다!",
+      edSeedCopied: "현재 악보 공유 링크(시드+설정)가 클립보드에 복사되었습니다!",
+      edLoadedOk: "커스텀 악보를 불러왔습니다! Enter로 바로 연주해 보세요.",
+      edLoadFail: "유효하지 않은 커스텀 코드/링크입니다. 전체 URL 또는 커스텀 코드를 확인하세요.",
+      dailyLoaded: (date, streak) => `🏆 오늘의 데일리 챌린지 (${date})${streak > 0 ? ` · 연속 ${streak}일` : ""}`,
+      dailyBest: (acc, tight) => `오늘 최고: ${acc}% (TIGHT ${tight})`,
+      resultCopied: "✓ 결과 복사됨!",
       calTitle: "⏱ 싱크 보정",
       calStartBtn: "▶ 16박 측정",
       calStopBtn: "■ 중단",
@@ -1326,6 +1523,30 @@
       btnPrint: "🖨 PDF",
       btnSyncCal: "⏱ Sync",
       btnGuide: "❓ Guide",
+      btnDaily: "🏆 Daily",
+      btnEditor: "✏️ Editor",
+      btnShareUrl: "🔗 Share",
+      btnShareCopied: "✓ Copied!",
+      btnShareResult: "📋 Copy Result Card",
+      edTitle: "✏️ Custom Score Editor",
+      edBarsLbl: (n) => `${n} ${n === 1 ? "bar" : "bars"}`,
+      edImportCur: "Import Current",
+      edClear: "Clear",
+      edCopyUrl: "🔗 Copy Custom Link",
+      edLoadCode: "📥 Load Code",
+      edCodePlaceholder: "Paste custom code or shared URL...",
+      edDefaultMsg: "Select a beat, stamp a rhythm pattern, and click note chips to cycle Normal → • Staccato → × Ghost. Encodes directly into a shareable URL (no server).",
+      edTiePrev: "⌒ Tie Prev",
+      edNoteHint: "Notes (click: N→•→×):",
+      edRestOnly: "Rest beat (no notes)",
+      edContBeat: "Sustained from an earlier beat — select its starting beat to edit.",
+      edUrlCopied: "Custom score link copied to clipboard!",
+      edSeedCopied: "Shareable score link (seed + settings) copied to clipboard!",
+      edLoadedOk: "Custom score loaded! Press Enter to play.",
+      edLoadFail: "Invalid custom code or URL. Please check and try again.",
+      dailyLoaded: (date, streak) => `🏆 Daily Challenge (${date})${streak > 0 ? ` · ${streak}-day streak` : ""}`,
+      dailyBest: (acc, tight) => `Today's best: ${acc}% (TIGHT ${tight})`,
+      resultCopied: "✓ Copied!",
       calTitle: "⏱ Sync Cal",
       calStartBtn: "▶ 16-Beat Test",
       calStopBtn: "■ Stop",
@@ -1490,6 +1711,30 @@
       btnPrint: "🖨 PDF",
       btnSyncCal: "⏱ 補正",
       btnGuide: "❓ 使い方",
+      btnDaily: "🏆 デイリー",
+      btnEditor: "✏️ 編集",
+      btnShareUrl: "🔗 共有",
+      btnShareCopied: "✓ コピー済!",
+      btnShareResult: "📋 結果カードコピー",
+      edTitle: "✏️ カスタム譜面エディタ",
+      edBarsLbl: (n) => `${n}小節`,
+      edImportCur: "現在の譜面を取込",
+      edClear: "初期化",
+      edCopyUrl: "🔗 カスタムURLコピー",
+      edLoadCode: "📥 コード読込",
+      edCodePlaceholder: "カスタムコードまたは共有URLを貼り付け...",
+      edDefaultMsg: "拍を選んでリズムパターンを配置し、音符チップでスタッカート(•)/ゴースト(×)を切替できます。URLにそのまま保存して共有できます。",
+      edTiePrev: "⌒ 前の拍とタイ",
+      edNoteHint: "音符クリック(通常→•→×):",
+      edRestOnly: "休符の拍（音符なし）",
+      edContBeat: "前の拍から続く長い音符です — 開始拍を選んで編集してください。",
+      edUrlCopied: "カスタム譜面の共有URLをコピーしました！",
+      edSeedCopied: "現在の譜面URL（シード＋設定）をコピーしました！",
+      edLoadedOk: "カスタム譜面を読み込みました！Enterで演奏できます。",
+      edLoadFail: "無効なカスタムコード／URLです。",
+      dailyLoaded: (date, streak) => `🏆 デイリーチャレンジ (${date})${streak > 0 ? ` · ${streak}日連続` : ""}`,
+      dailyBest: (acc, tight) => `本日のベスト: ${acc}% (TIGHT ${tight})`,
+      resultCopied: "✓ コピー済!",
       calTitle: "⏱ 遅延補正",
       calStartBtn: "▶ 16拍テスト",
       calStopBtn: "■ 中断",
@@ -1900,6 +2145,187 @@
     return !t.compound && level >= 2;
   }
 
+  function buildPhraseFromBars(bars, timeSigKey, seed = 0, isCustom = false, customCode = "") {
+    const ts = TIME_SIGS[timeSigKey] || TIME_SIGS["4/4"];
+    const targets = [];
+    const rests = [];
+    bars.forEach((beats, bIdx) => {
+      beats.forEach((events, btIdx) => {
+        events.forEach(ev => {
+          const globalSlot = bIdx * ts.barTicks + btIdx * ts.beatTicks + ev.slot;
+          if (ev.rest) {
+            rests.push({
+              bar: bIdx,
+              beat: btIdx,
+              slotInBeat: ev.slot,
+              globalSlot,
+              durSlots: ev.dur,
+              timeSec: 0,
+              endSec: 0,
+              error: false,
+              errorKind: null,
+              ringFrames: 0,
+            });
+            return;
+          }
+          if (ev.tiedIn && targets.length) {
+            targets[targets.length - 1].durSlots += ev.dur;
+          } else if (!ev.tiedIn) {
+            targets.push({
+              bar: bIdx,
+              beat: btIdx,
+              slotInBeat: ev.slot,
+              globalSlot,
+              durSlots: ev.dur,
+              art: ev.art || null,
+              timeSec: 0,
+              hit: false,
+              missed: false,
+              errMs: null,
+            });
+          }
+        });
+      });
+    });
+    return { seed, timeSig: timeSigKey, bars, targets, rests, isCustom, customCode };
+  }
+
+  // Serverless Compact Custom Score Serializer (v1, URL-safe Base64 prefixed with "C1_")
+  const DUR_TO_CH = { 3: "3", 4: "4", 6: "6", 8: "8", 9: "9", 12: "c", 18: "i", 24: "o", 36: "w", 48: "Z" };
+  const CH_TO_DUR = { "3": 3, "4": 4, "6": 6, "8": 8, "9": 9, "c": 12, "i": 18, "o": 24, "w": 36, "Z": 48 };
+  const TS_TO_CODE = { "4/4": "44", "3/4": "34", "2/4": "24", "5/4": "54", "6/8": "68" };
+  const CODE_TO_TS = { "44": "4/4", "34": "3/4", "24": "2/4", "54": "5/4", "68": "6/8" };
+
+  function encodeCustomScore(timeSigKey, bars) {
+    const tsCode = TS_TO_CODE[timeSigKey] || "44";
+    const barStrs = bars.map(beats =>
+      beats.map(events =>
+        events.map(ev => {
+          const sCh = ev.slot.toString(36);
+          const dCh = DUR_TO_CH[ev.dur] || "c";
+          let fl = "";
+          if (ev.rest) fl += "r";
+          if (ev.art === "staccato") fl += "s";
+          else if (ev.art === "ghost") fl += "g";
+          if (ev.tuplet === "8t") fl += "t";
+          else if (ev.tuplet === "4t") fl += "q";
+          if (ev.tiedIn) fl += "i";
+          if (ev.tiedOut) fl += "o";
+          return sCh + dCh + fl;
+        }).join(".")
+      ).join(",")
+    );
+    const raw = `1:${tsCode}:${barStrs.join("|")}`;
+    const b64 = btoa(raw).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    return "C1_" + b64;
+  }
+
+  function decodeCustomScore(input) {
+    if (!input || typeof input !== "string") return null;
+    let code = input.trim();
+    let parsedBpm = null;
+    if (code.includes("custom=")) {
+      try {
+        const u = new URL(code.startsWith("http") ? code : "https://x.local/?" + code.replace(/^\?/, ""));
+        const c = u.searchParams.get("custom");
+        const b = u.searchParams.get("bpm");
+        if (c) code = c.trim();
+        if (b && Number.isFinite(Number(b))) parsedBpm = Math.max(40, Math.min(140, Math.round(Number(b))));
+      } catch (_) {}
+    }
+    if (!code.startsWith("C1_")) return null;
+    try {
+      let b64 = code.slice(3).replace(/-/g, "+").replace(/_/g, "/");
+      while (b64.length % 4) b64 += "=";
+      const raw = atob(b64);
+      const parts = raw.split(":");
+      if (parts.length !== 3 || parts[0] !== "1") return null;
+      const timeSig = CODE_TO_TS[parts[1]];
+      if (!timeSig) return null;
+      const ts = TIME_SIGS[timeSig];
+      const barStrs = parts[2].split("|");
+      if (barStrs.length < 1 || barStrs.length > 16) return null;
+
+      const bars = [];
+      for (const bs of barStrs) {
+        const beatStrs = bs.split(",");
+        if (beatStrs.length !== ts.beatsPerBar) return null;
+        const beats = [];
+        let barDur = 0;
+        for (const evListStr of beatStrs) {
+          if (!evListStr) {
+            beats.push([]);
+            continue;
+          }
+          const evs = [];
+          let prevEnd = 0;
+          for (const tok of evListStr.split(".")) {
+            if (tok.length < 2) return null;
+            const slot = parseInt(tok[0], 36);
+            const dur = CH_TO_DUR[tok[1]];
+            if (!Number.isFinite(slot) || slot < 0 || slot >= ts.beatTicks || !dur) return null;
+            if (slot < prevEnd) return null;
+            const fl = tok.slice(2);
+            const rest = fl.includes("r");
+            const art = rest ? null : (fl.includes("s") ? "staccato" : (fl.includes("g") ? "ghost" : null));
+            const tuplet = fl.includes("t") ? "8t" : (fl.includes("q") ? "4t" : null);
+            const tiedIn = !rest && fl.includes("i");
+            const tiedOut = !rest && fl.includes("o");
+            evs.push({ slot, dur, rest, tuplet, tiedIn, tiedOut, art });
+            barDur += dur;
+            prevEnd = slot + dur;
+          }
+          beats.push(evs);
+        }
+        if (barDur !== ts.barTicks) return null;
+        bars.push(beats);
+      }
+      return { timeSig, bars, bpm: parsedBpm, code };
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // Deterministic Daily Challenge (same 8-bar score worldwide per calendar date YYYY-MM-DD)
+  function getTodayDateStr() {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  }
+
+  function hashDateSeed(dateStr) {
+    let h = 2166136261 >>> 0;
+    const s = "RSR-DAILY-" + dateStr;
+    for (let i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619) >>> 0;
+    }
+    return 0x1000 + (h % 0xEFFF);
+  }
+
+  function getDailyChallengeSpec(dateStr = null) {
+    const ds = (dateStr && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) ? dateStr : getTodayDateStr();
+    const [y, m, d] = ds.split("-").map(Number);
+    const dow = new Date(y, m - 1, d).getDay(); // 0=Sun..6=Sat
+    const schedule = [
+      { timeSig: "5/4", level: 4, bpm: 75, tripletMode: 0, staccatoOn: true,  ghostOn: false }, // Sun
+      { timeSig: "4/4", level: 3, bpm: 75, tripletMode: 0, staccatoOn: false, ghostOn: false }, // Mon
+      { timeSig: "4/4", level: 4, bpm: 80, tripletMode: 0, staccatoOn: true,  ghostOn: false }, // Tue
+      { timeSig: "3/4", level: 4, bpm: 75, tripletMode: 1, staccatoOn: false, ghostOn: false }, // Wed
+      { timeSig: "4/4", level: 5, bpm: 70, tripletMode: 0, staccatoOn: false, ghostOn: false }, // Thu
+      { timeSig: "6/8", level: 4, bpm: 65, tripletMode: 0, staccatoOn: false, ghostOn: false }, // Fri
+      { timeSig: "4/4", level: 6, bpm: 75, tripletMode: 0, staccatoOn: false, ghostOn: true  }, // Sat
+    ];
+    return {
+      dateStr: ds,
+      numBars: 8,
+      seed: hashDateSeed(ds),
+      ...schedule[dow],
+    };
+  }
+
   function generatePhrase(numBars, level, tripletMode = 0, timeSigKey = "4/4", forcedSeed = null, staccatoOn = false, ghostOn = false) {
     const ts = TIME_SIGS[timeSigKey] || TIME_SIGS["4/4"];
     const tMode = (typeof tripletMode === "boolean") ? (tripletMode ? 2 : 0) : (Number(tripletMode) || 0);
@@ -2015,46 +2441,9 @@
         bars.push(beats);
       }
 
-      const targets = [];
-      const rests = [];
-      bars.forEach((beats, bIdx) => {
-        beats.forEach((events, btIdx) => {
-          events.forEach(ev => {
-            const globalSlot = bIdx * ts.barTicks + btIdx * ts.beatTicks + ev.slot;
-            if (ev.rest) {
-              rests.push({
-                bar: bIdx,
-                beat: btIdx,
-                slotInBeat: ev.slot,
-                globalSlot,
-                durSlots: ev.dur,
-                timeSec: 0,
-                endSec: 0,
-                error: false,
-                errorKind: null,
-                ringFrames: 0,
-              });
-              return;
-            }
-            if (ev.tiedIn && targets.length) {
-              targets[targets.length - 1].durSlots += ev.dur;
-            } else if (!ev.tiedIn) {
-              targets.push({
-                bar: bIdx,
-                beat: btIdx,
-                slotInBeat: ev.slot,
-                globalSlot,
-                durSlots: ev.dur,
-                art: ev.art || null,
-                timeSec: 0,
-                hit: false,
-                missed: false,
-                errMs: null,
-              });
-            }
-          });
-        });
-      });
+      const built = buildPhraseFromBars(bars, timeSigKey, seed, false, "");
+      const targets = built.targets;
+      const rests = built.rests;
 
       bestBars = bars;
       bestTargets = targets;
@@ -2071,7 +2460,7 @@
       ) break;
     }
 
-    return { seed, timeSig: timeSigKey, bars: bestBars, targets: bestTargets, rests: bestRests };
+    return { seed, timeSig: timeSigKey, bars: bestBars, targets: bestTargets, rests: bestRests, isCustom: false, customCode: "" };
   }
 
   // -------------------------------------------------------------------------
@@ -3359,6 +3748,8 @@
     ghostOn: false,
     timeSig: "4/4",
     numBars: 4,
+    dailyDate: null,  // "YYYY-MM-DD" when playing Daily Challenge
+    customMode: false,
     soundOn: true,
     showBeatNums: false,
     showCursor: false,
@@ -3441,16 +3832,156 @@
     app.dirtyScore = true;
   }
 
-  function newPhrase() {
+  function clearShareQueryUrl() {
+    try {
+      if (location.protocol !== "file:" && location.search) {
+        history.replaceState(null, "", location.pathname);
+      }
+    } catch (_) {}
+  }
+
+  function newPhrase(forcedSeed = null, keepDaily = false) {
     app.runSeq += 1;
     if (app.state === "CAL") stopCalibration(false);
     stopScheduledAudio();
     app.takeId += 1;
-    app.phrase = generatePhrase(app.numBars, app.level, app.tripletMode, app.timeSig, null, app.staccatoOn, app.ghostOn);
+    if (!keepDaily) {
+      app.dailyDate = null;
+      app.customMode = false;
+      clearShareQueryUrl();
+    }
+    app.phrase = generatePhrase(app.numBars, app.level, app.tripletMode, app.timeSig, forcedSeed, app.staccatoOn, app.ghostOn);
     resetTargets();
     app.state = "READY";
     setHitBadge(t("badgeWait"), "");
     updateMeta();
+  }
+
+  function loadDailyChallenge(dateStr = null) {
+    const spec = getDailyChallengeSpec(dateStr);
+    app.dailyDate = spec.dateStr;
+    app.customMode = false;
+    app.timeSig = spec.timeSig;
+    app.level = spec.level;
+    app.numBars = spec.numBars;
+    app.bpm = spec.bpm;
+    app.tripletMode = spec.tripletMode;
+    app.staccatoOn = spec.staccatoOn;
+    app.ghostOn = spec.ghostOn;
+    toggleEditorBar(false);
+    newPhrase(spec.seed, true);
+    const streak = getDailyStreak();
+    setHitBadge(t("dailyLoaded", spec.dateStr, streak), "tight");
+  }
+
+  function getDailyStreak() {
+    try {
+      let streak = 0;
+      const d = new Date();
+      for (let i = 0; i < 365; i++) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        const key = `rhythm_practice_daily_${y}-${m}-${day}`;
+        if (localStorage.getItem(key)) {
+          streak++;
+        } else if (i > 0) {
+          break;
+        }
+        d.setDate(d.getDate() - 1);
+      }
+      return streak;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  function saveDailyBest(dateStr, acc, tight) {
+    try {
+      const key = `rhythm_practice_daily_${dateStr}`;
+      const prev = JSON.parse(localStorage.getItem(key) || "null");
+      if (!prev || acc > prev.acc || (acc === prev.acc && tight > prev.tight)) {
+        localStorage.setItem(key, JSON.stringify({ acc: Math.round(acc), tight }));
+      }
+    } catch (_) {}
+  }
+
+  function buildShareUrl() {
+    const base = location.protocol === "file:"
+      ? "https://gnosia1104.github.io/rhythm-practice/"
+      : `${location.origin}${location.pathname}`;
+    const qs = new URLSearchParams();
+    if (app.customMode && app.phrase && app.phrase.customCode) {
+      qs.set("custom", app.phrase.customCode);
+      qs.set("bpm", String(app.bpm));
+    } else if (app.dailyDate) {
+      qs.set("daily", app.dailyDate);
+    } else {
+      qs.set("ts", app.timeSig);
+      qs.set("lv", String(app.level));
+      qs.set("b", String(app.numBars));
+      qs.set("bpm", String(app.bpm));
+      const effTri = tripletsAllowed() ? app.tripletMode : 0;
+      if (effTri) qs.set("t", String(effTri));
+      if (app.staccatoOn) qs.set("s", "1");
+      if (app.ghostOn) qs.set("g", "1");
+      qs.set("seed", app.phrase.seed.toString(16).toUpperCase().padStart(4, "0"));
+    }
+    return `${base}?${qs.toString()}`;
+  }
+
+  async function copyToClipboard(text) {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+    } catch (_) {}
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      return ok;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function buildResultCardText() {
+    const r = app.lastResult;
+    if (!r || !app.phrase) return "";
+    const ts = getTimeSig();
+    const effTri = tripletsAllowed() ? app.tripletMode : 0;
+    const tTag = effTri === 2 ? "T2" : (effTri === 1 ? "T1" : "");
+    const lvFlags = `${tTag}${app.staccatoOn ? "S" : ""}${app.ghostOn ? "G" : ""}`;
+    const header = app.dailyDate
+      ? `🎸 Rhythm Sight-Reader — 🏆 Daily ${app.dailyDate}`
+      : (app.customMode
+        ? `🎸 Rhythm Sight-Reader — ✏️ Custom Score`
+        : `🎸 Rhythm Sight-Reader — Seed #${app.phrase.seed.toString(16).toUpperCase().padStart(4, "0")}`);
+    const meta = app.customMode
+      ? `${app.timeSig} · ${app.numBars} bars · ${app.bpm} BPM · ${app.inputMode}`
+      : `${app.timeSig} · Lv${app.level}${lvFlags} · ${app.bpm} BPM · ${app.inputMode}`;
+    const pct = r.total ? ((r.hits / r.total) * 100).toFixed(0) : "0";
+    const sign = r.mean >= 0 ? "+" : "";
+    const stat = `Score: ${r.hits}/${r.total} (${pct}%) · TIGHT ${r.tight}${r.hits ? ` · Mean ${sign}${r.mean.toFixed(1)}ms` : ""}`;
+    const emojis = app.phrase.targets.map(tgt => {
+      if (!tgt.hit || tgt.errMs === null) return "🟥";
+      const ae = Math.abs(tgt.errMs);
+      if (ae <= 35) return "🟩";
+      if (ae <= 80) return "🟨";
+      return "🟥";
+    });
+    const rows = [];
+    for (let i = 0; i < emojis.length; i += 12) {
+      rows.push(emojis.slice(i, i + 12).join(""));
+    }
+    return `${header}\n${meta}\n${stat}\n${rows.join("\n")}\n${buildShareUrl()}`;
   }
 
   async function startRun(demo = false) {
@@ -3811,6 +4342,8 @@
       tripletMode: tripletsAllowed() ? app.tripletMode : 0,
       staccato: app.staccatoOn,
       ghost: app.ghostOn,
+      daily: Boolean(app.dailyDate),
+      custom: app.customMode,
       ts: app.timeSig,
       mode: app.inputMode,
       hits, total, acc, tight, mean, sd, extra: app.extraHits,
@@ -3818,12 +4351,17 @@
     });
     if (app.history.length > 6) app.history.pop();
 
+    if (app.dailyDate) {
+      saveDailyBest(app.dailyDate, acc, tight);
+    }
+
     app.lastResult = {
       errs, hits, total, mean, sd, tight,
       extra: app.extraHits,
       sustainStats,
     };
     drawDistribution(errs, hits, total, mean, sd, tight, sustainStats, app.extraHits);
+    document.getElementById("btnShareResult").classList.remove("hidden");
     renderLog();
     if (app.blindGrade) {
       const cls = acc >= 90 ? "tight" : (acc >= 70 ? "warn" : "err");
@@ -3895,11 +4433,12 @@
       const susStr = h.susTotal ? `${Math.round((h.susOk / h.susTotal) * 100)}%` : "—";
       const tTag = h.tripletMode === 2 ? "T2" : (h.tripletMode === 1 ? "T1" : (h.triplets ? "T" : ""));
       const lvFlags = `${tTag}${h.staccato ? "S" : ""}${h.ghost ? "G" : ""}`;
+      const lvLabel = h.custom ? "✏️" : `${h.daily ? "🏆" : ""}L${h.lv}${lvFlags}`;
       const lvTip = lvFlags ? ` title="T1=8th Triplets · T2=+2-Beat Triplets · S=Staccato · G=Ghost"` : "";
       return `<tr>
         <td>#${h.take}</td>
         <td>${h.bpm}</td>
-        <td${lvTip}>L${h.lv}${lvFlags} ${h.ts || "4/4"}</td>
+        <td${lvTip}>${lvLabel} ${h.ts || "4/4"}</td>
         <td>${h.mode}</td>
         <td><strong>${h.hits}/${h.total}</strong> (${h.acc.toFixed(0)}%)</td>
         <td>${h.tight}</td>
@@ -3925,11 +4464,23 @@
     const tTag = effTri === 2 ? "T2" : (effTri === 1 ? "T1" : "");
     const lvFlags = `${tTag}${app.staccatoOn ? "S" : ""}${app.ghostOn ? "G" : ""}`;
     const baseTitle = LEVEL_TITLES[app.level].replace(/^Lv\d+/, `Lv${app.level}${lvFlags}`);
-    document.getElementById("metaLevel").textContent = `${app.timeSig} · ${baseTitle}`;
-    document.getElementById("metaSeed").textContent = `Seed #${app.phrase.seed.toString(16).toUpperCase().padStart(4, "0")}`;
+    if (app.customMode) {
+      document.getElementById("metaLevel").textContent = `✏️ Custom · ${app.timeSig} · ${app.numBars} bars`;
+      document.getElementById("metaSeed").textContent = app.phrase.customCode ? app.phrase.customCode.slice(0, 14) + "…" : "Custom";
+    } else if (app.dailyDate) {
+      document.getElementById("metaLevel").textContent = `🏆 Daily ${app.dailyDate} · ${app.timeSig} · ${baseTitle}`;
+      document.getElementById("metaSeed").textContent = `Daily #${app.phrase.seed.toString(16).toUpperCase().padStart(4, "0")}`;
+    } else {
+      document.getElementById("metaLevel").textContent = `${app.timeSig} · ${baseTitle}`;
+      document.getElementById("metaSeed").textContent = `Seed #${app.phrase.seed.toString(16).toUpperCase().padStart(4, "0")}`;
+    }
+    document.getElementById("btnDaily").classList.toggle("active", Boolean(app.dailyDate));
     document.getElementById("levelSelect").value = String(app.level);
     document.getElementById("timeSigSelect").value = app.timeSig;
-    document.getElementById("barsSelect").value = String(app.numBars);
+    const barsSel = document.getElementById("barsSelect");
+    if ([...barsSel.options].some(o => Number(o.value) === app.numBars)) {
+      barsSel.value = String(app.numBars);
+    }
     const btnTriplets = document.getElementById("btnTriplets");
     btnTriplets.disabled = !allowTri;
     btnTriplets.textContent = effTri === 2 ? t("triplets2b") : (effTri === 1 ? t("triplets8") : t("tripletsOff"));
@@ -3994,6 +4545,20 @@
     document.getElementById("btnTouchPad").textContent = t("btnPad");
     document.getElementById("btnPrint").textContent = t("btnPrint");
     document.getElementById("btnSyncCal").textContent = t("btnSyncCal");
+    document.getElementById("btnDaily").textContent = t("btnDaily");
+    document.getElementById("btnEditor").textContent = t("btnEditor");
+    document.getElementById("btnShareUrl").textContent = t("btnShareUrl");
+    document.getElementById("btnShareResult").textContent = t("btnShareResult");
+    document.getElementById("lblEdTitle").textContent = t("edTitle");
+    document.getElementById("btnEdImportCur").textContent = t("edImportCur");
+    document.getElementById("btnEdClear").textContent = t("edClear");
+    document.getElementById("btnEdCopyUrl").textContent = t("edCopyUrl");
+    document.getElementById("btnEdLoadCode").textContent = t("edLoadCode");
+    document.getElementById("edCodeInput").placeholder = t("edCodePlaceholder");
+    document.getElementById("edMsg").textContent = t("edDefaultMsg");
+    if (typeof renderEditorUi === "function" && !document.getElementById("editorBar").classList.contains("hidden")) {
+      renderEditorUi();
+    }
     document.getElementById("btnGuide").textContent = t("btnGuide");
     document.getElementById("lblCalTitle").textContent = t("calTitle");
     document.getElementById("btnCalRun").textContent = app.state === "CAL" ? t("calStopBtn") : t("calStartBtn");
@@ -4283,7 +4848,17 @@
   document.getElementById("timeSigSelect").addEventListener("change", (e) => {
     app.timeSig = e.target.value;
     e.target.blur();
-    newPhrase();
+    if (edState.open) {
+      edState.timeSig = app.timeSig;
+      const nBars = Math.max(1, Math.min(8, edState.bars.length || 4));
+      edState.bars = Array.from({ length: nBars }, () => makeDefaultBar(app.timeSig));
+      edState.selBar = 0;
+      edState.selBeat = 0;
+      applyCustomToApp();
+      renderEditorUi();
+    } else {
+      newPhrase();
+    }
   });
 
   document.getElementById("barsSelect").addEventListener("change", (e) => {
@@ -4628,9 +5203,486 @@
     }
   });
 
+  // -------------------------------------------------------------------------
+  // 7B. Custom Score Editor, Share URL, Daily Challenge & Result Card
+  // -------------------------------------------------------------------------
+  const ED_SIMPLE_STAMPS = [
+    { lbl: "𝅝 4b",   cells: [[[0, 48, false, null]], [], [], []] },
+    { lbl: "𝅗𝅥. 3b",  cells: [[[0, 36, false, null]], [], []] },
+    { lbl: "𝅗𝅥 2b",   cells: [[[0, 24, false, null]], []] },
+    { lbl: "𝄼 2bR",  cells: [[[0, 24, true, null]], []] },
+    { lbl: "♩.♪ 2b", cells: [[[0, 18, false, null]], [[6, 6, false, null]]] },
+    { lbl: "♩",      cells: [[[0, 12, false, null]]] },
+    { lbl: "𝄽 R",    cells: [[[0, 12, true, null]]] },
+    { lbl: "♫ 8-8",  cells: [[[0, 6, false, null], [6, 6, false, null]]] },
+    { lbl: "𝄾♪ r-8", cells: [[[0, 6, true, null], [6, 6, false, null]]] },
+    { lbl: "♪𝄾 8-r", cells: [[[0, 6, false, null], [6, 6, true, null]]] },
+    { lbl: "♬ 16×4", cells: [[[0, 3, false, null], [3, 3, false, null], [6, 3, false, null], [9, 3, false, null]]] },
+    { lbl: "8-16-16", cells: [[[0, 6, false, null], [6, 3, false, null], [9, 3, false, null]]] },
+    { lbl: "16-16-8", cells: [[[0, 3, false, null], [3, 3, false, null], [6, 6, false, null]]] },
+    { lbl: "16-8-16", cells: [[[0, 3, false, null], [3, 6, false, null], [9, 3, false, null]]] },
+    { lbl: "♪.16",   cells: [[[0, 9, false, null], [9, 3, false, null]]] },
+    { lbl: "r-16×3", cells: [[[0, 3, true, null], [3, 3, false, null], [6, 3, false, null], [9, 3, false, null]]] },
+    { lbl: "³8×3",   cells: [[[0, 4, false, "8t"], [4, 4, false, "8t"], [8, 4, false, "8t"]]] },
+    { lbl: "³2:1",   cells: [[[0, 8, false, "8t"], [8, 4, false, "8t"]]] },
+    { lbl: "³r-8-8", cells: [[[0, 4, true, "8t"], [4, 4, false, "8t"], [8, 4, false, "8t"]]] },
+    { lbl: "³4×3 2b", cells: [[[0, 8, false, "4t"], [8, 8, false, "4t"]], [[4, 8, false, "4t"]]] },
+  ];
+
+  const ED_68_STAMPS = [
+    { lbl: "𝅗𝅥. 2b",    cells: [[[0, 36, false, null]], []] },
+    { lbl: "♩.",       cells: [[[0, 18, false, null]]] },
+    { lbl: "𝄽. R",     cells: [[[0, 18, true, null]]] },
+    { lbl: "♪♪♪ 8×3",  cells: [[[0, 6, false, null], [6, 6, false, null], [12, 6, false, null]]] },
+    { lbl: "♩♪ 4-8",   cells: [[[0, 12, false, null], [12, 6, false, null]]] },
+    { lbl: "♪♩ 8-4",   cells: [[[0, 6, false, null], [6, 12, false, null]]] },
+    { lbl: "𝄾♪♪ r-8-8", cells: [[[0, 6, true, null], [6, 6, false, null], [12, 6, false, null]]] },
+    { lbl: "♪𝄾♪ 8-r-8", cells: [[[0, 6, false, null], [6, 6, true, null], [12, 6, false, null]]] },
+    { lbl: "16-16-8-8", cells: [[[0, 3, false, null], [3, 3, false, null], [6, 6, false, null], [12, 6, false, null]]] },
+    { lbl: "8-8-16-16", cells: [[[0, 6, false, null], [6, 6, false, null], [12, 3, false, null], [15, 3, false, null]]] },
+    { lbl: "♪.16-8",   cells: [[[0, 9, false, null], [9, 3, false, null], [12, 6, false, null]]] },
+  ];
+
+  const edState = {
+    open: false,
+    selBar: 0,
+    selBeat: 0,
+    timeSig: "4/4",
+    bars: [],
+  };
+
+  function cloneBars(bars) {
+    return bars.map(bar => bar.map(beat => beat.map(ev => ({ ...ev }))));
+  }
+
+  function makeDefaultBeat(ts) {
+    return [{ slot: 0, dur: ts.beatTicks, rest: false, tuplet: null, tiedIn: false, tiedOut: false, art: null }];
+  }
+
+  function makeDefaultBar(timeSigKey) {
+    const ts = TIME_SIGS[timeSigKey] || TIME_SIGS["4/4"];
+    const bar = [];
+    for (let bt = 0; bt < ts.beatsPerBar; bt++) bar.push(makeDefaultBeat(ts));
+    return bar;
+  }
+
+  function spanLengthAt(bar, btIdx, ts) {
+    const evs = bar[btIdx];
+    if (!evs || !evs.length) return 1;
+    // Check 2-beat quarter-note triplet ("4t")
+    if (evs[0].tuplet === "4t" && evs[0].slot === 0 && btIdx + 1 < bar.length) return 2;
+    const total = evs.reduce((s, e) => s + e.dur, 0);
+    if (total > ts.beatTicks) {
+      return Math.min(bar.length - btIdx, Math.ceil(total / ts.beatTicks));
+    }
+    return 1;
+  }
+
+  function findBeatOwner(bar, btIdx, ts) {
+    for (let i = btIdx; i >= 0; i--) {
+      if (bar[i] && bar[i].length > 0) {
+        const sp = spanLengthAt(bar, i, ts);
+        if (i + sp > btIdx) return { owner: i, span: sp };
+        break;
+      }
+    }
+    return { owner: btIdx, span: 1 };
+  }
+
+  function sanitizeBarTies(bar, ts) {
+    for (let bt = 0; bt < bar.length; bt++) {
+      for (const ev of bar[bt]) {
+        if (ev.rest) { ev.tiedIn = false; ev.tiedOut = false; ev.art = null; }
+      }
+    }
+    for (let bt = 0; bt < bar.length; bt++) {
+      const curr = bar[bt];
+      if (!curr.length) continue;
+      if (bt === 0) {
+        curr[0].tiedIn = false;
+      } else {
+        const prev = bar[bt - 1];
+        const prevEv = prev.length ? prev[prev.length - 1] : null;
+        const firstEv = curr[0];
+        const valid = prevEv && !prevEv.rest && !firstEv.rest && !prevEv.tuplet && !firstEv.tuplet &&
+          (prevEv.slot + prevEv.dur === ts.beatTicks) && firstEv.slot === 0 &&
+          (prevEv.tiedOut && firstEv.tiedIn);
+        if (!valid) {
+          if (prevEv) prevEv.tiedOut = false;
+          firstEv.tiedIn = false;
+        } else {
+          prevEv.art = null;
+          firstEv.art = null;
+        }
+      }
+    }
+    const last = bar[bar.length - 1];
+    if (last && last.length) last[last.length - 1].tiedOut = false;
+  }
+
+  function applyStampAt(bIdx, btIdx, cells) {
+    const ts = TIME_SIGS[edState.timeSig] || TIME_SIGS["4/4"];
+    const bar = edState.bars[bIdx];
+    if (!bar || btIdx + cells.length > ts.beatsPerBar) return;
+
+    // 1. If btIdx is inside a multi-beat span owned by an earlier beat, split that span cleanly first
+    const { owner, span } = findBeatOwner(bar, btIdx, ts);
+    if (owner < btIdx) {
+      for (let k = owner; k < owner + span; k++) bar[k] = makeDefaultBeat(ts);
+    }
+
+    // 2. Determine full range of existing spans touched by [btIdx .. btIdx + cells.length - 1]
+    let clearEnd = btIdx + cells.length;
+    for (let k = btIdx; k < btIdx + cells.length; k++) {
+      if (bar[k] && bar[k].length) {
+        const sp = spanLengthAt(bar, k, ts);
+        clearEnd = Math.max(clearEnd, k + sp);
+      }
+    }
+    clearEnd = Math.min(ts.beatsPerBar, clearEnd);
+
+    // 3. Write new cells
+    for (let i = 0; i < cells.length; i++) {
+      bar[btIdx + i] = cells[i].map(([slot, dur, rest, tuplet]) => ({
+        slot, dur, rest, tuplet: tuplet || null, tiedIn: false, tiedOut: false, art: null
+      }));
+    }
+    // 4. Fill any leftover beats from a previously longer span
+    for (let k = btIdx + cells.length; k < clearEnd; k++) {
+      bar[k] = makeDefaultBeat(ts);
+    }
+
+    sanitizeBarTies(bar, ts);
+    applyCustomToApp();
+    // Auto-advance selection to next editable beat for rapid entry
+    const nextBt = btIdx + cells.length;
+    if (nextBt < ts.beatsPerBar) {
+      edState.selBeat = nextBt;
+    } else if (bIdx + 1 < edState.bars.length) {
+      edState.selBar = bIdx + 1;
+      edState.selBeat = 0;
+    }
+    renderEditorUi();
+  }
+
+  function applyCustomToApp() {
+    app.runSeq += 1;
+    if (app.state === "CAL") stopCalibration(false);
+    stopScheduledAudio();
+    app.dailyDate = null;
+    app.customMode = true;
+    app.timeSig = edState.timeSig;
+    app.numBars = edState.bars.length;
+    const code = encodeCustomScore(edState.timeSig, edState.bars);
+    app.phrase = buildPhraseFromBars(cloneBars(edState.bars), edState.timeSig, 0, true, code);
+    resetTargets();
+    app.state = "READY";
+    setHitBadge(t("badgeWait"), "");
+    updateMeta();
+    const inp = document.getElementById("edCodeInput");
+    if (inp) inp.value = code;
+  }
+
+  function renderEditorUi() {
+    const ts = TIME_SIGS[edState.timeSig] || TIME_SIGS["4/4"];
+    if (!edState.bars.length) {
+      edState.bars = [makeDefaultBar(edState.timeSig), makeDefaultBar(edState.timeSig)];
+    }
+    edState.selBar = Math.max(0, Math.min(edState.bars.length - 1, edState.selBar));
+    edState.selBeat = Math.max(0, Math.min(ts.beatsPerBar - 1, edState.selBeat));
+
+    document.getElementById("edBarsVal").textContent = t("edBarsLbl", edState.bars.length);
+    document.getElementById("btnEdBarMinus").disabled = edState.bars.length <= 1;
+    document.getElementById("btnEdBarPlus").disabled = edState.bars.length >= 8;
+
+    // 1. Beat strip
+    const strip = document.getElementById("edBeatStrip");
+    strip.innerHTML = "";
+    edState.bars.forEach((bar, bIdx) => {
+      const grp = document.createElement("div");
+      grp.className = "ed-bar-group";
+      const lbl = document.createElement("span");
+      lbl.className = "ed-bar-lbl";
+      lbl.textContent = `M${bIdx + 1}`;
+      grp.appendChild(lbl);
+      for (let bt = 0; bt < ts.beatsPerBar; bt++) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        const isCont = !bar[bt] || bar[bt].length === 0;
+        btn.className = "ed-beat-btn" + (bIdx === edState.selBar && bt === edState.selBeat ? " selected" : "") + (isCont ? " cont" : "");
+        btn.textContent = isCont ? "→" : String(bt + 1);
+        btn.addEventListener("click", (e) => {
+          e.currentTarget.blur();
+          edState.selBar = bIdx;
+          edState.selBeat = bt;
+          renderEditorUi();
+        });
+        grp.appendChild(btn);
+      }
+      strip.appendChild(grp);
+    });
+
+    // 2. Rhythm stamp palette
+    const pal = document.getElementById("edPalette");
+    pal.innerHTML = "";
+    const stamps = ts.compound ? ED_68_STAMPS : ED_SIMPLE_STAMPS;
+    const remBeats = ts.beatsPerBar - edState.selBeat;
+    for (const st of stamps) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "ed-stamp";
+      btn.textContent = st.lbl;
+      btn.disabled = st.cells.length > remBeats;
+      btn.addEventListener("click", (e) => {
+        e.currentTarget.blur();
+        applyStampAt(edState.selBar, edState.selBeat, st.cells);
+      });
+      pal.appendChild(btn);
+    }
+
+    // 3. Per-note articulation & cross-beat tie controls for selected beat
+    const tools = document.getElementById("edNoteTools");
+    tools.innerHTML = "";
+    const curBar = edState.bars[edState.selBar];
+    const curEvs = curBar[edState.selBeat] || [];
+    if (!curEvs.length) {
+      const span = document.createElement("span");
+      span.className = "ed-msg";
+      span.textContent = t("edContBeat");
+      tools.appendChild(span);
+    } else {
+      const notes = curEvs.filter(ev => !ev.rest);
+      if (!notes.length) {
+        const span = document.createElement("span");
+        span.className = "ed-msg";
+        span.textContent = t("edRestOnly");
+        tools.appendChild(span);
+      } else {
+        const hint = document.createElement("span");
+        hint.className = "label";
+        hint.textContent = t("edNoteHint");
+        tools.appendChild(hint);
+
+        curEvs.forEach((ev, idx) => {
+          if (ev.rest) return;
+          const chip = document.createElement("button");
+          chip.type = "button";
+          const artCls = ev.art === "staccato" ? " art-stac" : (ev.art === "ghost" ? " art-ghost" : "");
+          chip.className = "ed-note-chip" + artCls;
+          const sym = ev.art === "staccato" ? "•" : (ev.art === "ghost" ? "×" : "♩");
+          chip.textContent = `#${idx + 1} ${sym}`;
+          chip.disabled = Boolean(ev.tiedIn || ev.tiedOut);
+          chip.addEventListener("click", (e) => {
+            e.currentTarget.blur();
+            ev.art = ev.art === null ? "staccato" : (ev.art === "staccato" ? "ghost" : null);
+            applyCustomToApp();
+            renderEditorUi();
+          });
+          tools.appendChild(chip);
+        });
+      }
+
+      // Tie toggle from previous beat
+      if (edState.selBeat > 0 && curEvs.length) {
+        const prev = curBar[edState.selBeat - 1];
+        const prevEv = prev && prev.length ? prev[prev.length - 1] : null;
+        const firstEv = curEvs[0];
+        const canTie = prevEv && !prevEv.rest && !firstEv.rest && !prevEv.tuplet && !firstEv.tuplet &&
+          (prevEv.slot + prevEv.dur === ts.beatTicks) && firstEv.slot === 0;
+        if (canTie) {
+          const tieBtn = document.createElement("button");
+          tieBtn.type = "button";
+          tieBtn.className = "ed-note-chip" + (firstEv.tiedIn ? " active" : "");
+          tieBtn.textContent = t("edTiePrev");
+          tieBtn.addEventListener("click", (e) => {
+            e.currentTarget.blur();
+            const next = !firstEv.tiedIn;
+            prevEv.tiedOut = next;
+            firstEv.tiedIn = next;
+            if (next) { prevEv.art = null; firstEv.art = null; }
+            applyCustomToApp();
+            renderEditorUi();
+          });
+          tools.appendChild(tieBtn);
+        }
+      }
+    }
+
+    const inp = document.getElementById("edCodeInput");
+    if (inp && document.activeElement !== inp) {
+      inp.value = encodeCustomScore(edState.timeSig, edState.bars);
+    }
+  }
+
+  function importCurrentScoreIntoEditor() {
+    edState.timeSig = app.phrase ? (app.phrase.timeSig || app.timeSig) : app.timeSig;
+    const srcBars = app.phrase && app.phrase.bars ? app.phrase.bars.slice(0, 8) : [makeDefaultBar(edState.timeSig)];
+    edState.bars = cloneBars(srcBars);
+    edState.selBar = 0;
+    edState.selBeat = 0;
+    applyCustomToApp();
+    renderEditorUi();
+  }
+
+  function toggleEditorBar(forceOpen = null) {
+    const bar = document.getElementById("editorBar");
+    const btn = document.getElementById("btnEditor");
+    const open = forceOpen !== null ? forceOpen : bar.classList.contains("hidden");
+    edState.open = open;
+    bar.classList.toggle("hidden", !open);
+    btn.classList.toggle("active", open);
+    if (open) {
+      if (!app.customMode || edState.timeSig !== app.timeSig || !edState.bars.length) {
+        importCurrentScoreIntoEditor();
+      } else {
+        renderEditorUi();
+      }
+    }
+  }
+
+  function loadCustomFromInput(rawInput) {
+    const decoded = decodeCustomScore(rawInput);
+    const msgEl = document.getElementById("edMsg");
+    if (!decoded) {
+      if (msgEl) {
+        msgEl.style.color = "var(--red)";
+        msgEl.textContent = t("edLoadFail");
+      }
+      return false;
+    }
+    edState.timeSig = decoded.timeSig;
+    edState.bars = cloneBars(decoded.bars);
+    edState.selBar = 0;
+    edState.selBeat = 0;
+    if (decoded.bpm !== null) app.bpm = decoded.bpm;
+    applyCustomToApp();
+    if (edState.open) renderEditorUi();
+    if (msgEl) {
+      msgEl.style.color = "var(--green)";
+      msgEl.textContent = t("edLoadedOk");
+    }
+    return true;
+  }
+
+  function flashBtnText(btn, tempText, restoreFn) {
+    btn.textContent = tempText;
+    window.setTimeout(() => { btn.textContent = restoreFn(); }, 1500);
+  }
+
+  document.getElementById("btnDaily").addEventListener("click", (e) => {
+    e.currentTarget.blur();
+    loadDailyChallenge();
+  });
+
+  document.getElementById("btnEditor").addEventListener("click", (e) => {
+    e.currentTarget.blur();
+    toggleEditorBar();
+  });
+  document.getElementById("btnEdClose").addEventListener("click", () => toggleEditorBar(false));
+
+  document.getElementById("btnEdBarMinus").addEventListener("click", (e) => {
+    e.currentTarget.blur();
+    if (edState.bars.length > 1) {
+      edState.bars.pop();
+      applyCustomToApp();
+      renderEditorUi();
+    }
+  });
+  document.getElementById("btnEdBarPlus").addEventListener("click", (e) => {
+    e.currentTarget.blur();
+    if (edState.bars.length < 8) {
+      edState.bars.push(makeDefaultBar(edState.timeSig));
+      applyCustomToApp();
+      renderEditorUi();
+    }
+  });
+  document.getElementById("btnEdImportCur").addEventListener("click", (e) => {
+    e.currentTarget.blur();
+    importCurrentScoreIntoEditor();
+  });
+  document.getElementById("btnEdClear").addEventListener("click", (e) => {
+    e.currentTarget.blur();
+    edState.bars = edState.bars.map(() => makeDefaultBar(edState.timeSig));
+    edState.selBar = 0;
+    edState.selBeat = 0;
+    applyCustomToApp();
+    renderEditorUi();
+  });
+  document.getElementById("btnEdCopyUrl").addEventListener("click", async (e) => {
+    const btn = e.currentTarget;
+    btn.blur();
+    const url = buildShareUrl();
+    await copyToClipboard(url);
+    flashBtnText(btn, t("btnShareCopied"), () => t("edCopyUrl"));
+    const msgEl = document.getElementById("edMsg");
+    msgEl.style.color = "var(--green)";
+    msgEl.textContent = t("edUrlCopied");
+  });
+  document.getElementById("btnEdLoadCode").addEventListener("click", (e) => {
+    e.currentTarget.blur();
+    loadCustomFromInput(document.getElementById("edCodeInput").value);
+  });
+
+  document.getElementById("btnShareUrl").addEventListener("click", async (e) => {
+    const btn = e.currentTarget;
+    btn.blur();
+    const url = buildShareUrl();
+    await copyToClipboard(url);
+    flashBtnText(btn, t("btnShareCopied"), () => t("btnShareUrl"));
+    setHitBadge(app.customMode ? t("edUrlCopied") : t("edSeedCopied"), "tight");
+  });
+
+  document.getElementById("btnShareResult").addEventListener("click", async (e) => {
+    const btn = e.currentTarget;
+    btn.blur();
+    const text = buildResultCardText();
+    if (!text) return;
+    await copyToClipboard(text);
+    flashBtnText(btn, t("resultCopied"), () => t("btnShareResult"));
+  });
+
+  function bootInitialScore() {
+    const params = new URLSearchParams(location.search || "");
+    const customParam = params.get("custom");
+    if (customParam) {
+      const bpmP = params.get("bpm");
+      if (bpmP && Number.isFinite(Number(bpmP))) {
+        app.bpm = Math.max(40, Math.min(140, Math.round(Number(bpmP))));
+      }
+      if (loadCustomFromInput(customParam)) return;
+    }
+    const dailyParam = params.get("daily");
+    if (dailyParam) {
+      loadDailyChallenge(dailyParam === "1" ? null : dailyParam);
+      return;
+    }
+    const seedParam = params.get("seed");
+    if (seedParam) {
+      const tsP = params.get("ts");
+      if (tsP && TIME_SIGS[tsP]) app.timeSig = tsP;
+      const lvP = Number(params.get("lv"));
+      if (lvP >= 1 && lvP <= 6) app.level = lvP;
+      const bP = Number(params.get("b"));
+      if (BAR_OPTIONS.includes(bP)) app.numBars = bP;
+      const bpmP = Number(params.get("bpm"));
+      if (bpmP >= 40 && bpmP <= 140) app.bpm = Math.round(bpmP);
+      const tP = Number(params.get("t"));
+      if (tP === 0 || tP === 1 || tP === 2) app.tripletMode = tP;
+      if (params.get("s") === "1") app.staccatoOn = true;
+      if (params.get("g") === "1") app.ghostOn = true;
+      const parsedSeed = parseInt(seedParam, 16);
+      if (Number.isFinite(parsedSeed) && parsedSeed > 0) {
+        app.phrase = generatePhrase(app.numBars, app.level, app.tripletMode, app.timeSig, parsedSeed, app.staccatoOn, app.ghostOn);
+        resetTargets();
+        return;
+      }
+    }
+    app.phrase = generatePhrase(app.numBars, app.level, app.tripletMode, app.timeSig, null, app.staccatoOn, app.ghostOn);
+    resetTargets();
+  }
+
   // Boot
-  app.phrase = generatePhrase(app.numBars, app.level, app.tripletMode, app.timeSig, null, app.staccatoOn, app.ghostOn);
-  resetTargets();
+  bootInitialScore();
   syncGain(2);
   syncThreshold(16);
   let savedKeyLat = 0, savedAudLat = 25;
