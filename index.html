@@ -121,9 +121,10 @@
 
   .top-bar {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
     align-items: center;
-    margin-bottom: -4px;
+    gap: 10px;
+    padding: 0 2px;
   }
 
   .lang-select {
@@ -743,6 +744,16 @@
     flex-wrap: wrap;
     align-items: center;
     gap: 4px 12px;
+  }
+
+  .sheet-meta-left #metaTempo {
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  .sheet-meta-right {
+    margin-left: auto;
+    justify-content: flex-end;
   }
 
   .meta-share-btn {
@@ -1555,15 +1566,16 @@
   @media print {
     body { background: #fff; padding: 0; }
     .app { max-width: none; }
-    .top-bar, .toolbar, .status-strip, .audio-bar, .cal-bar, .editor-bar, .drill-bar, .meta-share-btn, .results-grid, .guide-card, .sheet-footer, .touch-dock, .tour-overlay { display: none !important; }
+    .lang-select, .toolbar, .status-strip, .audio-bar, .cal-bar, .editor-bar, .drill-bar, .meta-share-btn, .results-grid, .guide-card, .sheet-footer, .touch-dock, .tour-overlay { display: none !important; }
     .sheet-paper { border: none; box-shadow: none; padding: 0; }
   }
 </style>
 </head>
 <body>
 <div class="app">
-  <!-- Page Top-Right Language Bar -->
+  <!-- Page Top Masthead: Brand Title (Left) + Language Selector (Right) -->
   <div class="top-bar">
+    <h1 class="sheet-title">Rhythm Sight-Reader</h1>
     <select id="langSelect" class="lang-select" title="Language / 언어 / 言語">
       <option value="ko">🌐 한국어</option>
       <option value="en">🌐 English</option>
@@ -1825,10 +1837,11 @@
   <!-- PDF-Style Vector Sheet Music -->
   <div class="sheet-paper">
     <div class="sheet-header">
-      <h1 class="sheet-title">Rhythm Sight-Reader</h1>
-      <div class="sheet-meta">
+      <div class="sheet-meta sheet-meta-left">
         <span id="metaTempo">♩ = 60</span>
         <span id="metaLevel">4/4 · Lv1 Quarter &amp; Rest Basics</span>
+      </div>
+      <div class="sheet-meta sheet-meta-right">
         <span id="metaSeed">Seed #0000</span>
         <button id="btnShareUrl" type="button" class="meta-share-btn" title="현재 악보 공유 링크 복사">🔗 공유</button>
       </div>
@@ -7732,6 +7745,18 @@
     syncAllDropdownBadges();
   });
 
+  function clampDropdownToViewport(drop) {
+    if (!drop || drop.classList.contains("hidden")) return;
+    drop.style.left = "0px";
+    drop.style.right = "auto";
+    const r = drop.getBoundingClientRect();
+    const vw = window.innerWidth;
+    let shift = 0;
+    if (r.right > vw - 12) shift -= (r.right - (vw - 12));
+    if (r.left + shift < 12) shift += (12 - (r.left + shift));
+    if (shift !== 0) drop.style.left = `${Math.round(shift)}px`;
+  }
+
   for (const m of TOOLBAR_MENUS) {
     const btn = document.getElementById(m.btnId);
     const drop = document.getElementById(m.dropId);
@@ -7742,6 +7767,7 @@
       closeAllToolbarMenus(willOpen ? m.dropId : null);
       drop.classList.toggle("hidden", !willOpen);
       btn.setAttribute("aria-expanded", willOpen ? "true" : "false");
+      if (willOpen) clampDropdownToViewport(drop);
       syncAllDropdownBadges();
     });
     if (m.closeOnClick) {
@@ -7756,6 +7782,11 @@
       });
     }
   }
+  window.addEventListener("resize", () => {
+    for (const m of TOOLBAR_MENUS) {
+      clampDropdownToViewport(document.getElementById(m.dropId));
+    }
+  });
   document.addEventListener("click", (e) => {
     const insideAny = TOOLBAR_MENUS.some(m => document.getElementById(m.wrapId).contains(e.target));
     if (!insideAny) {
