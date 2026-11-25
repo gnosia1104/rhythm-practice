@@ -548,14 +548,50 @@
 
   .ed-palette {
     display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .ed-cat-row {
+    display: flex;
     flex-wrap: wrap;
+    align-items: center;
     gap: 5px;
   }
 
+  .ed-cat-lbl {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--muted);
+    min-width: 48px;
+  }
+
   .ed-stamp {
-    padding: 5px 8px !important;
-    font-size: 12px !important;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    padding: 3px 6px 4px !important;
+    min-width: 60px;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    line-height: 1.1;
+  }
+
+  .ed-stamp svg {
+    width: 54px;
+    height: 30px;
+    display: block;
+    pointer-events: none;
+  }
+
+  .ed-stamp-lbl {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--muted);
+  }
+
+  .editing-score #scoreSvg {
+    cursor: pointer;
   }
 
   .ed-note-tools {
@@ -1355,9 +1391,13 @@
       edCopyUrl: "🔗 커스텀 링크 복사",
       edLoadCode: "📥 코드 불러오기",
       edCodePlaceholder: "커스텀 코드 또는 공유 URL 붙여넣기...",
-      edDefaultMsg: "박자를 선택해 리듬을 찍고, 음표 칩 클릭으로 스타카토(•)/고스트(×)를 전환하세요. URL에 통째로 저장되어 바로 공유할 수 있습니다.",
+      edDefaultMsg: "악보 위 박자(파란 박스)를 직접 클릭하거나 위 박자 버튼을 고른 뒤, 아래 리듬 아이콘을 눌러 채우세요.",
       edTiePrev: "⌒ 앞 박과 타이",
-      edNoteHint: "음표 클릭(일반→•→×):",
+      edNoteHint: "음표 아티큘레이션 (클릭 전환):",
+      edArtNormal: "일반",
+      edArtStac: "• 스타카토",
+      edArtGhost: "× 고스트",
+      edCats: { basic: "기본/장음", eighth: "8분음표", sixteenth: "16분음표", triplet: "3연음", c68: "6/8 기본", c68_16: "6/8 16분" },
       edRestOnly: "쉼표 박자 (음표 없음)",
       edContBeat: "앞 박에서 이어지는 장음입니다 — 시작 박자를 선택해 편집하세요.",
       edUrlCopied: "커스텀 악보 공유 링크가 클립보드에 복사되었습니다!",
@@ -1544,9 +1584,13 @@
       edCopyUrl: "🔗 Copy Custom Link",
       edLoadCode: "📥 Load Code",
       edCodePlaceholder: "Paste custom code or shared URL...",
-      edDefaultMsg: "Select a beat, stamp a rhythm pattern, and click note chips to cycle Normal → • Staccato → × Ghost. Encodes directly into a shareable URL (no server).",
+      edDefaultMsg: "Click any beat directly on the sheet music (blue box) or beat strip, then tap a rhythm icon below to stamp it.",
       edTiePrev: "⌒ Tie Prev",
-      edNoteHint: "Notes (click: N→•→×):",
+      edNoteHint: "Note articulation (click to cycle):",
+      edArtNormal: "Normal",
+      edArtStac: "• Staccato",
+      edArtGhost: "× Ghost",
+      edCats: { basic: "Basic", eighth: "8th", sixteenth: "16th", triplet: "Triplets", c68: "6/8 Basic", c68_16: "6/8 16th" },
       edRestOnly: "Rest beat (no notes)",
       edContBeat: "Sustained from an earlier beat — select its starting beat to edit.",
       edUrlCopied: "Custom score link copied to clipboard!",
@@ -1733,9 +1777,13 @@
       edCopyUrl: "🔗 カスタムURLコピー",
       edLoadCode: "📥 コード読込",
       edCodePlaceholder: "カスタムコードまたは共有URLを貼り付け...",
-      edDefaultMsg: "拍を選んでリズムパターンを配置し、音符チップでスタッカート(•)/ゴースト(×)を切替できます。URLにそのまま保存して共有できます。",
+      edDefaultMsg: "譜面上の拍（青い枠）を直接クリックして選び、下のリズムアイコンを押すだけで編集できます。",
       edTiePrev: "⌒ 前の拍とタイ",
-      edNoteHint: "音符クリック(通常→•→×):",
+      edNoteHint: "音符アーティキュレーション（クリック切替）:",
+      edArtNormal: "通常",
+      edArtStac: "• スタッカート",
+      edArtGhost: "× ゴースト",
+      edCats: { basic: "基本", eighth: "8分", sixteenth: "16分", triplet: "3連符", c68: "6/8 基本", c68_16: "6/8 16分" },
       edRestOnly: "休符の拍（音符なし）",
       edContBeat: "前の拍から続く長い音符です — 開始拍を選んで編集してください。",
       edUrlCopied: "カスタム譜面の共有URLをコピーしました！",
@@ -2737,7 +2785,21 @@
         const innerW = barW - innerPadL - innerPadR;
         const tickX = (barTick) => barX0 + innerPadL + (barTick / ts.barTicks) * innerW;
         const slotX = (bt, slot) => tickX(bt * ts.beatTicks + slot);
-        barLayouts[bIdx] = { staffTop, barX0, innerPadL, innerW, barTicks: ts.barTicks };
+        barLayouts[bIdx] = { staffTop, barX0, barX1, innerPadL, innerW, barTicks: ts.barTicks, beatsPerBar: ts.beatsPerBar, beatTicks: ts.beatTicks };
+
+        // Highlight currently selected beat in the Custom Score Editor directly on the sheet music
+        if (typeof edState !== "undefined" && edState.open && edState.selBar === bIdx) {
+          const hx0 = Math.max(barX0 + 2, tickX(edState.selBeat * ts.beatTicks) - 9);
+          const hx1 = Math.min(barX1 - 2, tickX((edState.selBeat + 1) * ts.beatTicks) - 5);
+          g.appendChild(el("rect", {
+            x: hx0, y: staffTop - 32,
+            width: Math.max(18, hx1 - hx0), height: 86, rx: 6,
+            fill: "rgba(37, 99, 235, 0.10)",
+            stroke: "rgba(37, 99, 235, 0.55)",
+            "stroke-width": 1.4,
+            "stroke-dasharray": "4 2.5"
+          }));
+        }
 
         // Subtle measure number
         g.appendChild(el("text", {
@@ -5238,42 +5300,151 @@
   // -------------------------------------------------------------------------
   // 7B. Custom Score Editor, Share URL, Daily Challenge & Result Card
   // -------------------------------------------------------------------------
-  const ED_SIMPLE_STAMPS = [
-    { lbl: "𝅝 4b",   cells: [[[0, 48, false, null]], [], [], []] },
-    { lbl: "𝅗𝅥. 3b",  cells: [[[0, 36, false, null]], [], []] },
-    { lbl: "𝅗𝅥 2b",   cells: [[[0, 24, false, null]], []] },
-    { lbl: "𝄼 2bR",  cells: [[[0, 24, true, null]], []] },
-    { lbl: "♩.♪ 2b", cells: [[[0, 18, false, null]], [[6, 6, false, null]]] },
-    { lbl: "♩",      cells: [[[0, 12, false, null]]] },
-    { lbl: "𝄽 R",    cells: [[[0, 12, true, null]]] },
-    { lbl: "♫ 8-8",  cells: [[[0, 6, false, null], [6, 6, false, null]]] },
-    { lbl: "𝄾♪ r-8", cells: [[[0, 6, true, null], [6, 6, false, null]]] },
-    { lbl: "♪𝄾 8-r", cells: [[[0, 6, false, null], [6, 6, true, null]]] },
-    { lbl: "♬ 16×4", cells: [[[0, 3, false, null], [3, 3, false, null], [6, 3, false, null], [9, 3, false, null]]] },
-    { lbl: "8-16-16", cells: [[[0, 6, false, null], [6, 3, false, null], [9, 3, false, null]]] },
-    { lbl: "16-16-8", cells: [[[0, 3, false, null], [3, 3, false, null], [6, 6, false, null]]] },
-    { lbl: "16-8-16", cells: [[[0, 3, false, null], [3, 6, false, null], [9, 3, false, null]]] },
-    { lbl: "♪.16",   cells: [[[0, 9, false, null], [9, 3, false, null]]] },
-    { lbl: "r-16×3", cells: [[[0, 3, true, null], [3, 3, false, null], [6, 3, false, null], [9, 3, false, null]]] },
-    { lbl: "³8×3",   cells: [[[0, 4, false, "8t"], [4, 4, false, "8t"], [8, 4, false, "8t"]]] },
-    { lbl: "³2:1",   cells: [[[0, 8, false, "8t"], [8, 4, false, "8t"]]] },
-    { lbl: "³r-8-8", cells: [[[0, 4, true, "8t"], [4, 4, false, "8t"], [8, 4, false, "8t"]]] },
-    { lbl: "³4×3 2b", cells: [[[0, 8, false, "4t"], [8, 8, false, "4t"]], [[4, 8, false, "4t"]]] },
+  const ED_SIMPLE_GROUPS = [
+    {
+      cat: "basic",
+      items: [
+        { lbl: "4박",   cells: [[[0, 48, false, null]], [], [], []] },
+        { lbl: "3박",   cells: [[[0, 36, false, null]], [], []] },
+        { lbl: "2박",   cells: [[[0, 24, false, null]], []] },
+        { lbl: "2박쉼", cells: [[[0, 24, true, null]], []] },
+        { lbl: "1박",   cells: [[[0, 12, false, null]]] },
+        { lbl: "1박쉼", cells: [[[0, 12, true, null]]] },
+      ]
+    },
+    {
+      cat: "eighth",
+      items: [
+        { lbl: "8-8",     cells: [[[0, 6, false, null], [6, 6, false, null]]] },
+        { lbl: "쉼-8",    cells: [[[0, 6, true, null], [6, 6, false, null]]] },
+        { lbl: "8-쉼",    cells: [[[0, 6, false, null], [6, 6, true, null]]] },
+        { lbl: "점4+8",   cells: [[[0, 18, false, null]], [[6, 6, false, null]]] },
+      ]
+    },
+    {
+      cat: "sixteenth",
+      items: [
+        { lbl: "16×4",    cells: [[[0, 3, false, null], [3, 3, false, null], [6, 3, false, null], [9, 3, false, null]]] },
+        { lbl: "8-16-16", cells: [[[0, 6, false, null], [6, 3, false, null], [9, 3, false, null]]] },
+        { lbl: "16-16-8", cells: [[[0, 3, false, null], [3, 3, false, null], [6, 6, false, null]]] },
+        { lbl: "16-8-16", cells: [[[0, 3, false, null], [3, 6, false, null], [9, 3, false, null]]] },
+        { lbl: "점8+16",  cells: [[[0, 9, false, null], [9, 3, false, null]]] },
+        { lbl: "쉼-16×3", cells: [[[0, 3, true, null], [3, 3, false, null], [6, 3, false, null], [9, 3, false, null]]] },
+      ]
+    },
+    {
+      cat: "triplet",
+      items: [
+        { lbl: "8분 3연",  cells: [[[0, 4, false, "8t"], [4, 4, false, "8t"], [8, 4, false, "8t"]]] },
+        { lbl: "셔플 2:1", cells: [[[0, 8, false, "8t"], [8, 4, false, "8t"]]] },
+        { lbl: "쉼-8-8",   cells: [[[0, 4, true, "8t"], [4, 4, false, "8t"], [8, 4, false, "8t"]]] },
+        { lbl: "2박 3연",  cells: [[[0, 8, false, "4t"], [8, 8, false, "4t"]], [[4, 8, false, "4t"]]] },
+      ]
+    }
   ];
 
-  const ED_68_STAMPS = [
-    { lbl: "𝅗𝅥. 2b",    cells: [[[0, 36, false, null]], []] },
-    { lbl: "♩.",       cells: [[[0, 18, false, null]]] },
-    { lbl: "𝄽. R",     cells: [[[0, 18, true, null]]] },
-    { lbl: "♪♪♪ 8×3",  cells: [[[0, 6, false, null], [6, 6, false, null], [12, 6, false, null]]] },
-    { lbl: "♩♪ 4-8",   cells: [[[0, 12, false, null], [12, 6, false, null]]] },
-    { lbl: "♪♩ 8-4",   cells: [[[0, 6, false, null], [6, 12, false, null]]] },
-    { lbl: "𝄾♪♪ r-8-8", cells: [[[0, 6, true, null], [6, 6, false, null], [12, 6, false, null]]] },
-    { lbl: "♪𝄾♪ 8-r-8", cells: [[[0, 6, false, null], [6, 6, true, null], [12, 6, false, null]]] },
-    { lbl: "16-16-8-8", cells: [[[0, 3, false, null], [3, 3, false, null], [6, 6, false, null], [12, 6, false, null]]] },
-    { lbl: "8-8-16-16", cells: [[[0, 6, false, null], [6, 6, false, null], [12, 3, false, null], [15, 3, false, null]]] },
-    { lbl: "♪.16-8",   cells: [[[0, 9, false, null], [9, 3, false, null], [12, 6, false, null]]] },
+  const ED_68_GROUPS = [
+    {
+      cat: "c68",
+      items: [
+        { lbl: "2박(점2)", cells: [[[0, 36, false, null]], []] },
+        { lbl: "점4분",    cells: [[[0, 18, false, null]]] },
+        { lbl: "점4쉼",    cells: [[[0, 18, true, null]]] },
+        { lbl: "8-8-8",    cells: [[[0, 6, false, null], [6, 6, false, null], [12, 6, false, null]]] },
+        { lbl: "4-8",      cells: [[[0, 12, false, null], [12, 6, false, null]]] },
+        { lbl: "8-4",      cells: [[[0, 6, false, null], [6, 12, false, null]]] },
+        { lbl: "쉼-8-8",   cells: [[[0, 6, true, null], [6, 6, false, null], [12, 6, false, null]]] },
+        { lbl: "8-쉼-8",   cells: [[[0, 6, false, null], [6, 6, true, null], [12, 6, false, null]]] },
+      ]
+    },
+    {
+      cat: "c68_16",
+      items: [
+        { lbl: "16-16-8-8", cells: [[[0, 3, false, null], [3, 3, false, null], [6, 6, false, null], [12, 6, false, null]]] },
+        { lbl: "8-8-16-16", cells: [[[0, 6, false, null], [6, 6, false, null], [12, 3, false, null], [15, 3, false, null]]] },
+        { lbl: "점8-16-8",  cells: [[[0, 9, false, null], [9, 3, false, null], [12, 6, false, null]]] },
+      ]
+    }
   ];
+
+  function createMiniStampSvg(cells, beatTicks) {
+    // Crisp vector notation icon using our exact engraver primitives (zero font/tofu dependency!)
+    const svg = el("svg", { viewBox: "0 0 96 54", xmlns: SVG_NS });
+    const g = el("g");
+    svg.appendChild(g);
+    const midY = 40;
+    const stemTopY = 12;
+    g.appendChild(el("line", { x1: 6, y1: midY, x2: 90, y2: midY, stroke: "#e2e8f0", "stroke-width": 1.2 }));
+
+    // Flatten events across cells for compact preview spacing
+    const flat = [];
+    const totalSpanTicks = cells.length * beatTicks;
+    cells.forEach((cell, cIdx) => {
+      cell.forEach(([slot, dur, rest, tuplet]) => {
+        flat.push({ pos: cIdx * beatTicks + slot, slot, dur, rest, tuplet });
+      });
+    });
+    const xOf = (pos) => flat.length === 1 ? 46 : (16 + (pos / Math.max(1, totalSpanTicks - 1)) * 66);
+
+    const beamGroups = [];
+    let curBeam = [];
+    for (const ev of flat) {
+      const nx = xOf(ev.pos);
+      if (ev.rest) {
+        drawRest(g, ev.dur, nx, midY - 4);
+        if (curBeam.length) { beamGroups.push(curBeam); curBeam = []; }
+      } else {
+        drawNotehead(g, ev.dur, nx, midY, null);
+        if (ev.dur !== 48) {
+          const sx = nx + 4.7;
+          g.appendChild(el("line", { x1: sx, y1: midY - 1.5, x2: sx, y2: stemTopY, stroke: "#111", "stroke-width": 1.5 }));
+          if (ev.dur <= 9 && ev.dur !== 8) {
+            curBeam.push({ ev, nx, sx });
+          } else if (curBeam.length) {
+            beamGroups.push(curBeam);
+            curBeam = [];
+          }
+        }
+      }
+    }
+    if (curBeam.length) beamGroups.push(curBeam);
+
+    for (const beamable of beamGroups) {
+      if (beamable.length === 1) {
+        drawFlag(g, beamable[0].sx, stemTopY, beamable[0].ev.dur === 3);
+      } else {
+        const x1 = beamable[0].sx - 0.7;
+        const x2 = beamable[beamable.length - 1].sx + 0.7;
+        g.appendChild(el("rect", { x: x1, y: stemTopY, width: x2 - x1, height: 4.5, fill: "#111" }));
+        const connected = new Array(beamable.length).fill(false);
+        const y2 = stemTopY + 7;
+        for (let i = 0; i < beamable.length - 1; i++) {
+          const a = beamable[i], b = beamable[i + 1];
+          if (a.ev.dur === 3 && b.ev.dur === 3 && a.ev.pos + a.ev.dur === b.ev.pos) {
+            g.appendChild(el("rect", { x: a.sx - 0.7, y: y2, width: (b.sx - a.sx) + 1.4, height: 3.8, fill: "#111" }));
+            connected[i] = true; connected[i + 1] = true;
+          }
+        }
+        for (let i = 0; i < beamable.length; i++) {
+          if (beamable[i].ev.dur === 3 && !connected[i]) {
+            const stubW = 9;
+            const sx = i < beamable.length - 1 ? beamable[i].sx - 0.7 : beamable[i].sx - stubW + 0.7;
+            g.appendChild(el("rect", { x: sx, y: y2, width: stubW, height: 3.8, fill: "#111" }));
+          }
+        }
+      }
+    }
+
+    if (flat.some(e => e.tuplet === "8t" || e.tuplet === "4t")) {
+      const x1 = xOf(flat[0].pos) + (flat[0].rest ? 0 : 4.7);
+      const last = flat[flat.length - 1];
+      const x2 = xOf(last.pos) + (last.rest ? 4 : 4.7);
+      const is4t = flat.some(e => e.tuplet === "4t");
+      const allBeamed3 = !is4t && beamGroups.length === 1 && beamGroups[0].length === 3 && !flat.some(e => e.rest);
+      drawTuplet(g, x1, x2, stemTopY + 1, !allBeamed3);
+    }
+    return svg;
+  }
 
   const edState = {
     open: false,
@@ -5447,6 +5618,7 @@
           e.currentTarget.blur();
           edState.selBar = bIdx;
           edState.selBeat = bt;
+          app.dirtyScore = true;
           renderEditorUi();
         });
         grp.appendChild(btn);
@@ -5454,22 +5626,36 @@
       strip.appendChild(grp);
     });
 
-    // 2. Rhythm stamp palette
+    // 2. Categorized SVG notation stamp palette
     const pal = document.getElementById("edPalette");
     pal.innerHTML = "";
-    const stamps = ts.compound ? ED_68_STAMPS : ED_SIMPLE_STAMPS;
+    const groups = ts.compound ? ED_68_GROUPS : ED_SIMPLE_GROUPS;
+    const catLabels = t("edCats");
     const remBeats = ts.beatsPerBar - edState.selBeat;
-    for (const st of stamps) {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "ed-stamp";
-      btn.textContent = st.lbl;
-      btn.disabled = st.cells.length > remBeats;
-      btn.addEventListener("click", (e) => {
-        e.currentTarget.blur();
-        applyStampAt(edState.selBar, edState.selBeat, st.cells);
-      });
-      pal.appendChild(btn);
+    for (const grp of groups) {
+      const row = document.createElement("div");
+      row.className = "ed-cat-row";
+      const lbl = document.createElement("span");
+      lbl.className = "ed-cat-lbl";
+      lbl.textContent = catLabels[grp.cat] || grp.cat;
+      row.appendChild(lbl);
+      for (const st of grp.items) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "ed-stamp";
+        btn.disabled = st.cells.length > remBeats;
+        btn.appendChild(createMiniStampSvg(st.cells, ts.beatTicks));
+        const cap = document.createElement("span");
+        cap.className = "ed-stamp-lbl";
+        cap.textContent = st.lbl;
+        btn.appendChild(cap);
+        btn.addEventListener("click", (e) => {
+          e.currentTarget.blur();
+          applyStampAt(edState.selBar, edState.selBeat, st.cells);
+        });
+        row.appendChild(btn);
+      }
+      pal.appendChild(row);
     }
 
     // 3. Per-note articulation & cross-beat tie controls for selected beat
@@ -5495,14 +5681,16 @@
         hint.textContent = t("edNoteHint");
         tools.appendChild(hint);
 
-        curEvs.forEach((ev, idx) => {
+        let noteNum = 0;
+        curEvs.forEach((ev) => {
           if (ev.rest) return;
+          noteNum++;
           const chip = document.createElement("button");
           chip.type = "button";
           const artCls = ev.art === "staccato" ? " art-stac" : (ev.art === "ghost" ? " art-ghost" : "");
           chip.className = "ed-note-chip" + artCls;
-          const sym = ev.art === "staccato" ? "•" : (ev.art === "ghost" ? "×" : "♩");
-          chip.textContent = `#${idx + 1} ${sym}`;
+          const artTxt = ev.art === "staccato" ? t("edArtStac") : (ev.art === "ghost" ? t("edArtGhost") : t("edArtNormal"));
+          chip.textContent = `#${noteNum} ${artTxt}`;
           chip.disabled = Boolean(ev.tiedIn || ev.tiedOut);
           chip.addEventListener("click", (e) => {
             e.currentTarget.blur();
@@ -5563,6 +5751,7 @@
     edState.open = open;
     bar.classList.toggle("hidden", !open);
     btn.classList.toggle("active", open);
+    document.body.classList.toggle("editing-score", open);
     if (open) {
       if (!app.customMode || edState.timeSig !== app.timeSig || !edState.bars.length) {
         importCurrentScoreIntoEditor();
@@ -5570,7 +5759,32 @@
         renderEditorUi();
       }
     }
+    app.dirtyScore = true;
   }
+
+  // Click directly on any beat in the sheet music SVG to select it when the editor is open!
+  scoreSvg.addEventListener("click", (e) => {
+    if (!edState.open || !app.scoreLayout) return;
+    const rect = scoreSvg.getBoundingClientRect();
+    const vb = scoreSvg.viewBox.baseVal;
+    if (!rect.width || !rect.height || !vb.width || !vb.height) return;
+    const sx = ((e.clientX - rect.left) / rect.width) * vb.width;
+    const sy = ((e.clientY - rect.top) / rect.height) * vb.height;
+    const layouts = app.scoreLayout.barLayouts;
+    for (let bIdx = 0; bIdx < layouts.length; bIdx++) {
+      const lay = layouts[bIdx];
+      if (!lay) continue;
+      if (sy >= lay.staffTop - 42 && sy <= lay.staffTop + 78 && sx >= lay.barX0 && sx <= lay.barX1) {
+        const relTick = ((sx - (lay.barX0 + lay.innerPadL)) / Math.max(1, lay.innerW)) * lay.barTicks;
+        const bt = Math.max(0, Math.min(lay.beatsPerBar - 1, Math.floor(relTick / lay.beatTicks)));
+        edState.selBar = bIdx;
+        edState.selBeat = bt;
+        app.dirtyScore = true;
+        renderEditorUi();
+        return;
+      }
+    }
+  });
 
   function loadCustomFromInput(rawInput) {
     const decoded = decodeCustomScore(rawInput);
