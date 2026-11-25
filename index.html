@@ -1398,6 +1398,74 @@
     left: 0;
   }
 
+  .tools-dropdown.diff-dropdown {
+    width: min(330px, calc(100vw - 24px));
+    padding: 12px;
+    gap: 8px;
+  }
+
+  .diff-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 12.5px;
+    font-weight: 800;
+    color: var(--ink);
+  }
+
+  .diff-dropdown select {
+    width: 100%;
+    padding: 6px 8px;
+    font-size: 12.5px;
+  }
+
+  .diff-pair {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .diff-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .diff-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .diff-dropdown .diff-grid-3 button,
+  .diff-dropdown .diff-grid-2 button {
+    justify-content: center;
+    text-align: center;
+    border: 1px solid var(--border);
+    background: #fafafa;
+    padding: 6px 6px;
+    font-size: 11.5px;
+    white-space: nowrap;
+  }
+
+  .diff-dropdown .diff-grid-3 button:hover:not(:disabled),
+  .diff-dropdown .diff-grid-2 button:hover:not(:disabled) {
+    background: #f4f4f5;
+    border-color: #d4d4d8;
+  }
+
+  .diff-dropdown .diff-grid-3 button.active,
+  .diff-dropdown .diff-grid-2 button.active {
+    background: #171717;
+    color: #ffffff;
+    border-color: #171717;
+  }
+
+  .diff-dropdown .tools-sec-lbl {
+    padding: 2px 2px 0;
+  }
+
   .tools-sep {
     height: 1px;
     background: #f1f5f9;
@@ -1509,36 +1577,54 @@
       <div class="divider"></div>
 
       <div class="group">
-        <span id="lblLevel" class="label">난이도</span>
-        <select id="levelSelect" title="난이도 (단축키 1~6, ↑↓)">
-          <option value="1" selected>Lv1 · 정박 &amp; 쉼표 기초</option>
-          <option value="2">Lv2 · 정박 8분 입문</option>
-          <option value="3">Lv3 · 8분 엇박 &amp; 점4분</option>
-          <option value="4">Lv4 · 8분 싱코페이션</option>
-          <option value="5">Lv5 · 16분음표 기초</option>
-          <option value="6">Lv6 · 16분음표 심화</option>
-        </select>
-        <select id="timeSigSelect" title="박자표 (단축키 s)">
-          <option value="4/4" selected>4/4</option>
-          <option value="3/4">3/4</option>
-          <option value="2/4">2/4</option>
-          <option value="5/4">5/4</option>
-          <option value="6/8">6/8</option>
-        </select>
-        <select id="barsSelect" title="마디 수 (단축키 l)">
-          <option value="2">2마디</option>
-          <option value="4" selected>4마디 (1줄)</option>
-          <option value="8">8마디 (2줄)</option>
-          <option value="12">12마디 (3줄)</option>
-          <option value="16">16마디 (4줄)</option>
-          <option value="32">32마디 (8줄)</option>
-        </select>
-        <div id="techWrap" class="tools-wrap">
-          <button id="btnTechMenu" type="button" aria-haspopup="true" aria-expanded="false" title="3연음 · 스타카토 · 고스트 노트 조합 (T / Q / X)"><span id="btnTechText">🎼 리듬 옵션</span><span id="techActiveBadge" class="tools-badge hidden"></span></button>
-          <div id="techDropdown" class="tools-dropdown hidden" role="menu">
-            <button id="btnTriplets" type="button" role="menuitem" title="3연음(셋잇단음표) 포함 ON/OFF (단축키 t)">3연음 OFF</button>
-            <button id="btnStaccato" type="button" role="menuitem" title="스타카토(.) 역서스테인 훈련 ON/OFF (단축키 q)">• 스타카토 OFF</button>
-            <button id="btnGhost" type="button" role="menuitem" title="고스트 노트(× 데드노트) 훈련 ON/OFF (단축키 x · 입력 f/d)">× 고스트 OFF</button>
+        <div id="diffWrap" class="tools-wrap">
+          <button id="btnDiffMenu" type="button" aria-haspopup="true" aria-expanded="false" title="난이도 · 박자 · 마디 · 리듬 옵션 · 연습 옵션">🎚️ <span id="lblLevel">난이도</span><span id="diffSummaryBadge" class="tools-badge">Lv1 · 4/4 · 4B</span></button>
+          <div id="diffDropdown" class="tools-dropdown align-left diff-dropdown hidden" role="dialog" aria-label="Difficulty settings">
+            <div class="diff-head">
+              <span>🎚️ <span id="lblDiffPanelTitle">난이도 &amp; 연습 설정</span></span>
+              <button id="btnDiffClose" type="button" class="cal-close" style="width:auto;padding:2px 6px;" title="닫기">✕</button>
+            </div>
+            <div id="lblDiffSecScore" class="tools-sec-lbl">악보 · 박자 · 마디</div>
+            <select id="levelSelect" title="난이도 (단축키 1~6, ↑↓)">
+              <option value="1" selected>Lv1 · 정박 &amp; 쉼표 기초</option>
+              <option value="2">Lv2 · 정박 8분 입문</option>
+              <option value="3">Lv3 · 8분 엇박 &amp; 점4분</option>
+              <option value="4">Lv4 · 8분 싱코페이션</option>
+              <option value="5">Lv5 · 16분음표 기초</option>
+              <option value="6">Lv6 · 16분음표 심화</option>
+            </select>
+            <div class="diff-pair">
+              <select id="timeSigSelect" title="박자표 (단축키 s)">
+                <option value="4/4" selected>4/4</option>
+                <option value="3/4">3/4</option>
+                <option value="2/4">2/4</option>
+                <option value="5/4">5/4</option>
+                <option value="6/8">6/8</option>
+              </select>
+              <select id="barsSelect" title="마디 수 (단축키 l)">
+                <option value="2">2마디</option>
+                <option value="4" selected>4마디 (1줄)</option>
+                <option value="8">8마디 (2줄)</option>
+                <option value="12">12마디 (3줄)</option>
+                <option value="16">16마디 (4줄)</option>
+                <option value="32">32마디 (8줄)</option>
+              </select>
+            </div>
+            <div class="tools-sep"></div>
+            <div id="btnTechText" class="tools-sec-lbl">🎼 리듬 옵션</div>
+            <div class="diff-grid-3">
+              <button id="btnTriplets" type="button" title="3연음(셋잇단음표) 포함 ON/OFF (단축키 t)">3연음 OFF</button>
+              <button id="btnStaccato" type="button" title="스타카토(.) 역서스테인 훈련 ON/OFF (단축키 q)">• 스타카토 OFF</button>
+              <button id="btnGhost" type="button" title="고스트 노트(× 데드노트) 훈련 ON/OFF (단축키 x · 입력 f/d)">× 고스트 OFF</button>
+            </div>
+            <div class="tools-sep"></div>
+            <div id="btnOptsText" class="tools-sec-lbl">⚙️ 연습 옵션</div>
+            <div class="diff-grid-2">
+              <button id="btnSound" type="button" class="active" title="m">🔊 메트로놈 ON</button>
+              <button id="btnBeatNums" type="button" title="마디 위 박자 번호 표기 (단축키 b)">박자표기 OFF</button>
+              <button id="btnCursor" type="button" title="입문용 악보 진행 커서 표시 ON/OFF (단축키 c)">커서 OFF</button>
+              <button id="btnBlindGrade" type="button" title="채점 시점 전환: 즉시 / 완료후 (단축키 g)">채점: 즉시</button>
+            </div>
           </div>
         </div>
       </div>
@@ -1559,17 +1645,8 @@
       <div class="divider"></div>
 
       <div class="group">
-        <button id="btnSound" class="active" title="m">🔊 메트로놈 ON</button>
         <button id="btnInputMode" title="i">입력: KEY</button>
         <button id="btnTouchPad" title="모바일 투핑거 터치 패드">👆 패드</button>
-        <div id="optsWrap" class="tools-wrap">
-          <button id="btnOptsMenu" type="button" aria-haspopup="true" aria-expanded="false" title="박자표기 · 커서 · 채점 시점 (B / C / G)"><span id="btnOptsText">⚙️ 연습 옵션</span><span id="optsActiveDot" class="tools-dot hidden"></span></button>
-          <div id="optsDropdown" class="tools-dropdown align-left hidden" role="menu">
-            <button id="btnBeatNums" type="button" role="menuitem" title="마디 위 박자 번호 표기 (단축키 b)">박자표기 OFF</button>
-            <button id="btnCursor" type="button" role="menuitem" title="입문용 악보 진행 커서 표시 ON/OFF (단축키 c)">커서 OFF</button>
-            <button id="btnBlindGrade" type="button" role="menuitem" title="채점 시점 전환: 즉시 / 완료후 (단축키 g)">채점: 즉시</button>
-          </div>
-        </div>
         <div id="toolsWrap" class="tools-wrap">
           <button id="btnToolsMenu" type="button" aria-haspopup="true" aria-expanded="false" title="에디터 · 특수훈련 · 싱크보정 · PDF · 튜토리얼 · 설명"><span id="btnToolsText">⋯ 도구</span><span id="toolsActiveDot" class="tools-dot hidden"></span></button>
           <div id="toolsDropdown" class="tools-dropdown hidden" role="menu">
@@ -1926,7 +2003,7 @@
           body: "1박은 초록, 나머지 박은 노랑 LED가 깜빡입니다. ±35ms 이내는 초록(★ TIGHT), ±80ms는 노랑, 그 이상은 빨강으로 채점됩니다. 실전 감각을 키우려면 🔊 메트로놈 OFF나 채점: 완료후도 활용해 보세요!",
         },
         {
-          target: "#levelSelect",
+          target: "#btnDiffMenu",
           title: "🎚️ 6단계 난이도 & 3연음 · 스타카토 · 고스트",
           body: "Lv1 정박 기초부터 Lv6 16분음표 심화까지 단계별로 연습하고, 3연음 · • 스타카토(짧게 끊기) · × 고스트 노트(F/D 키)와 4/4·3/4·2/4·5/4·6/8 박자표를 자유롭게 조합할 수 있습니다.",
         },
@@ -1946,6 +2023,8 @@
       btnEditor: "✏️ 에디터",
       btnTechMenu: "🎼 리듬 옵션",
       btnOptsMenu: "⚙️ 연습 옵션",
+      diffPanelTitle: "난이도 & 연습 설정",
+      diffSecScore: "악보 · 박자 · 마디",
       btnToolsMenu: "⋯ 도구",
       toolsSecCreate: "제작 · 훈련",
       toolsSecUtil: "보정 · 출력",
@@ -2184,7 +2263,7 @@
           body: "Beat 1 flashes green; other beats flash amber. Within ±35ms scores green (★ TIGHT), ±80ms amber, and beyond red. Try 🔊 Metronome OFF or Grade: End when you're ready for a real sight-reading test!",
         },
         {
-          target: "#levelSelect",
+          target: "#btnDiffMenu",
           title: "🎚️ 6 Rhythm Levels + Triplets · Staccato · Ghost",
           body: "Progress from Lv1 Quarter Basics to Lv6 16th Notes Advanced, and mix in Triplets, • Staccato (short 50% release), × Ghost Notes (F/D keys), and 4/4 · 3/4 · 2/4 · 5/4 · 6/8 meters.",
         },
@@ -2204,6 +2283,8 @@
       btnEditor: "✏️ Editor",
       btnTechMenu: "🎼 Rhythm",
       btnOptsMenu: "⚙️ Options",
+      diffPanelTitle: "Difficulty & Practice",
+      diffSecScore: "Score · Meter · Bars",
       btnToolsMenu: "⋯ Tools",
       toolsSecCreate: "Create · Drills",
       toolsSecUtil: "Sync · Export",
@@ -2442,7 +2523,7 @@
           body: "1拍目は緑、他の拍は黄色LEDが光ります。±35ms以内は緑(★ TIGHT)、±80msは黄、それ以上は赤で判定。実戦練習には 🔊 メトロノームOFF や 採点: 終了後 もおすすめです。",
         },
         {
-          target: "#levelSelect",
+          target: "#btnDiffMenu",
           title: "🎚️ 6段階レベル＆3連符・スタッカート・ゴースト",
           body: "Lv1の基礎からLv6の16分音符応用まで段階的に上達でき、3連符・• スタッカート・× ゴーストノート（F/Dキー）や 4/4・3/4・2/4・5/4・6/8 拍子も自由に組み合わせられます。",
         },
@@ -2462,6 +2543,8 @@
       btnEditor: "✏️ 編集",
       btnTechMenu: "🎼 リズム",
       btnOptsMenu: "⚙️ 練習設定",
+      diffPanelTitle: "難易度 & 練習設定",
+      diffSecScore: "譜面 · 拍子 · 小節",
       btnToolsMenu: "⋯ ツール",
       toolsSecCreate: "作成 · 特訓",
       toolsSecUtil: "補正 · 出力",
@@ -5830,6 +5913,8 @@
     document.getElementById("btnEditor").textContent = t("btnEditor");
     document.getElementById("btnTechText").textContent = t("btnTechMenu");
     document.getElementById("btnOptsText").textContent = t("btnOptsMenu");
+    document.getElementById("lblDiffPanelTitle").textContent = t("diffPanelTitle");
+    document.getElementById("lblDiffSecScore").textContent = t("diffSecScore");
     document.getElementById("btnToolsText").textContent = t("btnToolsMenu");
     document.getElementById("lblToolsSecCreate").textContent = t("toolsSecCreate");
     document.getElementById("lblToolsSecUtil").textContent = t("toolsSecUtil");
@@ -7584,11 +7669,10 @@
   window.addEventListener("scroll", () => { if (tourState.open) positionTourElements(); }, { passive: true });
 
   // -------------------------------------------------------------------------
-  // Categorized Toolbar Dropdowns (🎼 리듬 옵션 · ⚙️ 연습 옵션 · ⋯ 도구)
+  // Categorized Toolbar Dropdowns (🎚️ 난이도 통합 패널 · ⋯ 도구)
   // -------------------------------------------------------------------------
   const TOOLBAR_MENUS = [
-    { wrapId: "techWrap", btnId: "btnTechMenu", dropId: "techDropdown", closeOnClick: false },
-    { wrapId: "optsWrap", btnId: "btnOptsMenu", dropId: "optsDropdown", closeOnClick: false },
+    { wrapId: "diffWrap", btnId: "btnDiffMenu", dropId: "diffDropdown", closeOnClick: false },
     { wrapId: "toolsWrap", btnId: "btnToolsMenu", dropId: "toolsDropdown", closeOnClick: true },
   ];
 
@@ -7605,31 +7689,21 @@
   }
 
   function syncAllDropdownBadges() {
-    // 1. Rhythm Tech Menu (T1/T2 · S · G)
+    // 1. Unified Difficulty Menu (Lv + Tech + TimeSig + Bars + Practice Opts)
     const allowTri = tripletsAllowed(app.level, getTimeSig());
     const effTri = allowTri ? app.tripletMode : 0;
-    const techParts = [];
-    if (effTri === 1) techParts.push("T1");
-    else if (effTri === 2) techParts.push("T2");
-    if (app.staccatoOn) techParts.push("S");
-    if (app.ghostOn) techParts.push("G");
-    const techDropOpen = !document.getElementById("techDropdown").classList.contains("hidden");
-    const techBadge = document.getElementById("techActiveBadge");
-    if (techParts.length) {
-      techBadge.textContent = techParts.join("·");
-      techBadge.classList.remove("hidden");
-    } else {
-      techBadge.classList.add("hidden");
-    }
-    document.getElementById("btnTechMenu").classList.toggle("active", techDropOpen || techParts.length > 0);
+    const tTag = effTri === 2 ? "T2" : (effTri === 1 ? "T1" : "");
+    const lvFlags = `${tTag}${app.staccatoOn ? "S" : ""}${app.ghostOn ? "G" : ""}`;
+    const diffParts = [`Lv${app.level}${lvFlags}`, app.timeSig, `${app.numBars}B`];
+    if (!app.soundOn) diffParts.push("M×");
+    if (app.blindGrade) diffParts.push("Blind");
+    if (app.showBeatNums) diffParts.push("+B");
+    if (app.showCursor) diffParts.push("+C");
+    const diffDropOpen = !document.getElementById("diffDropdown").classList.contains("hidden");
+    document.getElementById("diffSummaryBadge").textContent = diffParts.join(" · ");
+    document.getElementById("btnDiffMenu").classList.toggle("active", diffDropOpen);
 
-    // 2. Practice Options Menu (BeatNums · Cursor · Blind Grade)
-    const anyOpt = app.showBeatNums || app.showCursor || app.blindGrade;
-    const optsDropOpen = !document.getElementById("optsDropdown").classList.contains("hidden");
-    document.getElementById("optsActiveDot").classList.toggle("hidden", !anyOpt);
-    document.getElementById("btnOptsMenu").classList.toggle("active", optsDropOpen || anyOpt);
-
-    // 3. Tools Menu (Editor · Drills · Sync · PDF · Tour · Guide)
+    // 2. Tools Menu (Editor · Drills · Sync · PDF · Tour · Guide)
     const anyDrill = (app.gapClick !== "OFF") || (app.fadeBeats > 0) || app.rushOn;
     const anyPanelOpen =
       !document.getElementById("editorBar").classList.contains("hidden") ||
@@ -7640,6 +7714,12 @@
     document.getElementById("toolsActiveDot").classList.toggle("hidden", !anyDrill);
   }
   const syncToolsMenuBadge = syncAllDropdownBadges;
+
+  document.getElementById("btnDiffClose").addEventListener("click", (e) => {
+    e.stopPropagation();
+    closeAllToolbarMenus();
+    syncAllDropdownBadges();
+  });
 
   for (const m of TOOLBAR_MENUS) {
     const btn = document.getElementById(m.btnId);
