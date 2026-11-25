@@ -704,6 +704,17 @@
     gap: 4px 14px;
   }
 
+  #metaSeed {
+    cursor: pointer;
+    text-decoration: underline dotted #a1a1aa;
+    text-underline-offset: 3px;
+  }
+
+  #metaSeed:hover {
+    color: var(--accent);
+    text-decoration-color: var(--accent);
+  }
+
   .score-wrap {
     width: 100%;
     overflow-x: auto;
@@ -1403,7 +1414,10 @@
       edUrlCopied: "커스텀 악보 공유 링크가 클립보드에 복사되었습니다!",
       edSeedCopied: "현재 악보 공유 링크(시드+설정)가 클립보드에 복사되었습니다!",
       edLoadedOk: "커스텀 악보를 불러왔습니다! Enter로 바로 연주해 보세요.",
-      edLoadFail: "유효하지 않은 커스텀 코드/링크입니다. 전체 URL 또는 커스텀 코드를 확인하세요.",
+      edSeedLoadedOk: (s) => `시드 #${s} 악보를 불러왔습니다! Enter로 바로 연주해 보세요.`,
+      edLoadFail: "유효하지 않은 시드/코드/링크입니다. 4자리 시드(#A1B2), 커스텀 코드(C1_...), 또는 공유 URL을 입력하세요.",
+      seedPrompt: "불러올 시드 번호(예: A1B2), 커스텀 코드(C1_...), 또는 공유 URL을 입력하세요:",
+      seedTooltip: "클릭해서 시드 번호(#A1B2) 또는 공유 링크 직접 입력",
       dailyLoaded: (date, streak, isPlus) => `${isPlus ? "🔥 오늘의 데일리+" : "🏆 오늘의 데일리"} (${date})${streak > 0 ? ` · 연속 ${streak}일` : ""}`,
       dailyBest: (acc, tight) => `오늘 최고: ${acc}% (TIGHT ${tight})`,
       resultCopied: "✓ 결과 복사됨!",
@@ -1596,7 +1610,10 @@
       edUrlCopied: "Custom score link copied to clipboard!",
       edSeedCopied: "Shareable score link (seed + settings) copied to clipboard!",
       edLoadedOk: "Custom score loaded! Press Enter to play.",
-      edLoadFail: "Invalid custom code or URL. Please check and try again.",
+      edSeedLoadedOk: (s) => `Seed #${s} loaded! Press Enter to play.`,
+      edLoadFail: "Invalid seed, custom code, or URL. Enter a 4-char hex seed (#A1B2), C1_... code, or shared URL.",
+      seedPrompt: "Enter a Seed (e.g. A1B2), Custom Code (C1_...), or Shared URL:",
+      seedTooltip: "Click to load a specific Seed (#A1B2) or shared link",
       dailyLoaded: (date, streak, isPlus) => `${isPlus ? "🔥 Daily+" : "🏆 Daily"} Challenge (${date})${streak > 0 ? ` · ${streak}-day streak` : ""}`,
       dailyBest: (acc, tight) => `Today's best: ${acc}% (TIGHT ${tight})`,
       resultCopied: "✓ Copied!",
@@ -1789,7 +1806,10 @@
       edUrlCopied: "カスタム譜面の共有URLをコピーしました！",
       edSeedCopied: "現在の譜面URL（シード＋設定）をコピーしました！",
       edLoadedOk: "カスタム譜面を読み込みました！Enterで演奏できます。",
-      edLoadFail: "無効なカスタムコード／URLです。",
+      edSeedLoadedOk: (s) => `シード #${s} を読み込みました！Enterで演奏できます。`,
+      edLoadFail: "無効なシード／コード／URLです。4桁シード(#A1B2)・C1_コード・共有URLを確認してください。",
+      seedPrompt: "読み込むシード番号（例: A1B2）、カスタムコード（C1_...）、または共有URLを入力:",
+      seedTooltip: "クリックしてシード番号(#A1B2)や共有URLを直接入力",
       dailyLoaded: (date, streak, isPlus) => `${isPlus ? "🔥 デイリー+" : "🏆 デイリー"} (${date})${streak > 0 ? ` · ${streak}日連続` : ""}`,
       dailyBest: (acc, tight) => `本日のベスト: ${acc}% (TIGHT ${tight})`,
       resultCopied: "✓ コピー済!",
@@ -4650,6 +4670,7 @@
     document.getElementById("btnEdLoadCode").textContent = t("edLoadCode");
     document.getElementById("edCodeInput").placeholder = t("edCodePlaceholder");
     document.getElementById("edMsg").textContent = t("edDefaultMsg");
+    document.getElementById("metaSeed").title = t("seedTooltip");
     if (typeof renderEditorUi === "function" && !document.getElementById("editorBar").classList.contains("hidden")) {
       renderEditorUi();
     }
@@ -5786,29 +5807,120 @@
     }
   });
 
-  function loadCustomFromInput(rawInput) {
-    const decoded = decodeCustomScore(rawInput);
-    const msgEl = document.getElementById("edMsg");
-    if (!decoded) {
-      if (msgEl) {
-        msgEl.style.color = "var(--red)";
-        msgEl.textContent = t("edLoadFail");
+  function applySeedQueryParams(params) {
+    const customParam = params.get("custom");
+    if (customParam) {
+      const bpmP = params.get("bpm");
+      if (bpmP && Number.isFinite(Number(bpmP))) {
+        app.bpm = Math.max(40, Math.min(140, Math.round(Number(bpmP))));
       }
-      return false;
+      return loadCustomFromInput(customParam);
     }
-    edState.timeSig = decoded.timeSig;
-    edState.bars = cloneBars(decoded.bars);
-    edState.selBar = 0;
-    edState.selBeat = 0;
-    if (decoded.bpm !== null) app.bpm = decoded.bpm;
-    applyCustomToApp();
-    if (edState.open) renderEditorUi();
-    if (msgEl) {
-      msgEl.style.color = "var(--green)";
-      msgEl.textContent = t("edLoadedOk");
+    const dailyPlusParam = params.get("dailyplus");
+    if (dailyPlusParam) {
+      loadDailyChallenge(dailyPlusParam === "1" ? null : dailyPlusParam, true);
+      return true;
     }
-    return true;
+    const dailyParam = params.get("daily");
+    if (dailyParam) {
+      loadDailyChallenge(dailyParam === "1" ? null : dailyParam, false);
+      return true;
+    }
+    const seedParam = params.get("seed");
+    if (seedParam) {
+      const tsP = params.get("ts");
+      if (tsP && TIME_SIGS[tsP]) app.timeSig = tsP;
+      const lvP = Number(params.get("lv"));
+      if (lvP >= 1 && lvP <= 6) app.level = lvP;
+      const bP = Number(params.get("b"));
+      if (BAR_OPTIONS.includes(bP)) app.numBars = bP;
+      const bpmP = Number(params.get("bpm"));
+      if (bpmP >= 40 && bpmP <= 140) app.bpm = Math.round(bpmP);
+      const tP = Number(params.get("t"));
+      app.tripletMode = (tP === 1 || tP === 2) ? tP : 0;
+      app.staccatoOn = params.get("s") === "1";
+      app.ghostOn = params.get("g") === "1";
+      const cleanHex = seedParam.replace(/^#/, "").trim();
+      const parsedSeed = parseInt(cleanHex, 16);
+      if (/^[0-9a-fA-F]{1,8}$/.test(cleanHex) && Number.isFinite(parsedSeed) && parsedSeed > 0) {
+        toggleEditorBar(false);
+        newPhrase(parsedSeed, false);
+        setHitBadge(`Seed #${parsedSeed.toString(16).toUpperCase().padStart(4, "0")}`, "tight");
+        return true;
+      }
+    }
+    return false;
   }
+
+  function loadCustomFromInput(rawInput) {
+    const trimmed = String(rawInput || "").trim();
+    const msgEl = document.getElementById("edMsg");
+
+    // 1. Try custom code or ?custom= URL
+    const decoded = decodeCustomScore(trimmed);
+    if (decoded) {
+      edState.timeSig = decoded.timeSig;
+      edState.bars = cloneBars(decoded.bars);
+      edState.selBar = 0;
+      edState.selBeat = 0;
+      if (decoded.bpm !== null) app.bpm = decoded.bpm;
+      applyCustomToApp();
+      if (edState.open) renderEditorUi();
+      if (msgEl) {
+        msgEl.style.color = "var(--green)";
+        msgEl.textContent = t("edLoadedOk");
+      }
+      return true;
+    }
+
+    // 2. Try full share URL (?seed=... / ?daily=... / ?dailyplus=...)
+    if (trimmed.includes("seed=") || trimmed.includes("daily=") || trimmed.includes("dailyplus=")) {
+      try {
+        const u = new URL(trimmed.startsWith("http") ? trimmed : "https://x.local/?" + trimmed.replace(/^\?/, ""));
+        if (applySeedQueryParams(u.searchParams)) {
+          if (msgEl) {
+            msgEl.style.color = "var(--green)";
+            msgEl.textContent = t("edSeedLoadedOk", app.phrase.seed.toString(16).toUpperCase().padStart(4, "0"));
+          }
+          return true;
+        }
+      } catch (_) {}
+    }
+
+    // 3. Try bare hex seed (e.g. "A1B2", "#A1B2", "Seed #A1B2")
+    const seedMatch = trimmed.match(/^(?:seed\s*)?#?([0-9a-fA-F]{1,8})$/i);
+    if (seedMatch) {
+      const parsedSeed = parseInt(seedMatch[1], 16);
+      if (Number.isFinite(parsedSeed) && parsedSeed > 0) {
+        toggleEditorBar(false);
+        newPhrase(parsedSeed, false);
+        const hexStr = parsedSeed.toString(16).toUpperCase().padStart(4, "0");
+        setHitBadge(`Seed #${hexStr}`, "tight");
+        if (msgEl) {
+          msgEl.style.color = "var(--green)";
+          msgEl.textContent = t("edSeedLoadedOk", hexStr);
+        }
+        return true;
+      }
+    }
+
+    if (msgEl) {
+      msgEl.style.color = "var(--red)";
+      msgEl.textContent = t("edLoadFail");
+    }
+    return false;
+  }
+
+  document.getElementById("metaSeed").addEventListener("click", () => {
+    const curVal = app.customMode && app.phrase.customCode
+      ? app.phrase.customCode
+      : app.phrase.seed.toString(16).toUpperCase().padStart(4, "0");
+    const entered = window.prompt(t("seedPrompt"), curVal);
+    if (entered === null || !entered.trim()) return;
+    if (!loadCustomFromInput(entered)) {
+      setHitBadge(t("edLoadFail"), "err");
+    }
+  });
 
   function flashBtnText(btn, tempText, restoreFn) {
     btn.textContent = tempText;
@@ -5894,45 +6006,7 @@
 
   function bootInitialScore() {
     const params = new URLSearchParams(location.search || "");
-    const customParam = params.get("custom");
-    if (customParam) {
-      const bpmP = params.get("bpm");
-      if (bpmP && Number.isFinite(Number(bpmP))) {
-        app.bpm = Math.max(40, Math.min(140, Math.round(Number(bpmP))));
-      }
-      if (loadCustomFromInput(customParam)) return;
-    }
-    const dailyPlusParam = params.get("dailyplus");
-    if (dailyPlusParam) {
-      loadDailyChallenge(dailyPlusParam === "1" ? null : dailyPlusParam, true);
-      return;
-    }
-    const dailyParam = params.get("daily");
-    if (dailyParam) {
-      loadDailyChallenge(dailyParam === "1" ? null : dailyParam, false);
-      return;
-    }
-    const seedParam = params.get("seed");
-    if (seedParam) {
-      const tsP = params.get("ts");
-      if (tsP && TIME_SIGS[tsP]) app.timeSig = tsP;
-      const lvP = Number(params.get("lv"));
-      if (lvP >= 1 && lvP <= 6) app.level = lvP;
-      const bP = Number(params.get("b"));
-      if (BAR_OPTIONS.includes(bP)) app.numBars = bP;
-      const bpmP = Number(params.get("bpm"));
-      if (bpmP >= 40 && bpmP <= 140) app.bpm = Math.round(bpmP);
-      const tP = Number(params.get("t"));
-      if (tP === 0 || tP === 1 || tP === 2) app.tripletMode = tP;
-      if (params.get("s") === "1") app.staccatoOn = true;
-      if (params.get("g") === "1") app.ghostOn = true;
-      const parsedSeed = parseInt(seedParam, 16);
-      if (Number.isFinite(parsedSeed) && parsedSeed > 0) {
-        app.phrase = generatePhrase(app.numBars, app.level, app.tripletMode, app.timeSig, parsedSeed, app.staccatoOn, app.ghostOn);
-        resetTargets();
-        return;
-      }
-    }
+    if (applySeedQueryParams(params)) return;
     app.phrase = generatePhrase(app.numBars, app.level, app.tripletMode, app.timeSig, null, app.staccatoOn, app.ghostOn);
     resetTargets();
   }
