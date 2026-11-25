@@ -1892,9 +1892,14 @@
     return false;
   }
 
+  function tripletsAllowed(level = app.level, ts = null) {
+    const t = ts || getTimeSig();
+    return !t.compound && level >= 2;
+  }
+
   function generatePhrase(numBars, level, tripletsOn = false, timeSigKey = "4/4", forcedSeed = null, staccatoOn = false, ghostOn = false) {
     const ts = TIME_SIGS[timeSigKey] || TIME_SIGS["4/4"];
-    const useTriplets = tripletsOn && !ts.compound;
+    const useTriplets = tripletsOn && !ts.compound && level >= 2;
     const seed = forcedSeed ?? (0x1000 + Math.floor(Math.random() * 0xEFFF));
     const rand = mulberry32(seed);
     const pool = ts.compound
@@ -3362,7 +3367,7 @@
       return app.level >= 5 ? Math.min(0.115, (beatSec / 6) * 0.48) : Math.min(0.135, (beatSec / 3) * 0.46);
     }
     if (app.level >= 5) return Math.min(0.120, (beatSec / 4) * 0.48);
-    if (app.tripletsOn) return Math.min(0.135, (beatSec / 3) * 0.46);
+    if (app.tripletsOn && tripletsAllowed()) return Math.min(0.135, (beatSec / 3) * 0.46);
     if (app.level <= 2) return Math.min(0.165, (beatSec / 2) * 0.46);
     return Math.min(0.150, (beatSec / 2) * 0.45);
   }
@@ -3783,7 +3788,7 @@
       seed: app.phrase.seed.toString(16).toUpperCase().padStart(4, "0"),
       bpm: app.bpm,
       lv: app.level,
-      triplets: app.tripletsOn && !getTimeSig().compound,
+      triplets: app.tripletsOn && tripletsAllowed(),
       staccato: app.staccatoOn,
       ghost: app.ghostOn,
       ts: app.timeSig,
@@ -3894,7 +3899,8 @@
     document.getElementById("bpmVal").textContent = String(app.bpm);
     document.getElementById("bpmSlider").value = String(app.bpm);
     document.getElementById("metaTempo").textContent = ts.compound ? `♩. = ${app.bpm}` : `♩ = ${app.bpm}`;
-    const lvFlags = `${(app.tripletsOn && !ts.compound) ? "T" : ""}${app.staccatoOn ? "S" : ""}${app.ghostOn ? "G" : ""}`;
+    const allowTri = tripletsAllowed(app.level, ts);
+    const lvFlags = `${(app.tripletsOn && allowTri) ? "T" : ""}${app.staccatoOn ? "S" : ""}${app.ghostOn ? "G" : ""}`;
     const baseTitle = LEVEL_TITLES[app.level].replace(/^Lv\d+/, `Lv${app.level}${lvFlags}`);
     document.getElementById("metaLevel").textContent = `${app.timeSig} · ${baseTitle}`;
     document.getElementById("metaSeed").textContent = `Seed #${app.phrase.seed.toString(16).toUpperCase().padStart(4, "0")}`;
@@ -3902,9 +3908,9 @@
     document.getElementById("timeSigSelect").value = app.timeSig;
     document.getElementById("barsSelect").value = String(app.numBars);
     const btnTriplets = document.getElementById("btnTriplets");
-    btnTriplets.disabled = ts.compound;
-    btnTriplets.textContent = (app.tripletsOn && !ts.compound) ? t("tripletsOn") : t("tripletsOff");
-    btnTriplets.classList.toggle("active", app.tripletsOn && !ts.compound);
+    btnTriplets.disabled = !allowTri;
+    btnTriplets.textContent = (app.tripletsOn && allowTri) ? t("tripletsOn") : t("tripletsOff");
+    btnTriplets.classList.toggle("active", app.tripletsOn && allowTri);
 
     const btnStaccato = document.getElementById("btnStaccato");
     btnStaccato.textContent = app.staccatoOn ? t("staccatoOn") : t("staccatoOff");
@@ -4236,7 +4242,7 @@
   });
 
   document.getElementById("btnTriplets").addEventListener("click", () => {
-    if (getTimeSig().compound) return;
+    if (!tripletsAllowed()) return;
     app.tripletsOn = !app.tripletsOn;
     newPhrase();
   });
@@ -4541,7 +4547,7 @@
       updateMeta();
     } else if (code === "KeyT") {
       e.preventDefault();
-      if (!getTimeSig().compound) {
+      if (tripletsAllowed()) {
         app.tripletsOn = !app.tripletsOn;
         newPhrase();
       }
