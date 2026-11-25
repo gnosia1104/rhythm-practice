@@ -2674,6 +2674,9 @@
 
   async function ensureAudioCtxReady() {
     const ctx = ensureAudioCtx();
+    if (ctx.state === "running" && ctx.currentTime > 0.05) {
+      return ctx;
+    }
     if (ctx.state !== "running") {
       try { await ctx.resume(); } catch (_) {}
     }
@@ -3460,10 +3463,14 @@
     const seq = ++app.runSeq;
     if (app.state === "CAL") stopCalibration(false);
     stopScheduledAudio();
+    // Immediately leave PLAY/COUNTIN before awaiting AudioContext so frame() cannot stamp stale misses
+    app.state = "READY";
     resetTargets();
     setHitBadge(t("statusGetReady"), "");
+    syncTransportButtons();
     const ctx = await ensureAudioCtxReady();
     if (seq !== app.runSeq) return;
+    resetTargets();
     app.startAudioT = ctx.currentTime + PRE_DELAY_SEC;
     app.state = demo ? "DEMO" : "COUNTIN";
     setHitBadge(demo ? t("badgeDemo") : t("badgeCountIn"), "");
@@ -3513,6 +3520,7 @@
   async function startCalibration() {
     const seq = ++app.runSeq;
     stopScheduledAudio();
+    app.state = "READY";
     resetTargets();
     const ctx = await ensureAudioCtxReady();
     if (seq !== app.runSeq) return;
