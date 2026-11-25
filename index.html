@@ -656,6 +656,23 @@
     gap: 10px;
   }
 
+  .dock-pads.with-ghost {
+    grid-template-columns: 0.9fr 1fr 1fr;
+  }
+
+  .tap-pad.ghost-pad {
+    border-style: dashed;
+    border-color: #94a3b8;
+    background: #f1f5f9;
+    color: #334155;
+  }
+
+  .tap-pad.ghost-pad.pressed {
+    background: #334155;
+    border-color: #334155;
+    color: #fff;
+  }
+
   .tap-pad {
     height: 70px;
     border-radius: 14px;
@@ -872,15 +889,21 @@
 
       <div class="group">
         <span id="lblLevel" class="label">난이도</span>
-        <select id="levelSelect" title="난이도 (단축키 1~6, ↑↓)">
+        <select id="levelSelect" title="난이도 (단축키 1~9·0, ↑↓)">
           <option value="1" selected>Lv1 · 정박 &amp; 쉼표 기초</option>
-          <option value="2">Lv2 · 정박 8분 입문</option>
-          <option value="3">Lv3 · 8분 엇박 &amp; 점4분</option>
-          <option value="4">Lv4 · 8분 싱코페이션</option>
-          <option value="5">Lv5 · 16분음표 기초</option>
-          <option value="6">Lv6 · 16분 펑크 마스터</option>
+          <option value="2">Lv2 · 정박 스타카토 (•)</option>
+          <option value="3">Lv3 · 정박 8분 입문</option>
+          <option value="4">Lv4 · 8분 엇박 &amp; 점4분</option>
+          <option value="5">Lv5 · 8분 싱코페이션 &amp; 스타카토 (•)</option>
+          <option value="6">Lv6 · 8분 그루브 &amp; 고스트 (×)</option>
+          <option value="7">Lv7 · 16분음표 기초</option>
+          <option value="8">Lv8 · 16분 펑크</option>
+          <option value="9">Lv9 · 16분 펑크 &amp; 고스트 (×)</option>
+          <option value="10">Lv10 · 16분 마스터 (• + ×)</option>
         </select>
         <button id="btnTriplets" title="3연음(셋잇단음표) 포함 ON/OFF (단축키 t)">3연음 OFF</button>
+        <button id="btnStaccato" title="스타카토(.) 역서스테인 훈련 ON/OFF (단축키 q)">• 스타카토 OFF</button>
+        <button id="btnGhost" title="고스트 노트(× 데드노트) 훈련 ON/OFF (단축키 x · 입력 f/d)">× 고스트 OFF</button>
         <select id="timeSigSelect" title="박자표 (단축키 s)">
           <option value="4/4" selected>4/4</option>
           <option value="3/4">3/4</option>
@@ -1074,7 +1097,11 @@
       <button id="btnDockStop" type="button" disabled>■ 정지</button>
       <button id="btnDockNew" type="button">새 악보</button>
     </div>
-    <div class="dock-pads">
+    <div id="dockPads" class="dock-pads">
+      <button id="padGhost" class="tap-pad ghost-pad hidden" type="button">
+        <span>× GHOST</span>
+        <small id="padGhostSub">뮤트 · F/D</small>
+      </button>
       <button id="padLeft" class="tap-pad" type="button">
         <span>TAP L</span>
         <small id="padLeftSub">검지 · J</small>
@@ -1105,14 +1132,29 @@
       lblLevel: "난이도",
       lvBtns: {
         1: "Lv1 · 정박 & 쉼표 기초",
-        2: "Lv2 · 정박 8분 입문",
-        3: "Lv3 · 8분 엇박 & 점4분",
-        4: "Lv4 · 8분 싱코페이션",
-        5: "Lv5 · 16분음표 기초",
-        6: "Lv6 · 16분 펑크 마스터",
+        2: "Lv2 · 정박 스타카토 (•)",
+        3: "Lv3 · 정박 8분 입문",
+        4: "Lv4 · 8분 엇박 & 점4분",
+        5: "Lv5 · 8분 싱코페이션 & 스타카토 (•)",
+        6: "Lv6 · 8분 그루브 & 고스트 (×)",
+        7: "Lv7 · 16분음표 기초",
+        8: "Lv8 · 16분 펑크",
+        9: "Lv9 · 16분 펑크 & 고스트 (×)",
+        10: "Lv10 · 16분 마스터 (• + ×)",
       },
       tripletsOn: "3연음 ON",
       tripletsOff: "3연음 OFF",
+      staccatoOn: "• 스타카토 ON",
+      staccatoOff: "• 스타카토 OFF",
+      ghostOn: "× 고스트 ON",
+      ghostOff: "× 고스트 OFF",
+      stacOkTip: (p) => `스타카토 ${p}% (양호 — 절반 길이 유지 후 깔끔히 컷)`,
+      stacShortTip: (p) => `스타카토 ${p}% (너무 짧음 — 표기 길이의 절반(약 50%)만큼 유지하세요)`,
+      stacLongTip: (p) => `스타카토 ${p}% (너무 긺 — 표기 길이의 절반(50%)에서 끊으세요)`,
+      ghostOkTip: (ms) => ms != null ? `고스트 뮤트 양호 (${ms}ms 컷)` : "고스트 뮤트 양호 (×)",
+      ghostRingTip: (ms) => ms != null ? `고스트 실패 (${ms}ms 울림 — 왼손 뮤트 퍼커시브로 치세요)` : "고스트 실패 — F/D 키(뮤트)로 입력하세요",
+      ghostWrongKeyTip: "일반 음표에 고스트 키(F/D)를 입력했습니다",
+      padGhostSub: "뮤트 · F/D",
       barsLabels: { 2: "2마디", 4: "4마디 (1줄)", 8: "8마디 (2줄)", 12: "12마디 (3줄)", 16: "16마디 (4줄)", 32: "32마디 (8줄)" },
       metroOn: "🔊 메트로놈 ON",
       metroOff: "🔇 메트로놈 OFF",
@@ -1172,7 +1214,7 @@
       audioFail: (err, isFile) => `오디오 입력 연결 실패: ${err}${isFile ? " (file:// 보안 제한일 수 있음 — python3 -m http.server 로 http://localhost 접속 권장)" : " (브라우저/OS 마이크 권한 및 장치 선택 확인)"}`,
       calMeasuring: "줄을 건드리지 말고 잠시 기다리세요 (바닥 노이즈 측정 중)...",
       calDone: (pct) => `노이즈 보정 완료 — 임계값 ${pct}%로 자동 설정됨`,
-      tapHintHtml: `입력: <kbd>Space</kbd> / <kbd>J</kbd> / <kbd>K</kbd> 또는 오디오 · <kbd>Enter</kbd> 시작 · <kbd>Esc</kbd> 정지 · <kbd>N</kbd> 새 악보 · <kbd>P</kbd> 정답 듣기 · <kbd>1</kbd>~<kbd>6</kbd>/<kbd>↑</kbd><kbd>↓</kbd> 난이도 · <kbd>T</kbd> 3연음 · <kbd>S</kbd> 박자표 · <kbd>L</kbd> 마디 수 · <kbd>+</kbd><kbd>−</kbd> BPM · <kbd>M</kbd> 메트로놈 · <kbd>B</kbd> 박자표기 · <kbd>C</kbd> 커서 · <kbd>G</kbd> 채점시점 · <kbd>I</kbd> 입력모드`,
+      tapHintHtml: `입력: <kbd>Space</kbd>/<kbd>J</kbd>/<kbd>K</kbd> (고스트 <kbd>F</kbd>/<kbd>D</kbd>) 또는 오디오 · <kbd>Enter</kbd> 시작 · <kbd>Esc</kbd> 정지 · <kbd>N</kbd> 새 악보 · <kbd>P</kbd> 정답 · <kbd>1</kbd>~<kbd>0</kbd>/<kbd>↑</kbd><kbd>↓</kbd> 난이도 · <kbd>T</kbd> 3연음 · <kbd>Q</kbd> 스타카토 · <kbd>X</kbd> 고스트 · <kbd>S</kbd> 박자표 · <kbd>L</kbd> 마디수 · <kbd>+</kbd><kbd>−</kbd> BPM · <kbd>M</kbd>/<kbd>B</kbd>/<kbd>C</kbd>/<kbd>G</kbd>/<kbd>I</kbd>`,
       legendHtml: `판정: <strong style="color:var(--green)">★ ≤35ms/쉼표통과</strong> · <strong style="color:var(--amber)">−/+ ≤80ms</strong> · <strong style="color:var(--red)">&lt;/&gt; &gt;80ms · × miss/쉼표에러</strong> · 서스테인(AUD): <strong style="color:var(--green)">▬ 양호</strong> / <strong style="color:var(--amber)">▬ 짧음</strong> / <strong style="color:var(--red)">▬ 침범</strong>`,
       summaryIdle: "연주를 마치면 타이밍 분포가 표시됩니다.",
       summaryHits: (hits, total, pct, tight, sign, mean, sd, extra, sus, restErrs) => {
@@ -1199,7 +1241,7 @@
           <ul>
             <li><strong>시작 / 정지</strong>: <kbd>Enter</kbd> 또는 <strong>▶ 시작</strong>을 누르면 1마디 카운트인(1박 초록 LED, 나머지 박 노랑 LED) 후 연주가 시작됩니다. 중간에 멈추려면 <kbd>Esc</kbd> 또는 <strong>■ 정지</strong>를 누르세요.</li>
             <li><strong>정답 미리듣기</strong>: <kbd>P</kbd> 또는 <strong>♪ 정답 듣기</strong>를 누르면 메트로놈에 맞춰 베이스 가이드 음(D)이 재생됩니다.</li>
-            <li><strong>악보 커스터마이즈</strong>: 6단계 난이도(<kbd>1</kbd>~<kbd>6</kbd>: 정박 기초 → 정박 8분 → 8분 엇박 → 싱코페이션 → 16분 기초 → 16분 마스터), 박자표(<kbd>S</kbd>), 마디 수(<kbd>L</kbd>, 2~32마디), BPM(<kbd>+</kbd>/<kbd>−</kbd>), <strong>박자표기(<kbd>B</kbd>)</strong>를 자유롭게 바꿀 수 있습니다.</li>
+            <li><strong>악보 커스터마이즈</strong>: 10단계 난이도(<kbd>1</kbd>~<kbd>9</kbd>·<kbd>0</kbd>, <kbd>↑</kbd><kbd>↓</kbd>: 정박 기초 → 정박 스타카토 → 정박 8분 → 8분 엇박 → 8분 싱코+스타카토 → 8분 고스트 → 16분 기초 → 16분 펑크 → 16분 펑크+고스트 → 16분 마스터), 박자표(<kbd>S</kbd>), 마디 수(<kbd>L</kbd>, 2~32마디), BPM(<kbd>+</kbd>/<kbd>−</kbd>), <strong>박자표기(<kbd>B</kbd>)</strong>를 자유롭게 바꿀 수 있습니다.</li>
             <li><strong>시창(초견) 훈련 설계</strong>: 기본은 커서 없이 메트로놈과 LED만 보고 박자를 세는 순수 초견 모드입니다. 입문 단계에서 위치 가이드가 필요하면 <strong>커서(<kbd>C</kbd>)</strong>를 켤 수 있고, 반대로 <strong>채점: 완료후(<kbd>G</kbd>)</strong>를 켜면 연주 중 채점 표시를 숨기고 끝난 뒤 한꺼번에 공개합니다.</li>
           </ul>
         </div>
@@ -1215,6 +1257,7 @@
               <strong style="color:var(--amber)">▬ 짧음</strong>(표기 길이의 62% 미만으로 빨리 끊음) ·
               <strong style="color:var(--red)">▬ 침범</strong>(뒤 쉼표까지 뮤트가 늦음)
             </li>
+            <li><strong>스타카토(<code>•</code>) &amp; 고스트 노트(<code>×</code>)</strong>: <kbd>Q</kbd>(스타카토)를 켜면 음표 아래 점이 붙어 표기 길이의 <strong>절반(약 50%)만큼 유지한 뒤 깔끔히 끊었는지</strong>(너무 짧으면 노랑, 절반 넘게 길면 빨강) 채점합니다. <kbd>X</kbd>(고스트)를 켜면 <code>×</code> 데드노트가 등장하며, 오디오 모드에서는 퍼커시브 뮤트 여부를 자동 판별하고 키보드에서는 <kbd>F</kbd>/<kbd>D</kbd>(모바일은 <code>× GHOST</code> 패드)로 입력합니다.</li>
             <li>기호나 서스테인 바 위에 <strong>마우스를 올리면</strong> 정확한 <code>ms</code> 오차와 서스테인 <code>%</code> 툴팁이 표시됩니다.</li>
           </ul>
         </div>
@@ -1236,7 +1279,8 @@
             <div><kbd>Enter</kbd> / <kbd>R</kbd></div><div>시작 / 같은 악보 재시도</div>
             <div><kbd>Esc</kbd></div><div>즉시 정지</div>
             <div><kbd>N</kbd> / <kbd>P</kbd></div><div>새 악보 생성 / 정답 베이스 듣기</div>
-            <div><kbd>1</kbd>~<kbd>6</kbd> / <kbd>↑</kbd> <kbd>↓</kbd> / <kbd>T</kbd></div><div>난이도 6단계 선택 · ±1 조절 · 3연음 ON/OFF</div>
+            <div><kbd>1</kbd>~<kbd>0</kbd> / <kbd>↑</kbd> <kbd>↓</kbd> / <kbd>T</kbd></div><div>난이도 10단계 선택 (0=Lv10) · ±1 조절 · 3연음 ON/OFF</div>
+            <div><kbd>Q</kbd> / <kbd>X</kbd> / <kbd>F</kbd> <kbd>D</kbd></div><div>스타카토 ON/OFF · 고스트 ON/OFF · 고스트 뮤트 입력</div>
             <div><kbd>S</kbd> / <kbd>L</kbd></div><div>박자표 변경 (4/4·3/4·2/4·5/4·6/8) · 마디 수 변경</div>
             <div><kbd>+</kbd> / <kbd>−</kbd></div><div>BPM ±5 조절</div>
             <div><kbd>M</kbd> / <kbd>B</kbd> / <kbd>C</kbd> / <kbd>G</kbd></div><div>메트로놈 · 박자표기 · 입문 커서 · 채점시점(즉시/완료후)</div>
@@ -1255,14 +1299,29 @@
       lblLevel: "Level",
       lvBtns: {
         1: "Lv1 · Quarter & Rest Basics",
-        2: "Lv2 · Straight 8ths",
-        3: "Lv3 · 8th Off-beats & Dotted",
-        4: "Lv4 · 8th Syncopation",
-        5: "Lv5 · 16th Basics",
-        6: "Lv6 · 16th Funk Master",
+        2: "Lv2 · Quarter Staccato (•)",
+        3: "Lv3 · Straight 8ths",
+        4: "Lv4 · 8th Off-beats & Dotted",
+        5: "Lv5 · 8th Syncopation & Staccato (•)",
+        6: "Lv6 · 8th Groove & Ghost Notes (×)",
+        7: "Lv7 · 16th Basics",
+        8: "Lv8 · 16th Funk",
+        9: "Lv9 · 16th Funk & Ghost Notes (×)",
+        10: "Lv10 · 16th Master (• + ×)",
       },
       tripletsOn: "Triplets ON",
       tripletsOff: "Triplets OFF",
+      staccatoOn: "• Staccato ON",
+      staccatoOff: "• Staccato OFF",
+      ghostOn: "× Ghost ON",
+      ghostOff: "× Ghost OFF",
+      stacOkTip: (p) => `Staccato ${p}% (Good — held ~half value & cut cleanly)`,
+      stacShortTip: (p) => `Staccato ${p}% (Too short — sustain ~50% of written value before muting)`,
+      stacLongTip: (p) => `Staccato ${p}% (Too long — cut off at ~50% of written value)`,
+      ghostOkTip: (ms) => ms != null ? `Ghost mute OK (${ms}ms percussive)` : "Ghost mute OK (×)",
+      ghostRingTip: (ms) => ms != null ? `Ghost rang out (${ms}ms — mute string with fretting hand)` : "Missed ghost — use F/D mute key",
+      ghostWrongKeyTip: "Used ghost key (F/D) on a regular note",
+      padGhostSub: "Mute · F/D",
       barsLabels: { 2: "2 bars", 4: "4 bars (1 line)", 8: "8 bars (2 lines)", 12: "12 bars (3 lines)", 16: "16 bars (4 lines)", 32: "32 bars (8 lines)" },
       metroOn: "🔊 Metronome ON",
       metroOff: "🔇 Metronome OFF",
@@ -1322,7 +1381,7 @@
       audioFail: (err, isFile) => `Audio input failed: ${err}${isFile ? " (file:// restriction — try http://localhost via python3 -m http.server)" : " (check browser/OS microphone permissions)"}`,
       calMeasuring: "Keep strings muted — measuring idle noise floor...",
       calDone: (pct) => `Noise calibrated — threshold auto-set to ${pct}%`,
-      tapHintHtml: `Play: <kbd>Space</kbd> / <kbd>J</kbd> / <kbd>K</kbd> or Audio · <kbd>Enter</kbd> Start · <kbd>Esc</kbd> Stop · <kbd>N</kbd> New · <kbd>P</kbd> Demo · <kbd>1</kbd>–<kbd>6</kbd>/<kbd>↑</kbd><kbd>↓</kbd> Level · <kbd>T</kbd> Triplets · <kbd>S</kbd> Meter · <kbd>L</kbd> Bars · <kbd>+</kbd><kbd>−</kbd> BPM · <kbd>M</kbd> Click · <kbd>B</kbd> Beats · <kbd>C</kbd> Cursor · <kbd>G</kbd> Grading · <kbd>I</kbd> Input`,
+      tapHintHtml: `Play: <kbd>Space</kbd>/<kbd>J</kbd>/<kbd>K</kbd> (Ghost <kbd>F</kbd>/<kbd>D</kbd>) or Audio · <kbd>Enter</kbd> Start · <kbd>Esc</kbd> Stop · <kbd>N</kbd> New · <kbd>P</kbd> Demo · <kbd>1</kbd>–<kbd>0</kbd>/<kbd>↑</kbd><kbd>↓</kbd> Level · <kbd>T</kbd> Triplets · <kbd>Q</kbd> Staccato · <kbd>X</kbd> Ghost · <kbd>S</kbd> Meter · <kbd>L</kbd> Bars · <kbd>+</kbd><kbd>−</kbd> BPM · <kbd>M</kbd>/<kbd>B</kbd>/<kbd>C</kbd>/<kbd>G</kbd>/<kbd>I</kbd>`,
       legendHtml: `Grade: <strong style="color:var(--green)">★ ≤35ms/Rest OK</strong> · <strong style="color:var(--amber)">−/+ ≤80ms</strong> · <strong style="color:var(--red)">&lt;/&gt; &gt;80ms · × Miss/Rest Err</strong> · Sustain(AUD): <strong style="color:var(--green)">▬ OK</strong> / <strong style="color:var(--amber)">▬ Short</strong> / <strong style="color:var(--red)">▬ Bleed</strong>`,
       summaryIdle: "Finish a take to see your timing distribution.",
       summaryHits: (hits, total, pct, tight, sign, mean, sd, extra, sus, restErrs) => {
@@ -1349,7 +1408,7 @@
           <ul>
             <li><strong>Start / Stop</strong>: Press <kbd>Enter</kbd> or <strong>▶ Start</strong> for a 1-bar count-in (Beat 1 green LED, other beats amber LED). Press <kbd>Esc</kbd> or <strong>■ Stop</strong> anytime to abort while keeping the same sheet.</li>
             <li><strong>Demo Playback</strong>: Press <kbd>P</kbd> or <strong>♪ Play Demo</strong> to hear the exact rhythm played on bass (D) with the metronome.</li>
-            <li><strong>Customize</strong>: Pick from 6 progressive levels (<kbd>1</kbd>–<kbd>6</kbd>: Quarter Basics → Straight 8ths → 8th Off-beats → Syncopation → 16th Basics → 16th Funk Master), time signature (<kbd>S</kbd>), length (<kbd>L</kbd>, 2–32 bars), BPM (<kbd>+</kbd>/<kbd>−</kbd>), and beat numbers (<kbd>B</kbd>).</li>
+            <li><strong>Customize</strong>: Pick from 10 progressive levels (<kbd>1</kbd>–<kbd>9</kbd>, <kbd>0</kbd>=Lv10, <kbd>↑</kbd><kbd>↓</kbd>: Quarter Basics → Quarter Staccato → Straight 8ths → 8th Off-beats → 8th Synco+Staccato → 8th Ghost → 16th Basics → 16th Funk → 16th Funk+Ghost → 16th Master), time signature (<kbd>S</kbd>), length (<kbd>L</kbd>, 2–32 bars), BPM (<kbd>+</kbd>/<kbd>−</kbd>), and beat numbers (<kbd>B</kbd>).</li>
             <li><strong>True Sight-Reading</strong>: By default there is no moving cursor—read ahead using only the click and LED. Beginners can toggle the optional <strong>Cursor (<kbd>C</kbd>)</strong> guide, or enable <strong>Grade: End (<kbd>G</kbd>)</strong> to hide all feedback until the take finishes.</li>
           </ul>
         </div>
@@ -1365,6 +1424,7 @@
               <strong style="color:var(--amber)">▬ Short</strong> (cut off under 62% of written value) ·
               <strong style="color:var(--red)">▬ Bleed</strong> (rang past the note into a rest)
             </li>
+            <li><strong>Staccato (<code>•</code>) &amp; Ghost Notes (<code>×</code>)</strong>: Enable <strong>Staccato (<kbd>Q</kbd>)</strong> to grade half-value articulation (hold ~<strong>50%</strong> of written duration, then mute cleanly—amber if too dead/short, red if held past half). Enable <strong>Ghost Notes (<kbd>X</kbd>)</strong> for percussive dead-notes (<code>×</code>)—auto-detected via fast percussive decay in Audio mode, or played with <kbd>F</kbd>/<kbd>D</kbd> (or the <code>× GHOST</code> touch pad) in Key mode.</li>
             <li><strong>Hover</strong> over any symbol or sustain bar for exact <code>ms</code> error and sustain <code>%</code> tooltips.</li>
           </ul>
         </div>
@@ -1386,7 +1446,8 @@
             <div><kbd>Enter</kbd> / <kbd>R</kbd></div><div>Start / Retry current score</div>
             <div><kbd>Esc</kbd></div><div>Stop immediately</div>
             <div><kbd>N</kbd> / <kbd>P</kbd></div><div>New score / Play demo bass</div>
-            <div><kbd>1</kbd>–<kbd>6</kbd> / <kbd>↑</kbd> <kbd>↓</kbd> / <kbd>T</kbd></div><div>6 difficulty levels (±1) · Triplets ON/OFF</div>
+            <div><kbd>1</kbd>–<kbd>0</kbd> / <kbd>↑</kbd> <kbd>↓</kbd> / <kbd>T</kbd></div><div>10 difficulty levels (0=Lv10, ±1) · Triplets ON/OFF</div>
+            <div><kbd>Q</kbd> / <kbd>X</kbd> / <kbd>F</kbd> <kbd>D</kbd></div><div>Staccato ON/OFF · Ghost Notes ON/OFF · Ghost mute hit</div>
             <div><kbd>S</kbd> / <kbd>L</kbd></div><div>Cycle time signature (4/4..6/8) · Cycle bar count</div>
             <div><kbd>+</kbd> / <kbd>−</kbd></div><div>BPM ±5</div>
             <div><kbd>M</kbd> / <kbd>B</kbd> / <kbd>C</kbd> / <kbd>G</kbd></div><div>Metronome · Beat numbers · Guide cursor · Grading (Live/End)</div>
@@ -1405,14 +1466,29 @@
       lblLevel: "難易度",
       lvBtns: {
         1: "Lv1 · 4分＆休符基礎",
-        2: "Lv2 · 表拍8分入門",
-        3: "Lv3 · 8分裏拍＆付点",
-        4: "Lv4 · 8分シンコペ",
-        5: "Lv5 · 16分音符基礎",
-        6: "Lv6 · 16分ファンク",
+        2: "Lv2 · 4分スタッカート (•)",
+        3: "Lv3 · 表拍8分入門",
+        4: "Lv4 · 8分裏拍＆付点",
+        5: "Lv5 · 8分シンコペ＆スタッカート (•)",
+        6: "Lv6 · 8分グルーヴ＆ゴースト (×)",
+        7: "Lv7 · 16分音符基礎",
+        8: "Lv8 · 16分ファンク",
+        9: "Lv9 · 16分ファンク＆ゴースト (×)",
+        10: "Lv10 · 16分マスター (• + ×)",
       },
       tripletsOn: "3連符 ON",
       tripletsOff: "3連符 OFF",
+      staccatoOn: "• スタッカート ON",
+      staccatoOff: "• スタッカート OFF",
+      ghostOn: "× ゴースト ON",
+      ghostOff: "× ゴースト OFF",
+      stacOkTip: (p) => `スタッカート ${p}%（良好 — 半分の音価で綺麗にカット）`,
+      stacShortTip: (p) => `スタッカート ${p}%（短すぎ — 音価の半分（約50%）まで伸ばしてから切ってください）`,
+      stacLongTip: (p) => `スタッカート ${p}%（長い — 音価の半分（50%）で切ってください）`,
+      ghostOkTip: (ms) => ms != null ? `ゴーストミュート良好（${ms}ms カット）` : "ゴーストミュート良好（×）",
+      ghostRingTip: (ms) => ms != null ? `ゴースト失敗（${ms}ms 鳴り続け — 左手ミュートで弾いてください）` : "ゴースト失敗 — F/Dキー（ミュート）で入力してください",
+      ghostWrongKeyTip: "通常の音符にゴーストキー（F/D）を入力しました",
+      padGhostSub: "ミュート · F/D",
       barsLabels: { 2: "2小節", 4: "4小節 (1段)", 8: "8小節 (2段)", 12: "12小節 (3段)", 16: "16小節 (4段)", 32: "32小節 (8段)" },
       metroOn: "🔊 メトロノーム ON",
       metroOff: "🔇 メトロノーム OFF",
@@ -1472,7 +1548,7 @@
       audioFail: (err, isFile) => `オーディオ入力接続失敗: ${err}${isFile ? " (file:// の制限の可能性 — python3 -m http.server で http://localhost 接続推奨)" : " (ブラウザ/OSのマイク権限を確認)"}`,
       calMeasuring: "弦に触れずにお待ちください（フロアノイズ測定中）...",
       calDone: (pct) => `ノイズ補正完了 — しきい値を ${pct}% に自動設定しました`,
-      tapHintHtml: `入力: <kbd>Space</kbd> / <kbd>J</kbd> / <kbd>K</kbd> またはオーディオ · <kbd>Enter</kbd> 開始 · <kbd>Esc</kbd> 停止 · <kbd>N</kbd> 新規 · <kbd>P</kbd> お手本 · <kbd>1</kbd>〜<kbd>6</kbd>/<kbd>↑</kbd><kbd>↓</kbd> 難易度 · <kbd>T</kbd> 3連符 · <kbd>S</kbd> 拍子 · <kbd>L</kbd> 小節数 · <kbd>+</kbd><kbd>−</kbd> BPM · <kbd>M</kbd> クリック · <kbd>B</kbd> 拍番号 · <kbd>C</kbd> カーソル · <kbd>G</kbd> 採点表示 · <kbd>I</kbd> 入力切替`,
+      tapHintHtml: `入力: <kbd>Space</kbd>/<kbd>J</kbd>/<kbd>K</kbd>（ゴースト <kbd>F</kbd>/<kbd>D</kbd>）またはオーディオ · <kbd>Enter</kbd> 開始 · <kbd>Esc</kbd> 停止 · <kbd>N</kbd> 新規 · <kbd>P</kbd> お手本 · <kbd>1</kbd>〜<kbd>0</kbd>/<kbd>↑</kbd><kbd>↓</kbd> 難易度 · <kbd>T</kbd> 3連符 · <kbd>Q</kbd> スタッカート · <kbd>X</kbd> ゴースト · <kbd>S</kbd> 拍子 · <kbd>L</kbd> 小節数 · <kbd>+</kbd><kbd>−</kbd> BPM · <kbd>M</kbd>/<kbd>B</kbd>/<kbd>C</kbd>/<kbd>G</kbd>/<kbd>I</kbd>`,
       legendHtml: `判定: <strong style="color:var(--green)">★ ≤35ms/休符OK</strong> · <strong style="color:var(--amber)">−/+ ≤80ms</strong> · <strong style="color:var(--red)">&lt;/&gt; &gt;80ms · × ミス/休符エラー</strong> · サステイン(AUD): <strong style="color:var(--green)">▬ 良好</strong> / <strong style="color:var(--amber)">▬ 短い</strong> / <strong style="color:var(--red)">▬ はみ出し</strong>`,
       summaryIdle: "演奏を終えるとタイミング分布が表示されます。",
       summaryHits: (hits, total, pct, tight, sign, mean, sd, extra, sus, restErrs) => {
@@ -1499,7 +1575,7 @@
           <ul>
             <li><strong>開始 / 停止</strong>: <kbd>Enter</kbd> または <strong>▶ 開始</strong> で1小節カウントイン（1拍目 緑LED、その他の拍 黄LED）のあと演奏が始まります。途中で止めるには <kbd>Esc</kbd> または <strong>■ 停止</strong> を押してください。</li>
             <li><strong>お手本再生</strong>: <kbd>P</kbd> または <strong>♪ お手本再生</strong> でメトロノームに合わせたベースガイド音（D）を確認できます。</li>
-            <li><strong>譜面設定</strong>: 6段階の難易度（<kbd>1</kbd>〜<kbd>6</kbd>：4分基礎→表拍8分→8分裏拍→シンコペ→16分基礎→16分ファンク）、拍子（<kbd>S</kbd>）、小節数（<kbd>L</kbd>、2〜32小節）、BPM（<kbd>+</kbd>/<kbd>−</kbd>）、拍番号表示（<kbd>B</kbd>）を自由に切り替えられます。</li>
+            <li><strong>譜面設定</strong>: 10段階の難易度（<kbd>1</kbd>〜<kbd>9</kbd>・<kbd>0</kbd>=Lv10・<kbd>↑</kbd><kbd>↓</kbd>：4分基礎→4分スタッカート→表拍8分→8分裏拍→8分シンコペ+スタッカート→8分ゴースト→16分基礎→16分ファンク→16分ファンク+ゴースト→16分マスター）、拍子（<kbd>S</kbd>）、小節数（<kbd>L</kbd>、2〜32小節）、BPM（<kbd>+</kbd>/<kbd>−</kbd>）、拍番号表示（<kbd>B</kbd>）を自由に切り替えられます。</li>
             <li><strong>初見（サイトリーディング）特化</strong>: 既定では譜面カーソルを出さず、メトロノームとLEDだけで先読みする設計です。入門用に <strong>カーソル（<kbd>C</kbd>）</strong> をオンにすることも、<strong>採点: 終了後（<kbd>G</kbd>）</strong> で完走後まとめ採点にすることもできます。</li>
           </ul>
         </div>
@@ -1515,6 +1591,7 @@
               <strong style="color:var(--amber)">▬ 短い</strong>（音価の62%未満で早く途切れた） ·
               <strong style="color:var(--red)">▬ はみ出し</strong>（次の休符までミュートが遅れた）
             </li>
+            <li><strong>スタッカート（<code>•</code>）＆ゴーストノート（<code>×</code>）</strong>: <kbd>Q</kbd> でスタッカートをオンにすると音価の <strong>半分（約50%）伸ばしてから綺麗に切ったか</strong>（短すぎると黄、半分超えで赤）を判定します。<kbd>X</kbd> でゴーストノート（<code>×</code>）をオンにすると、オーディオではパーカッシブなミュート減衰を自動判別し、キーボードでは <kbd>F</kbd>/<kbd>D</kbd>（モバイルは <code>× GHOST</code> パッド）で入力します。</li>
             <li>記号やバーに <strong>マウスを合わせる</strong> と正確な <code>ms</code> 誤差やサステイン <code>%</code> が表示されます。</li>
           </ul>
         </div>
@@ -1536,7 +1613,8 @@
             <div><kbd>Enter</kbd> / <kbd>R</kbd></div><div>開始 / 同じ譜面で再挑戦</div>
             <div><kbd>Esc</kbd></div><div>即座に停止</div>
             <div><kbd>N</kbd> / <kbd>P</kbd></div><div>新しい譜面 / お手本ベース再生</div>
-            <div><kbd>1</kbd>〜<kbd>6</kbd> / <kbd>↑</kbd> <kbd>↓</kbd> / <kbd>T</kbd></div><div>難易度6段階選択 · ±1調整 · 3連符 ON/OFF</div>
+            <div><kbd>1</kbd>〜<kbd>0</kbd> / <kbd>↑</kbd> <kbd>↓</kbd> / <kbd>T</kbd></div><div>難易度10段階選択（0=Lv10）· ±1調整 · 3連符 ON/OFF</div>
+            <div><kbd>Q</kbd> / <kbd>X</kbd> / <kbd>F</kbd> <kbd>D</kbd></div><div>スタッカート ON/OFF · ゴースト ON/OFF · ゴーストミュート入力</div>
             <div><kbd>S</kbd> / <kbd>L</kbd></div><div>拍子切替（4/4·3/4·2/4·5/4·6/8）· 小節数切替</div>
             <div><kbd>+</kbd> / <kbd>−</kbd></div><div>BPM ±5 調整</div>
             <div><kbd>M</kbd> / <kbd>B</kbd> / <kbd>C</kbd> / <kbd>G</kbd></div><div>メトロノーム · 拍番号 · 入門カーソル · 採点表示（即時/終了後）</div>
@@ -1783,27 +1861,70 @@
     [[[[0, 6, true, null], [6, 3, false, null], [9, 3, false, null], [12, 6, false, null]]], 1.4, [0, 1]],
   ];
 
+  // Lv 8: 16th Funk & Ghost (adds dot8+16, 16-8-16, light 16th syncopation — before full Lv 9 16th rests)
+  const PATTERNS_LV5B_FUNK = scale16thPool([
+    [[[[0, 16, false]], [], [], []], 0.4, [0]],
+    [[[[0, 12, false]], [], []], 0.6, [0, 1]],
+    [[[[0, 8, false]], []], 1.0, [0, 1, 2]],
+    [[[[0, 6, false]], [[2, 2, false]]], 1.4, [0, 1, 2]],
+    [[[[0, 2, false], [2, 4, false]], [[2, 2, false]]], 1.4, [0, 2]],
+    [[[[0, 4, false]]], 1.6, [0, 1, 2, 3]],
+    [[[[0, 2, false], [2, 2, false]]], 2.0, [0, 1, 2, 3]],
+    [[[[0, 2, true], [2, 2, false]]], 1.3, [0, 1, 2, 3]],
+    [[[[0, 1, false], [1, 1, false], [2, 1, false], [3, 1, false]]], 2.6, [0, 1, 2, 3]],
+    [[[[0, 1, false], [1, 1, false], [2, 2, false]]], 2.4, [0, 1, 2, 3]],
+    [[[[0, 2, false], [2, 1, false], [3, 1, false]]], 2.4, [0, 1, 2, 3]],
+    [[[[0, 3, false], [3, 1, false]]], 2.2, [0, 1, 2, 3]],
+    [[[[0, 1, false], [1, 2, false], [3, 1, false]]], 2.0, [0, 1, 2, 3]],
+  ]);
+
   const LEVEL_POOLS = {
-    1: PATTERNS_LV1, 2: PATTERNS_LV2, 3: PATTERNS_LV3,
-    4: PATTERNS_LV4, 5: PATTERNS_LV5, 6: PATTERNS_LV6,
+    1: PATTERNS_LV1,       // Quarter & Rest Basics
+    2: PATTERNS_LV1,       // Quarter Staccato (•)
+    3: PATTERNS_LV2,       // Straight 8ths
+    4: PATTERNS_LV3,       // 8th Off-beats & Dotted
+    5: PATTERNS_LV4,       // 8th Syncopation & Staccato (•)
+    6: PATTERNS_LV4,       // 8th Groove & Ghost Notes (×)
+    7: PATTERNS_LV5,       // 16th Basics
+    8: PATTERNS_LV5B_FUNK, // 16th Funk
+    9: PATTERNS_LV5B_FUNK, // 16th Funk & Ghost Notes (×)
+    10: PATTERNS_LV6,      // 16th Master (• + ×)
   };
   const TRIPLET_POOLS = {
-    1: TRIPLETS_BASIC, 2: TRIPLETS_SHUFFLE, 3: TRIPLETS_SHUFFLE,
-    4: TRIPLETS_SYNC, 5: TRIPLETS_ADV, 6: TRIPLETS_ADV,
+    1: TRIPLETS_BASIC, 2: TRIPLETS_BASIC, 3: TRIPLETS_SHUFFLE,
+    4: TRIPLETS_SHUFFLE, 5: TRIPLETS_SYNC, 6: TRIPLETS_SYNC,
+    7: TRIPLETS_ADV, 8: TRIPLETS_ADV, 9: TRIPLETS_ADV, 10: TRIPLETS_ADV,
   };
   const COMPOUND68_POOLS = {
-    1: PATTERNS_68_LV1, 2: PATTERNS_68_LV2, 3: PATTERNS_68_LV3,
-    4: PATTERNS_68_LV4, 5: PATTERNS_68_LV5, 6: PATTERNS_68_LV6,
+    1: PATTERNS_68_LV1, 2: PATTERNS_68_LV1, 3: PATTERNS_68_LV2,
+    4: PATTERNS_68_LV3, 5: PATTERNS_68_LV4, 6: PATTERNS_68_LV4,
+    7: PATTERNS_68_LV5, 8: PATTERNS_68_LV5, 9: PATTERNS_68_LV5, 10: PATTERNS_68_LV6,
+  };
+  const LEVEL_PRESETS = {
+    1:  { staccato: false, ghost: false },
+    2:  { staccato: true,  ghost: false },
+    3:  { staccato: false, ghost: false },
+    4:  { staccato: false, ghost: false },
+    5:  { staccato: true,  ghost: false },
+    6:  { staccato: false, ghost: true  },
+    7:  { staccato: false, ghost: false },
+    8:  { staccato: false, ghost: false },
+    9:  { staccato: false, ghost: true  },
+    10: { staccato: true,  ghost: true  },
   };
   const LEVEL_TITLES = {
-    1: "Lv1 · Quarter & Rest Basics",
-    2: "Lv2 · Straight 8ths",
-    3: "Lv3 · 8th Off-beats & Dotted",
-    4: "Lv4 · 8th Syncopation",
-    5: "Lv5 · 16th Basics",
-    6: "Lv6 · 16th Funk Master",
+    1:  "Lv1 · Quarter & Rest Basics",
+    2:  "Lv2 · Quarter Staccato (•)",
+    3:  "Lv3 · Straight 8ths",
+    4:  "Lv4 · 8th Off-beats & Dotted",
+    5:  "Lv5 · 8th Synco & Staccato (•)",
+    6:  "Lv6 · 8th Groove & Ghost (×)",
+    7:  "Lv7 · 16th Basics",
+    8:  "Lv8 · 16th Funk",
+    9:  "Lv9 · 16th Funk & Ghost (×)",
+    10: "Lv10 · 16th Master (• + ×)",
   };
-  const TIE_PROBS = { 1: 0.0, 2: 0.0, 3: 0.0, 4: 0.28, 5: 0.12, 6: 0.24 };
+  const TIE_PROBS = { 1: 0.0, 2: 0.0, 3: 0.0, 4: 0.0, 5: 0.24, 6: 0.24, 7: 0.12, 8: 0.18, 9: 0.18, 10: 0.24 };
   const PRE_DELAY_SEC = 0.5;
 
   function mulberry32(seed) {
@@ -1830,7 +1951,7 @@
     return false;
   }
 
-  function generatePhrase(numBars, level, tripletsOn = false, timeSigKey = "4/4", forcedSeed = null) {
+  function generatePhrase(numBars, level, tripletsOn = false, timeSigKey = "4/4", forcedSeed = null, staccatoOn = false, ghostOn = false) {
     const ts = TIME_SIGS[timeSigKey] || TIME_SIGS["4/4"];
     const useTriplets = tripletsOn && !ts.compound;
     const seed = forcedSeed ?? (0x1000 + Math.floor(Math.random() * 0xEFFF));
@@ -1847,6 +1968,8 @@
     for (let attempt = 0; attempt < 40; attempt++) {
       const bars = [];
       let hasTriplet = false;
+      let hasStaccato = false;
+      let hasGhost = false;
       for (let b = 0; b < numBars; b++) {
         const beats = [];
         let prevRest = false;
@@ -1868,7 +1991,7 @@
           for (const cell of chosen) {
             beats.push(cell.map(([slot, dur, rest, tuplet]) => {
               if (tuplet) hasTriplet = true;
-              return { slot, dur, rest, tuplet: tuplet || null, tiedIn: false, tiedOut: false };
+              return { slot, dur, rest, tuplet: tuplet || null, tiedIn: false, tiedOut: false, art: null };
             }));
           }
           prevRest = patternIsAllRest(chosen);
@@ -1888,6 +2011,44 @@
             currEv.tiedIn = true;
           }
         }
+
+        // Assign optional bass articulations (ghost dead-notes & staccato) on untied notes
+        if (staccatoOn || ghostOn) {
+          let consecGhost = 0;
+          for (let bt = 0; bt < beats.length; bt++) {
+            for (const ev of beats[bt]) {
+              if (ev.rest || ev.tiedIn || ev.tiedOut) {
+                consecGhost = 0;
+                continue;
+              }
+              let assigned = null;
+              const isBarDownbeat = (bt === 0 && ev.slot === 0);
+              if (ghostOn && !isBarDownbeat && consecGhost < 2) {
+                const ghostMaxDur = (level <= 2 && !ts.compound) ? 12 : 6;
+                if (ev.dur <= ghostMaxDur) {
+                  const pGhost = ev.dur === 3 ? 0.28 : (ev.slot > 0 ? 0.24 : (level <= 2 ? 0.22 : 0.12));
+                  if (rand() < pGhost) {
+                    assigned = "ghost";
+                    hasGhost = true;
+                    consecGhost += 1;
+                  }
+                }
+              }
+              if (!assigned) consecGhost = 0;
+              if (!assigned && staccatoOn) {
+                if (ev.dur === 12 || ev.dur === 18 || ev.dur === 6 || ev.dur === 4) {
+                  const pStac = (ev.dur === 12 || ev.dur === 18) ? 0.30 : 0.16;
+                  if (rand() < pStac) {
+                    assigned = "staccato";
+                    hasStaccato = true;
+                  }
+                }
+              }
+              ev.art = assigned;
+            }
+          }
+        }
+
         bars.push(beats);
       }
 
@@ -1921,6 +2082,7 @@
                 slotInBeat: ev.slot,
                 globalSlot,
                 durSlots: ev.dur,
+                art: ev.art || null,
                 timeSec: 0,
                 hit: false,
                 missed: false,
@@ -1934,8 +2096,13 @@
       bestBars = bars;
       bestTargets = targets;
       bestRests = rests;
-      const minTargets = Math.max(2, level === 1 ? numBars : numBars * Math.min(2, ts.beatsPerBar));
-      if (targets.length >= minTargets && (!useTriplets || hasTriplet)) break;
+      const minTargets = Math.max(2, level <= 2 ? numBars : numBars * Math.min(2, ts.beatsPerBar));
+      if (
+        targets.length >= minTargets &&
+        (!useTriplets || hasTriplet) &&
+        (!staccatoOn || hasStaccato) &&
+        (!ghostOn || hasGhost)
+      ) break;
     }
 
     return { seed, timeSig: timeSigKey, bars: bestBars, targets: bestTargets, rests: bestRests };
@@ -2017,7 +2184,18 @@
     }
   }
 
-  function drawNotehead(g, dur, x, y) {
+  function drawNotehead(g, dur, x, y, art = null) {
+    if (art === "ghost") {
+      // Engraved X dead-note head (percussive muted bass note)
+      g.appendChild(el("path", {
+        d: `M ${x - 4.6} ${y - 4.3} L ${x + 4.6} ${y + 4.3} M ${x - 4.6} ${y + 4.3} L ${x + 4.6} ${y - 4.3}`,
+        stroke: "#111", "stroke-width": 2.15, "stroke-linecap": "round"
+      }));
+      if (dur === 9 || dur === 18) {
+        g.appendChild(el("circle", { cx: x + 9.2, cy: y - 4.5, r: 1.9, fill: "#111" }));
+      }
+      return;
+    }
     if (dur === 48) {
       // Engraved whole note (wide oval + tilted inner cutout, no stem)
       g.appendChild(el("ellipse", { cx: x, cy: y, rx: 7.2, ry: 4.5, fill: "#111" }));
@@ -2047,6 +2225,10 @@
     }));
     if (dur === 9 || dur === 18) {
       g.appendChild(el("circle", { cx: x + 9.2, cy: y - 4.5, r: 1.9, fill: "#111" }));
+    }
+    if (art === "staccato") {
+      // Crisp staccato dot centered beneath notehead (notehead side, opposite up-stem)
+      g.appendChild(el("circle", { cx: x, cy: y + 11.5, r: 2.05, fill: "#111" }));
     }
   }
 
@@ -2118,7 +2300,7 @@
     }
     const numSystems = Math.ceil(numBars / barsPerSystem);
     const W = isNarrow ? 600 : 1120;
-    const sysH = 156;
+    const sysH = 164;
     const H = numSystems * sysH + 10;
     svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
 
@@ -2210,7 +2392,7 @@
               drawRest(g, ev.dur, nx, midY);
               if (curBeam.length) { beamGroups.push(curBeam); curBeam = []; }
             } else {
-              drawNotehead(g, ev.dur, nx, midY);
+              drawNotehead(g, ev.dur, nx, midY, ev.art);
               if (ev.dur !== 48) {
                 const sx = nx + 4.7;
                 g.appendChild(el("line", {
@@ -2355,12 +2537,12 @@
               g.appendChild(tNode);
             }
 
-            // Sustain bar beneath notehead (AUDIO input only)
-            if (tgt.hit && tgt.hitSource === "AUDIO" && tgt.sustainStatus) {
+            // Sustain / Articulation bar beneath notehead (AUDIO sustain + staccato reverse-sustain + ghost mute check)
+            if (tgt.hit && tgt.sustainStatus) {
               const endTickInBar = bt * ts.beatTicks + ev.slot + tgt.durSlots;
               const rawEndX = tickX(endTickInBar);
               const spanW = Math.max(12, Math.min(barX1 - 6, rawEndX) - nx - 3);
-              const susY = staffTop + 65;
+              const susY = staffTop + 67;
               const barG = el("g");
               // Expected duration track
               barG.appendChild(el("rect", {
@@ -2369,19 +2551,64 @@
               const ratio = tgt.sustainRatio ?? 1;
               let fillColor = "#16a34a";
               let actualW = Math.max(4, Math.min(1, ratio) * (spanW + 2));
-              let tipText = t("susOkTip", Math.round(ratio * 100));
-              if (tgt.sustainStatus === "SHORT") {
-                fillColor = "#d97706";
-                actualW = Math.max(4, Math.min(0.95, ratio) * (spanW + 2));
-                tipText = t("susShortTip", Math.round(ratio * 100));
-              } else if (tgt.sustainStatus === "LONG") {
+              let tipText = "";
+
+              if (tgt.art === "staccato") {
+                // Highlight ideal 50% half-value sustain zone on the track
+                barG.appendChild(el("rect", {
+                  x: nx - 2, y: susY, width: (spanW + 2) * 0.5, height: 4, rx: 2, fill: "#cbd5e1"
+                }));
+                if (tgt.sustainStatus === "OK") {
+                  fillColor = "#16a34a";
+                  actualW = Math.max(4, Math.min(0.58, ratio) * (spanW + 2));
+                  tipText = t("stacOkTip", Math.round(ratio * 100));
+                } else if (tgt.sustainStatus === "SHORT") {
+                  fillColor = "#d97706";
+                  actualW = Math.max(3, Math.min(0.26, ratio) * (spanW + 2));
+                  tipText = t("stacShortTip", Math.round(ratio * 100));
+                } else {
+                  fillColor = "#dc2626";
+                  actualW = Math.max((spanW + 2) * 0.58, Math.min(1, ratio) * (spanW + 2));
+                  tipText = t("stacLongTip", Math.round(ratio * 100));
+                }
+              } else if (tgt.art === "ghost") {
+                if (tgt.sustainStatus === "OK") {
+                  fillColor = "#16a34a";
+                  actualW = Math.max(5, Math.min(0.35, ratio) * (spanW + 2));
+                  tipText = t("ghostOkTip", tgt.ghostHeldMs);
+                } else {
+                  fillColor = "#dc2626";
+                  actualW = Math.max(8, Math.min(1, Math.max(0.75, ratio)) * (spanW + 2));
+                  tipText = t("ghostRingTip", tgt.ghostHeldMs);
+                }
+              } else if (tgt.ghostWrongKey) {
                 fillColor = "#dc2626";
-                actualW = Math.min(barX1 - nx, spanW + 8);
-                tipText = t("susLongTip", Math.round(tgt.bleedMs));
+                actualW = spanW + 2;
+                tipText = t("ghostWrongKeyTip");
+              } else {
+                tipText = t("susOkTip", Math.round(ratio * 100));
+                if (tgt.sustainStatus === "SHORT") {
+                  fillColor = "#d97706";
+                  actualW = Math.max(4, Math.min(0.95, ratio) * (spanW + 2));
+                  tipText = t("susShortTip", Math.round(ratio * 100));
+                } else if (tgt.sustainStatus === "LONG") {
+                  fillColor = "#dc2626";
+                  actualW = Math.min(barX1 - nx, spanW + 8);
+                  tipText = t("susLongTip", Math.round(tgt.bleedMs));
+                }
               }
+
               barG.appendChild(el("rect", {
                 x: nx - 2, y: susY, width: actualW, height: 4, rx: 2, fill: fillColor
               }));
+              // Subtle 50% target notch on staccato notes
+              if (tgt.art === "staccato") {
+                const midMarkX = nx - 2 + (spanW + 2) * 0.5;
+                barG.appendChild(el("line", {
+                  x1: midMarkX, y1: susY - 1.5, x2: midMarkX, y2: susY + 5.5,
+                  stroke: "#475569", "stroke-width": 1.1
+                }));
+              }
               barG.appendChild(el("title", {}, tipText));
               g.appendChild(barG);
             }
@@ -2531,6 +2758,44 @@
     scheduledNodes.push(osc1, osc2, g2, filter, gain);
   }
 
+  let ghostNoiseBuf = null;
+  function scheduleGhostNote(ctx, when) {
+    // Realistic percussive muted bass dead-note: short dampened thump + fret clack noise
+    if (!ghostNoiseBuf || ghostNoiseBuf.sampleRate !== ctx.sampleRate) {
+      const len = Math.floor(ctx.sampleRate * 0.05);
+      ghostNoiseBuf = ctx.createBuffer(1, len, ctx.sampleRate);
+      const data = ghostNoiseBuf.getChannelData(0);
+      for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (len * 0.28));
+    }
+    const noise = ctx.createBufferSource();
+    noise.buffer = ghostNoiseBuf;
+    const bp = ctx.createBiquadFilter();
+    bp.type = "bandpass";
+    bp.frequency.setValueAtTime(420, when);
+    bp.Q.value = 1.6;
+    const ng = ctx.createGain();
+    ng.gain.setValueAtTime(0.0001, when);
+    ng.gain.linearRampToValueAtTime(0.32, when + 0.003);
+    ng.gain.exponentialRampToValueAtTime(0.0001, when + 0.038);
+    noise.connect(bp).connect(ng).connect(ctx.destination);
+    noise.start(when);
+    noise.stop(when + 0.042);
+
+    const thump = ctx.createOscillator();
+    const tg = ctx.createGain();
+    thump.type = "triangle";
+    thump.frequency.setValueAtTime(118, when);
+    thump.frequency.exponentialRampToValueAtTime(52, when + 0.04);
+    tg.gain.setValueAtTime(0.0001, when);
+    tg.gain.linearRampToValueAtTime(0.34, when + 0.004);
+    tg.gain.exponentialRampToValueAtTime(0.0001, when + 0.044);
+    thump.connect(tg).connect(ctx.destination);
+    thump.start(when);
+    thump.stop(when + 0.048);
+
+    scheduledNodes.push(noise, bp, ng, thump, tg);
+  }
+
   function scheduleRunAudio(bpm, numBars, startAudioT, playMetronome, demoTargets = null, timeSigKey = "4/4") {
     stopScheduledAudio();
     const ctx = ensureAudioCtx();
@@ -2555,8 +2820,15 @@
       for (const tgt of demoTargets) {
         const when = startAudioT + countInSec + tgt.globalSlot * tickSec;
         const durSec = tgt.durSlots * tickSec;
-        // All notes on the middle line of bass clef = D (sounding D2 = 73.42Hz on bass guitar)
-        scheduleBassNote(ctx, when, durSec, 73.42);
+        if (tgt.art === "ghost") {
+          scheduleGhostNote(ctx, when);
+        } else if (tgt.art === "staccato") {
+          // Musical staccato: sustain half of the written note value (50%), then cut cleanly
+          scheduleBassNote(ctx, when, Math.max(0.08, durSec * 0.50), 73.42);
+        } else {
+          // All notes on the middle line of bass clef = D (sounding D2 = 73.42Hz on bass guitar)
+          scheduleBassNote(ctx, when, durSec, 73.42);
+        }
       }
     }
   }
@@ -2995,7 +3267,30 @@
     const checkHold = expectedSec >= 0.30;
     const checkBleed = tgt.hasRestAfter && restDurSec >= 0.18;
 
-    if (checkBleed && (tgt.bleedMs > muteGraceSec * 1000 || (stillRingingAtEnd && (endSec - tgt.endSec) > muteGraceSec))) {
+    if (tgt.art === "ghost") {
+      // Percussive bass dead-note: must die out rapidly instead of ringing like an open/fretted note
+      const maxGhostSec = Math.min(0.17, Math.max(0.115, expectedSec * 0.65));
+      tgt.ghostHeldMs = Math.round(heldSec * 1000);
+      if (!stillRingingAtEnd && heldSec <= maxGhostSec) {
+        tgt.sustainStatus = "OK";
+      } else {
+        tgt.sustainStatus = "LONG";
+      }
+    } else if (tgt.art === "staccato") {
+      // Musical staccato: sustain ~half written duration (target 50%: OK 25%..58%, SHORT <25% on long notes, LONG >58%)
+      const stacBleed = checkBleed && (tgt.bleedMs > muteGraceSec * 1000 || (stillRingingAtEnd && (endSec - tgt.endSec) > muteGraceSec));
+      if (stacBleed || stillRingingAtEnd || (ratio > 0.58 && heldSec > 0.14)) {
+        tgt.sustainStatus = "LONG";
+        if (stacBleed) {
+          tgt.bleedMs = Math.max(tgt.bleedMs, (endSec - tgt.endSec) * 1000);
+          markRestsInRange(tgt.endSec, Math.max(endSec, tgt.endSec + tgt.bleedMs / 1000), "RING");
+        }
+      } else if (expectedSec >= 0.50 && ratio < 0.25) {
+        tgt.sustainStatus = "SHORT";
+      } else {
+        tgt.sustainStatus = "OK";
+      }
+    } else if (checkBleed && (tgt.bleedMs > muteGraceSec * 1000 || (stillRingingAtEnd && (endSec - tgt.endSec) > muteGraceSec))) {
       tgt.sustainStatus = "LONG";
       tgt.bleedMs = Math.max(tgt.bleedMs, (endSec - tgt.endSec) * 1000);
       markRestsInRange(tgt.endSec, Math.max(endSec, tgt.endSec + tgt.bleedMs / 1000), "RING");
@@ -3016,12 +3311,25 @@
     const elapsed = hitAudioT - app.startAudioT;
     if (elapsed < tgt.hitTimeSec + 0.025) return;
 
-    const restDurSec = Math.max(0, tgt.restEndSec - tgt.endSec);
-    const monitorEndSec = tgt.hasRestAfter
-      ? Math.min(tgt.restEndSec - 0.02, tgt.endSec + Math.min(0.32, Math.max(0.18, restDurSec * 0.8)))
-      : tgt.endSec + 0.04;
+    // Capture attack peak during first 45ms so ghost-note percussive decay can be judged relative to peak
+    if (elapsed <= tgt.hitTimeSec + 0.045) {
+      tgt.peakLevel = Math.max(tgt.peakLevel || 0, level);
+    }
 
-    if (level >= tgt.sustainFloor) {
+    const restDurSec = Math.max(0, tgt.restEndSec - tgt.endSec);
+    const monitorEndSec = tgt.art === "ghost"
+      ? Math.min(tgt.endSec + 0.06, tgt.hitTimeSec + 0.24)
+      : (tgt.hasRestAfter
+        ? Math.min(tgt.restEndSec - 0.02, tgt.endSec + Math.min(0.32, Math.max(0.18, restDurSec * 0.8)))
+        : tgt.endSec + 0.04);
+
+    const floor = tgt.art === "ghost"
+      ? Math.max((tgt.peakLevel || 0) * 0.34, tgt.sustainFloor * 1.15)
+      : tgt.sustainFloor;
+    const neededQuiet = tgt.art === "ghost" ? 5 : (tgt.art === "staccato" ? 6 : 7);
+    const minCheckSec = tgt.art === "ghost" ? 0.045 : 0.06;
+
+    if (level >= floor) {
       tgt.quietFrames = 0;
       tgt.lastAudibleSec = elapsed;
       if (tgt.hasRestAfter && elapsed > tgt.endSec && level >= tgt.sustainFloor * 1.15) {
@@ -3032,9 +3340,8 @@
       }
     } else {
       tgt.quietFrames += 1;
-      // ~42ms consecutive silence confirms deliberate mute (ignores bass waveform zero crossings)
-      if (tgt.quietFrames >= 7 && elapsed >= tgt.hitTimeSec + 0.06) {
-        const endT = tgt.lastAudibleSec ?? Math.max(tgt.hitTimeSec, elapsed - 0.042);
+      if (tgt.quietFrames >= neededQuiet && elapsed >= tgt.hitTimeSec + minCheckSec) {
+        const endT = tgt.lastAudibleSec ?? Math.max(tgt.hitTimeSec, elapsed - neededQuiet * 0.006);
         closeSustainTarget(tgt, endT, false);
       } else if (elapsed >= monitorEndSec) {
         const endT = tgt.lastAudibleSec ?? elapsed;
@@ -3051,6 +3358,8 @@
     bpm: 60,
     level: 1,
     tripletsOn: false,
+    staccatoOn: false,
+    ghostOn: false,
     timeSig: "4/4",
     numBars: 4,
     soundOn: true,
@@ -3065,6 +3374,7 @@
     scoreLayout: null,
     startAudioT: 0,
     activeSustainTgt: null,
+    activeKeyStac: null,
     extraHits: 0,
     history: [],
     lastResult: null,
@@ -3077,11 +3387,11 @@
     const beatSec = 60 / app.bpm;
     if (ts.compound) {
       // In 6/8 at dotted-quarter = bpm, 8th note is beatSec/3, 16th is beatSec/6
-      return app.level >= 5 ? Math.min(0.115, (beatSec / 6) * 0.48) : Math.min(0.135, (beatSec / 3) * 0.46);
+      return app.level >= 7 ? Math.min(0.115, (beatSec / 6) * 0.48) : Math.min(0.135, (beatSec / 3) * 0.46);
     }
-    if (app.level >= 5) return Math.min(0.120, (beatSec / 4) * 0.48);
+    if (app.level >= 7) return Math.min(0.120, (beatSec / 4) * 0.48);
     if (app.tripletsOn) return Math.min(0.135, (beatSec / 3) * 0.46);
-    if (app.level <= 2) return Math.min(0.165, (beatSec / 2) * 0.46);
+    if (app.level <= 3) return Math.min(0.165, (beatSec / 2) * 0.46);
     return Math.min(0.150, (beatSec / 2) * 0.45);
   }
 
@@ -3116,6 +3426,9 @@
       tgt.sustainStatus = null;
       tgt.bleedMs = 0;
       tgt.sustainDone = false;
+      tgt.peakLevel = 0;
+      tgt.ghostHeldMs = null;
+      tgt.ghostWrongKey = false;
     }
     for (const rst of (app.phrase.rests || [])) {
       rst.timeSec = countIn + rst.globalSlot * tickSec;
@@ -3126,6 +3439,7 @@
       rst.ringFrames = 0;
     }
     app.activeSustainTgt = null;
+    app.activeKeyStac = null;
     app.extraHits = 0;
     app.dirtyScore = true;
   }
@@ -3135,7 +3449,7 @@
     if (app.state === "CAL") stopCalibration(false);
     stopScheduledAudio();
     app.takeId += 1;
-    app.phrase = generatePhrase(app.numBars, app.level, app.tripletsOn, app.timeSig);
+    app.phrase = generatePhrase(app.numBars, app.level, app.tripletsOn, app.timeSig, null, app.staccatoOn, app.ghostOn);
     resetTargets();
     app.state = "READY";
     setHitBadge(t("badgeWait"), "");
@@ -3326,7 +3640,26 @@
     b.className = "hit-badge" + (cls ? " " + cls : "");
   }
 
-  function handleHit(hitAudioT, source) {
+  function closeKeyStaccato(releaseElapsed) {
+    if (!app.activeKeyStac) return;
+    const { tgt } = app.activeKeyStac;
+    app.activeKeyStac = null;
+    if (!tgt || tgt.sustainDone) return;
+    const heldSec = Math.max(0, releaseElapsed - tgt.hitTimeSec);
+    const ratio = tgt.durSec > 0 ? heldSec / tgt.durSec : 0;
+    tgt.sustainRatio = ratio;
+    if (ratio > 0.58 && heldSec > 0.14) {
+      tgt.sustainStatus = "LONG";
+    } else if (tgt.durSec >= 0.50 && ratio < 0.22) {
+      tgt.sustainStatus = "SHORT";
+    } else {
+      tgt.sustainStatus = "OK";
+    }
+    tgt.sustainDone = true;
+    app.dirtyScore = true;
+  }
+
+  function handleHit(hitAudioT, source, hitKind = "NORMAL", keyCode = null) {
     if (app.state !== "COUNTIN" && app.state !== "PLAY") return;
     const ts = getTimeSig();
     const countIn = ts.countInClicks * ts.clickSec(app.bpm);
@@ -3347,26 +3680,69 @@
 
     const src = source === "AUDIO" ? "AUD" : "KEY";
     if (best) {
-      // Close any previously sustaining audio note cleanly at this new attack
+      // Close any previously sustaining audio or keyboard staccato note at this new attack
       if (app.activeSustainTgt && !app.activeSustainTgt.sustainDone) {
         closeSustainTarget(app.activeSustainTgt, elapsed, false);
+      }
+      if (app.activeKeyStac) {
+        closeKeyStaccato(elapsed);
       }
       best.hit = true;
       best.hitSource = source;
       best.hitTimeSec = elapsed;
       best.errMs = (elapsed - best.timeSec) * 1000;
-      if (source === "AUDIO" && (best.durSec >= 0.30 || (best.hasRestAfter && (best.restEndSec - best.endSec) >= 0.18))) {
-        best.sustainFloor = Math.max(audioIn.threshold * 0.28, 0.005);
-        best.quietFrames = 0;
-        best.lastAudibleSec = elapsed;
-        app.activeSustainTgt = best;
+
+      let artBadgeOverride = null;
+      if (source === "AUDIO") {
+        if (best.art === "staccato" || best.art === "ghost" || best.durSec >= 0.30 || (best.hasRestAfter && (best.restEndSec - best.endSec) >= 0.18)) {
+          best.sustainFloor = Math.max(audioIn.threshold * 0.28, 0.005);
+          best.peakLevel = audioIn.level;
+          best.quietFrames = 0;
+          best.lastAudibleSec = elapsed;
+          app.activeSustainTgt = best;
+        }
+      } else {
+        // KEY / Touch Pad articulation grading
+        if (best.art === "ghost") {
+          if (hitKind === "GHOST") {
+            best.sustainStatus = "OK";
+            best.sustainRatio = 0.25;
+            best.sustainDone = true;
+          } else {
+            best.sustainStatus = "LONG";
+            best.sustainRatio = 1.0;
+            best.sustainDone = true;
+            artBadgeOverride = { text: `[KEY] GHOST ERR (F/D)`, cls: "err" };
+          }
+        } else if (hitKind === "GHOST") {
+          best.ghostWrongKey = true;
+          best.sustainStatus = "LONG";
+          best.sustainRatio = 1.0;
+          best.sustainDone = true;
+          artBadgeOverride = { text: `[KEY] NOT GHOST !`, cls: "err" };
+        } else if (best.art === "staccato") {
+          if (keyCode) {
+            app.activeKeyStac = { tgt: best, code: keyCode };
+          } else {
+            // Touch pad tap is inherently short staccato
+            best.sustainStatus = "OK";
+            best.sustainRatio = 0.32;
+            best.sustainDone = true;
+          }
+        }
       }
+
       if (!app.blindGrade) {
-        const ae = Math.abs(best.errMs);
-        const sign = best.errMs >= 0 ? "+" : "";
-        const tag = ae <= 35 ? "TIGHT" : (best.errMs > 0 ? "LATE" : "EARLY");
-        const cls = ae <= 35 ? "tight" : (ae <= 80 ? "warn" : "err");
-        setHitBadge(`[${src}] ${sign}${best.errMs.toFixed(1)}ms ${tag}`, cls);
+        if (artBadgeOverride) {
+          setHitBadge(artBadgeOverride.text, artBadgeOverride.cls);
+        } else {
+          const ae = Math.abs(best.errMs);
+          const sign = best.errMs >= 0 ? "+" : "";
+          const tag = ae <= 35 ? "TIGHT" : (best.errMs > 0 ? "LATE" : "EARLY");
+          const cls = ae <= 35 ? "tight" : (ae <= 80 ? "warn" : "err");
+          const gPrefix = (best.art === "ghost" && hitKind === "GHOST") ? "× " : "";
+          setHitBadge(`[${src}] ${gPrefix}${sign}${best.errMs.toFixed(1)}ms ${tag}`, cls);
+        }
         app.dirtyScore = true;
       }
     } else {
@@ -3396,6 +3772,9 @@
       const endElapsed = (audioCtx.currentTime - audioIn.latencyMs / 1000) - app.startAudioT;
       closeSustainTarget(app.activeSustainTgt, endElapsed, audioIn.level >= app.activeSustainTgt.sustainFloor);
     }
+    if (app.activeKeyStac && audioCtx) {
+      closeKeyStaccato((audioCtx.currentTime - app.keyLatencyMs / 1000) - app.startAudioT);
+    }
     for (const rst of (app.phrase.rests || [])) {
       if (!rst.error) rst.passed = true;
     }
@@ -3412,7 +3791,7 @@
       tight = errs.filter(e => Math.abs(e) <= 35).length;
     }
 
-    const susTargets = app.phrase.targets.filter(t => t.hit && t.hitSource === "AUDIO" && t.sustainStatus);
+    const susTargets = app.phrase.targets.filter(t => t.hit && t.sustainStatus);
     const susTotal = susTargets.length;
     const susOk = susTargets.filter(t => t.sustainStatus === "OK").length;
     const susShort = susTargets.filter(t => t.sustainStatus === "SHORT").length;
@@ -3532,7 +3911,11 @@
     document.getElementById("bpmVal").textContent = String(app.bpm);
     document.getElementById("bpmSlider").value = String(app.bpm);
     document.getElementById("metaTempo").textContent = ts.compound ? `♩. = ${app.bpm}` : `♩ = ${app.bpm}`;
-    document.getElementById("metaLevel").textContent = `${app.timeSig} · ${LEVEL_TITLES[app.level]}${app.tripletsOn && !ts.compound ? " + Triplets" : ""}`;
+    const artTags = [];
+    if (app.tripletsOn && !ts.compound) artTags.push("Triplets");
+    if (app.staccatoOn) artTags.push("Staccato");
+    if (app.ghostOn) artTags.push("Ghost");
+    document.getElementById("metaLevel").textContent = `${app.timeSig} · ${LEVEL_TITLES[app.level]}${artTags.length ? " + " + artTags.join("/") : ""}`;
     document.getElementById("metaSeed").textContent = `Seed #${app.phrase.seed.toString(16).toUpperCase().padStart(4, "0")}`;
     document.getElementById("levelSelect").value = String(app.level);
     document.getElementById("timeSigSelect").value = app.timeSig;
@@ -3541,6 +3924,16 @@
     btnTriplets.disabled = ts.compound;
     btnTriplets.textContent = (app.tripletsOn && !ts.compound) ? t("tripletsOn") : t("tripletsOff");
     btnTriplets.classList.toggle("active", app.tripletsOn && !ts.compound);
+
+    const btnStaccato = document.getElementById("btnStaccato");
+    btnStaccato.textContent = app.staccatoOn ? t("staccatoOn") : t("staccatoOff");
+    btnStaccato.classList.toggle("active", app.staccatoOn);
+
+    const btnGhost = document.getElementById("btnGhost");
+    btnGhost.textContent = app.ghostOn ? t("ghostOn") : t("ghostOff");
+    btnGhost.classList.toggle("active", app.ghostOn);
+    document.getElementById("padGhost").classList.toggle("hidden", !app.ghostOn);
+    document.getElementById("dockPads").classList.toggle("with-ghost", app.ghostOn);
     const btnSound = document.getElementById("btnSound");
     btnSound.textContent = app.soundOn ? t("metroOn") : t("metroOff");
     btnSound.classList.toggle("active", app.soundOn);
@@ -3623,6 +4016,7 @@
     document.getElementById("legendLine").innerHTML = t("legendHtml");
     document.getElementById("guideSummaryTitle").textContent = t("guideTitle");
     document.getElementById("guideBody").innerHTML = t("guideHtml");
+    document.getElementById("padGhostSub").textContent = t("padGhostSub");
     document.getElementById("padLeftSub").textContent = t("padLeftSub");
     document.getElementById("padRightSub").textContent = t("padRightSub");
 
@@ -3850,15 +4244,33 @@
   document.getElementById("btnBpmUp").addEventListener("click", () => setBpm(app.bpm + 5));
   document.getElementById("bpmSlider").addEventListener("input", e => setBpm(Number(e.target.value)));
 
-  document.getElementById("levelSelect").addEventListener("change", (e) => {
-    app.level = Number(e.target.value);
-    e.target.blur();
+  function setLevel(lv) {
+    const clamped = Math.max(1, Math.min(10, Number(lv) || 1));
+    app.level = clamped;
+    const preset = LEVEL_PRESETS[clamped] || { staccato: false, ghost: false };
+    app.staccatoOn = preset.staccato;
+    app.ghostOn = preset.ghost;
     newPhrase();
+  }
+
+  document.getElementById("levelSelect").addEventListener("change", (e) => {
+    e.target.blur();
+    setLevel(Number(e.target.value));
   });
 
   document.getElementById("btnTriplets").addEventListener("click", () => {
     if (getTimeSig().compound) return;
     app.tripletsOn = !app.tripletsOn;
+    newPhrase();
+  });
+
+  document.getElementById("btnStaccato").addEventListener("click", () => {
+    app.staccatoOn = !app.staccatoOn;
+    newPhrase();
+  });
+
+  document.getElementById("btnGhost").addEventListener("click", () => {
+    app.ghostOn = !app.ghostOn;
     newPhrase();
   });
 
@@ -3938,7 +4350,7 @@
     syncTouchDock();
   });
 
-  function bindTouchPad(padEl) {
+  function bindTouchPad(padEl, hitKind = "NORMAL") {
     const trigger = (e) => {
       e.preventDefault();
       ensureAudioCtx();
@@ -3948,7 +4360,7 @@
         recordCalibrationTap(audioCtx.currentTime, "KEY");
       } else if (app.state === "COUNTIN" || app.state === "PLAY") {
         if ((app.inputMode === "KEY" || app.inputMode === "BOTH") && audioCtx) {
-          handleHit(audioCtx.currentTime - app.keyLatencyMs / 1000, "KEY");
+          handleHit(audioCtx.currentTime - app.keyLatencyMs / 1000, "KEY", hitKind, null);
         }
       } else if (app.state === "READY") {
         startRun(false);
@@ -3956,8 +4368,9 @@
     };
     padEl.addEventListener("pointerdown", trigger, { passive: false });
   }
-  bindTouchPad(document.getElementById("padLeft"));
-  bindTouchPad(document.getElementById("padRight"));
+  bindTouchPad(document.getElementById("padGhost"), "GHOST");
+  bindTouchPad(document.getElementById("padLeft"), "NORMAL");
+  bindTouchPad(document.getElementById("padRight"), "NORMAL");
 
   let lastNarrow = window.innerWidth <= 640;
   window.addEventListener("resize", () => {
@@ -4107,13 +4520,14 @@
 
     // Use physical key code (e.code) so all shortcuts work even when Korean IME is active
     const code = e.code;
-    if (code === "Space" || code === "KeyJ" || code === "KeyK") {
+    if (code === "Space" || code === "KeyJ" || code === "KeyK" || code === "KeyF" || code === "KeyD") {
       e.preventDefault();
+      const hitKind = (code === "KeyF" || code === "KeyD") ? "GHOST" : "NORMAL";
       if (app.state === "CAL" && audioCtx) {
         recordCalibrationTap(audioCtx.currentTime, "KEY");
       } else if (app.state === "COUNTIN" || app.state === "PLAY") {
         if ((app.inputMode === "KEY" || app.inputMode === "BOTH") && audioCtx) {
-          handleHit(audioCtx.currentTime - app.keyLatencyMs / 1000, "KEY");
+          handleHit(audioCtx.currentTime - app.keyLatencyMs / 1000, "KEY", hitKind, code);
         }
       } else if (app.state === "READY") {
         startRun(false);
@@ -4136,21 +4550,15 @@
     } else if (code === "Minus" || code === "NumpadSubtract" || e.key === "-" || e.key === "_") {
       e.preventDefault();
       setBpm(app.bpm - 5);
-    } else if (/^(Digit|Numpad)[1-6]$/.test(code)) {
-      app.level = Number(code.slice(-1));
-      newPhrase();
+    } else if (/^(Digit|Numpad)[0-9]$/.test(code)) {
+      const d = Number(code.slice(-1));
+      setLevel(d === 0 ? 10 : d);
     } else if (code === "ArrowUp") {
       e.preventDefault();
-      if (app.level < 6) {
-        app.level += 1;
-        newPhrase();
-      }
+      if (app.level < 10) setLevel(app.level + 1);
     } else if (code === "ArrowDown") {
       e.preventDefault();
-      if (app.level > 1) {
-        app.level -= 1;
-        newPhrase();
-      }
+      if (app.level > 1) setLevel(app.level - 1);
     } else if (code === "KeyC") {
       e.preventDefault();
       app.showCursor = !app.showCursor;
@@ -4161,6 +4569,14 @@
         app.tripletsOn = !app.tripletsOn;
         newPhrase();
       }
+    } else if (code === "KeyQ") {
+      e.preventDefault();
+      app.staccatoOn = !app.staccatoOn;
+      newPhrase();
+    } else if (code === "KeyX") {
+      e.preventDefault();
+      app.ghostOn = !app.ghostOn;
+      newPhrase();
     } else if (code === "KeyS") {
       e.preventDefault();
       const idx = TIME_SIG_OPTIONS.indexOf(app.timeSig);
@@ -4201,8 +4617,14 @@
     }
   });
 
+  window.addEventListener("keyup", (e) => {
+    if (app.activeKeyStac && app.activeKeyStac.code === e.code && audioCtx) {
+      closeKeyStaccato((audioCtx.currentTime - app.keyLatencyMs / 1000) - app.startAudioT);
+    }
+  });
+
   // Boot
-  app.phrase = generatePhrase(app.numBars, app.level, app.tripletsOn, app.timeSig);
+  app.phrase = generatePhrase(app.numBars, app.level, app.tripletsOn, app.timeSig, null, app.staccatoOn, app.ghostOn);
   resetTargets();
   syncGain(2);
   syncThreshold(16);
