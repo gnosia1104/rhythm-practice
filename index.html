@@ -1272,6 +1272,71 @@
     color: var(--ink);
   }
 
+  /* Special Training BETA Drawer (Gap Click · Look-ahead Fade-out · BPM Rush) */
+  .beta-tag {
+    display: inline-block;
+    margin-left: 3px;
+    padding: 1px 5px;
+    border-radius: 999px;
+    background: #fef3c7;
+    color: #b45309;
+    border: 1px solid #f59e0b;
+    font-size: 9.5px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    vertical-align: 1px;
+  }
+
+  button.active .beta-tag {
+    background: #f59e0b;
+    color: #111827;
+    border-color: #f59e0b;
+  }
+
+  .drill-bar {
+    background: var(--card);
+    border: 1px solid #c4b5fd;
+    background: linear-gradient(180deg, #faf5ff 0%, #ffffff 100%);
+    border-radius: 12px;
+    padding: 11px 14px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 12.5px;
+  }
+
+  .drill-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+  }
+
+  .drill-best {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #7c3aed;
+    background: #ede9fe;
+    padding: 2px 8px;
+    border-radius: 999px;
+  }
+
+  .drill-msg {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.45;
+  }
+
+  .beat-fade {
+    transition: opacity 0.14s ease-out;
+  }
+
+  .beat-fade.faded {
+    opacity: 0.02;
+  }
+
   .hidden { display: none !important; }
 
   @page { margin: 12mm; }
@@ -1279,7 +1344,7 @@
   @media print {
     body { background: #fff; padding: 0; }
     .app { max-width: none; }
-    .toolbar, .status-strip, .audio-bar, .cal-bar, .editor-bar, .meta-share-btn, .results-grid, .guide-card, .sheet-footer, .touch-dock, .tour-overlay { display: none !important; }
+    .toolbar, .status-strip, .audio-bar, .cal-bar, .editor-bar, .drill-bar, .meta-share-btn, .results-grid, .guide-card, .sheet-footer, .touch-dock, .tour-overlay { display: none !important; }
     .sheet-paper { border: none; box-shadow: none; padding: 0; }
   }
 </style>
@@ -1303,7 +1368,7 @@
         <button id="btnBpmDown" class="icon-btn" title="-">−</button>
         <span id="bpmVal" class="bpm-val">60</span>
         <button id="btnBpmUp" class="icon-btn" title="+">+</button>
-        <input id="bpmSlider" type="range" min="40" max="140" step="5" value="60" style="width:82px" />
+        <input id="bpmSlider" type="range" min="40" max="180" step="5" value="60" style="width:82px" />
       </div>
 
       <div class="divider"></div>
@@ -1353,6 +1418,7 @@
         <button id="btnDaily" class="daily-btn" title="오늘의 4/4 데일리 챌린지 (고정 8마디)">🏆 데일리</button>
         <button id="btnDailyPlus" class="daily-plus-btn" title="오늘의 변박·고급 데일리+ 챌린지 (3/4·2/4·5/4·6/8)">🔥 데일리+</button>
         <button id="btnEditor" title="커스텀 악보 에디터 열기/닫기">✏️ 에디터</button>
+        <button id="btnDrill" title="특수 훈련 베타 (갭 클릭 · 시야 방해 · BPM 러쉬)"><span id="btnDrillText">🧪 특수훈련</span><span class="beta-tag">BETA</span></button>
         <button id="btnInputMode" title="i">입력: KEY</button>
         <button id="btnTouchPad" title="모바일 투핑거 터치 패드">👆 패드</button>
         <button id="btnSyncCal" title="타이밍 지연 보정 (블루투스 이어폰 / 오디오 인터페이스)">⏱ 보정</button>
@@ -1474,6 +1540,42 @@
       <button id="btnEdLoadCode" type="button">📥 코드 불러오기</button>
     </div>
     <span id="edMsg" class="ed-msg">마디의 박자를 클릭한 뒤 리듬 패턴을 찍어 나만의 악보를 만들고 링크로 공유하세요 (서버 없이 URL에 저장됨).</span>
+  </div>
+
+  <!-- Special Training BETA Drawer (hidden unless user clicks 🧪 특수훈련) -->
+  <div id="drillBar" class="drill-bar hidden">
+    <div class="drill-row">
+      <strong><span id="lblDrillTitle">🧪 특수 훈련</span> <span class="beta-tag">BETA</span></strong>
+      <label class="group">
+        <span id="lblGapClick" class="label">🔇 갭 클릭</span>
+        <select id="gapClickSelect" title="일부 마디 메트로놈 음소거 (내적 박자 훈련)">
+          <option value="OFF">OFF</option>
+          <option value="1+1">1+1 (1 ON · 1 무음)</option>
+          <option value="2+2">2+2 (2 ON · 2 무음)</option>
+          <option value="1+3">1+3 (1 ON · 3 무음)</option>
+        </select>
+      </label>
+      <label class="group">
+        <span id="lblFadeOut" class="label">👻 시야 방해</span>
+        <select id="fadeOutSelect" title="연주 직전 음표 투명화 (선독 훈련)">
+          <option value="0">OFF</option>
+          <option value="1">1박 전 숨김</option>
+          <option value="2">2박 전 숨김</option>
+        </select>
+      </label>
+      <div class="group">
+        <button id="btnRushToggle" type="button" title="통과 시 BPM +5 자동 가속 서든 데스">⚡ BPM 러쉬 OFF</button>
+        <select id="rushAccSelect" title="BPM 러쉬 통과 기준 정확도">
+          <option value="85">85%↑</option>
+          <option value="90" selected>90%↑</option>
+          <option value="95">95%↑</option>
+        </select>
+        <span id="rushBestBadge" class="drill-best hidden"></span>
+      </div>
+      <button id="btnDrillReset" type="button">초기화</button>
+      <button id="btnDrillClose" type="button" class="cal-close" title="닫기">✕</button>
+    </div>
+    <span id="drillMsg" class="drill-msg">실험적 특수 초견 훈련(베타): 갭 클릭(내적 박자), 시야 방해(선독 강제), BPM 러쉬(성공 시 +5 BPM 가속)를 자유롭게 조합해 보세요.</span>
   </div>
 
   <!-- PDF-Style Vector Sheet Music -->
@@ -1686,6 +1788,22 @@
       btnDaily: "🏆 데일리",
       btnDailyPlus: "🔥 데일리+",
       btnEditor: "✏️ 에디터",
+      btnDrill: "🧪 특수훈련",
+      drillTitle: "🧪 특수 훈련",
+      drillGapLbl: "🔇 갭 클릭",
+      drillGapOpts: ["OFF", "1+1 (1 ON · 1 무음)", "2+2 (2 ON · 2 무음)", "1+3 (1 ON · 3 무음)"],
+      drillFadeLbl: "👻 시야 방해",
+      drillFadeOpts: ["OFF", "1박 전 숨김", "2박 전 숨김"],
+      drillRushOff: "⚡ BPM 러쉬 OFF",
+      drillRushOn: "⚡ BPM 러쉬 ON",
+      drillRushBest: (bpm, rnd) => `최고 ${bpm} BPM (${rnd}R)`,
+      drillReset: "초기화",
+      drillIdleMsg: "실험적 특수 초견 훈련(베타): 갭 클릭(내적 박자), 시야 방해(선독 강제), BPM 러쉬(통과 시 +5 BPM 가속)를 조합해 보세요.",
+      statusGapMute: "🔇 GAP 구간 — 내적 박자 유지!",
+      drillGapResult: (acc, hits, total, mean) => `🔇 GAP 구간 성적: ${hits}/${total} (${acc.toFixed(0)}%) · 평균 ${mean >= 0 ? "+" : ""}${mean.toFixed(1)}ms`,
+      drillRushClear: (rnd, acc, nextBpm) => `⚡ R${rnd} CLEAR (${acc.toFixed(0)}%)! → ${nextBpm} BPM 자동 시작 (Esc 중지)`,
+      drillRushFail: (rnd, peak, acc, minAcc) => `💥 RUSH 종료! ${rnd}라운드 클리어 · 최고 ${peak} BPM (${acc.toFixed(0)}% < ${minAcc}%)`,
+      drillRushBadge: (rnd, nextBpm) => `⚡ R${rnd} CLEAR → ${nextBpm}BPM`,
       btnShareUrl: "🔗 공유",
       btnShareCopied: "✓ 복사됨!",
       btnShareResult: "📋 텍스트 자랑",
@@ -1922,6 +2040,22 @@
       btnDaily: "🏆 Daily",
       btnDailyPlus: "🔥 Daily+",
       btnEditor: "✏️ Editor",
+      btnDrill: "🧪 Drills",
+      drillTitle: "🧪 Special Drills",
+      drillGapLbl: "🔇 Gap Click",
+      drillGapOpts: ["OFF", "1+1 (1 ON · 1 Mute)", "2+2 (2 ON · 2 Mute)", "1+3 (1 ON · 3 Mute)"],
+      drillFadeLbl: "👻 Fade-out",
+      drillFadeOpts: ["OFF", "Hide 1b ahead", "Hide 2b ahead"],
+      drillRushOff: "⚡ BPM Rush OFF",
+      drillRushOn: "⚡ BPM Rush ON",
+      drillRushBest: (bpm, rnd) => `Best ${bpm} BPM (${rnd}R)`,
+      drillReset: "Reset",
+      drillIdleMsg: "Experimental sight-reading drills (Beta): mix Gap Click (internal clock), Look-ahead Fade-out, and BPM Rush (+5 BPM sudden death).",
+      statusGapMute: "🔇 GAP BAR — Hold your internal clock!",
+      drillGapResult: (acc, hits, total, mean) => `🔇 GAP Bars: ${hits}/${total} (${acc.toFixed(0)}%) · Mean ${mean >= 0 ? "+" : ""}${mean.toFixed(1)}ms`,
+      drillRushClear: (rnd, acc, nextBpm) => `⚡ R${rnd} CLEAR (${acc.toFixed(0)}%)! → ${nextBpm} BPM starting... (Esc to stop)`,
+      drillRushFail: (rnd, peak, acc, minAcc) => `💥 RUSH OVER! ${rnd} rounds cleared · Peak ${peak} BPM (${acc.toFixed(0)}% < ${minAcc}%)`,
+      drillRushBadge: (rnd, nextBpm) => `⚡ R${rnd} CLEAR → ${nextBpm}BPM`,
       btnShareUrl: "🔗 Share",
       btnShareCopied: "✓ Copied!",
       btnShareResult: "📋 Copy Text",
@@ -2158,6 +2292,22 @@
       btnDaily: "🏆 デイリー",
       btnDailyPlus: "🔥 デイリー+",
       btnEditor: "✏️ 編集",
+      btnDrill: "🧪 特訓",
+      drillTitle: "🧪 特殊トレーニング",
+      drillGapLbl: "🔇 ギャップクリック",
+      drillGapOpts: ["OFF", "1+1 (1 ON · 1 無音)", "2+2 (2 ON · 2 無音)", "1+3 (1 ON · 3 無音)"],
+      drillFadeLbl: "👻 先読みフェード",
+      drillFadeOpts: ["OFF", "1拍前に隠す", "2拍前に隠す"],
+      drillRushOff: "⚡ BPMラッシュ OFF",
+      drillRushOn: "⚡ BPMラッシュ ON",
+      drillRushBest: (bpm, rnd) => `最高 ${bpm} BPM (${rnd}R)`,
+      drillReset: "初期化",
+      drillIdleMsg: "実験的な特殊初見トレーニング(ベータ): ギャップクリック・先読みフェードアウト・BPMラッシュ(+5 BPM加速)を組み合わせられます。",
+      statusGapMute: "🔇 GAP区間 — 体内リズムを維持！",
+      drillGapResult: (acc, hits, total, mean) => `🔇 GAP区間: ${hits}/${total} (${acc.toFixed(0)}%) · 平均 ${mean >= 0 ? "+" : ""}${mean.toFixed(1)}ms`,
+      drillRushClear: (rnd, acc, nextBpm) => `⚡ R${rnd} CLEAR (${acc.toFixed(0)}%)! → ${nextBpm} BPM 自動開始 (Esc停止)`,
+      drillRushFail: (rnd, peak, acc, minAcc) => `💥 RUSH終了! ${rnd}ラウンド達成 · 最高 ${peak} BPM (${acc.toFixed(0)}% < ${minAcc}%)`,
+      drillRushBadge: (rnd, nextBpm) => `⚡ R${rnd} CLEAR → ${nextBpm}BPM`,
       btnShareUrl: "🔗 共有",
       btnShareCopied: "✓ コピー済!",
       btnShareResult: "📋 テキスト共有",
@@ -3234,6 +3384,23 @@
           "font-family": "Georgia, serif", "font-size": 10.5, fill: "#9ca3af"
         }, `${bIdx + 1}`));
 
+        // Subtle Gap Click mute-bar shading & label
+        if (typeof isGapBar === "function" && isGapBar(bIdx, app.gapClick)) {
+          g.appendChild(el("rect", {
+            x: barX0 + 2, y: staffTop - 32,
+            width: Math.max(20, barW - 4), height: 84, rx: 6,
+            fill: "rgba(245, 158, 11, 0.08)",
+            stroke: "rgba(245, 158, 11, 0.36)",
+            "stroke-width": 1.1,
+            "stroke-dasharray": "4 3"
+          }));
+          g.appendChild(el("text", {
+            x: barX1 - 6, y: staffTop - 40,
+            "font-family": "ui-monospace, Menlo, monospace", "font-size": 9.5, "font-weight": 700,
+            fill: "#d97706", "text-anchor": "end"
+          }, "GAP 🔇"));
+        }
+
         // Subtle beat/click numbers above staff (toggleable: 1..clicksPerBar)
         if (app.showBeatNums) {
           for (let c = 0; c < ts.clicksPerBar; c++) {
@@ -3250,19 +3417,24 @@
         // Draw each beat / compound group
         for (let bt = 0; bt < ts.beatsPerBar; bt++) {
           const events = beats[bt];
+          const beatG = el("g", {
+            class: "beat-fade",
+            "data-fade-tick": String(bIdx * ts.barTicks + bt * ts.beatTicks)
+          });
+          g.appendChild(beatG);
           const beamGroups = [];
           let curBeam = [];
 
           for (const ev of events) {
             const nx = slotX(bt, ev.slot);
             if (ev.rest) {
-              drawRest(g, ev.dur, nx, midY);
+              drawRest(beatG, ev.dur, nx, midY);
               if (curBeam.length) { beamGroups.push(curBeam); curBeam = []; }
             } else {
-              drawNotehead(g, ev.dur, nx, midY, ev.art);
+              drawNotehead(beatG, ev.dur, nx, midY, ev.art);
               if (ev.dur !== 48) {
                 const sx = nx + 4.7;
-                g.appendChild(el("line", {
+                beatG.appendChild(el("line", {
                   x1: sx, y1: midY - 1.5, x2: sx, y2: stemTopY,
                   stroke: "#111", "stroke-width": 1.35
                 }));
@@ -3282,12 +3454,12 @@
           for (const beamable of beamGroups) {
             if (beamable.length === 1) {
               const b0 = beamable[0];
-              drawFlag(g, b0.sx, stemTopY, b0.ev.dur === 3);
+              drawFlag(beatG, b0.sx, stemTopY, b0.ev.dur === 3);
             } else if (beamable.length >= 2) {
               const xFirst = beamable[0].sx - 0.65;
               const xLast = beamable[beamable.length - 1].sx + 0.65;
               // Primary 8th beam
-              g.appendChild(el("rect", {
+              beatG.appendChild(el("rect", {
                 x: xFirst, y: stemTopY, width: xLast - xFirst, height: 4.5, fill: "#111"
               }));
 
@@ -3297,7 +3469,7 @@
               for (let i = 0; i < beamable.length - 1; i++) {
                 const a = beamable[i], b = beamable[i + 1];
                 if (a.ev.dur === 3 && b.ev.dur === 3 && a.ev.slot + a.ev.dur === b.ev.slot) {
-                  g.appendChild(el("rect", {
+                  beatG.appendChild(el("rect", {
                     x: a.sx - 0.65, y: y2, width: (b.sx - a.sx) + 1.3, height: 4.0, fill: "#111"
                   }));
                   connected[i] = true;
@@ -3309,7 +3481,7 @@
                 if (item.ev.dur === 3 && !connected[i]) {
                   const stubW = 9.5;
                   const sx = i < beamable.length - 1 ? item.sx - 0.65 : item.sx - stubW + 0.65;
-                  g.appendChild(el("rect", {
+                  beatG.appendChild(el("rect", {
                     x: sx, y: y2, width: stubW, height: 4.0, fill: "#111"
                   }));
                 }
@@ -3323,14 +3495,14 @@
             const lastEv = events[events.length - 1];
             const xEnd = slotX(bt, lastEv.slot) + (lastEv.rest ? 4 : 4.7);
             const allBeamed3 = beamGroups.length === 1 && beamGroups[0].length === 3 && !events.some(e => e.rest);
-            drawTuplet(g, xStart, xEnd, stemTopY, !allBeamed3);
+            drawTuplet(beatG, xStart, xEnd, stemTopY, !allBeamed3);
           }
           if (events.length && events[0].tuplet === "4t" && events[0].slot === 0 && bt + 1 < ts.beatsPerBar) {
             const nextEvents = beats[bt + 1];
             const lastSlot = nextEvents.length ? nextEvents[nextEvents.length - 1].slot : 4;
             const xStart = slotX(bt, 0) + 4.7;
             const xEnd = slotX(bt + 1, lastSlot) + 4.7;
-            drawTuplet(g, xStart, xEnd, stemTopY, true);
+            drawTuplet(beatG, xStart, xEnd, stemTopY, true);
           }
 
           // Cross-beat tie
@@ -3338,7 +3510,7 @@
             const prevEv = beats[bt - 1][beats[bt - 1].length - 1];
             const currEv = events[0];
             if (prevEv.tiedOut && currEv.tiedIn) {
-              drawTie(g, slotX(bt - 1, prevEv.slot), slotX(bt, currEv.slot), midY);
+              drawTie(beatG, slotX(bt - 1, prevEv.slot), slotX(bt, currEv.slot), midY);
             }
           }
 
@@ -3680,7 +3852,15 @@
     scheduledNodes.push(noise, bp, ng, thump, tg);
   }
 
-  function scheduleRunAudio(bpm, numBars, startAudioT, playMetronome, demoTargets = null, timeSigKey = "4/4") {
+  function isGapBar(playBar, gapMode = "OFF") {
+    if (playBar < 0 || !gapMode || gapMode === "OFF") return false;
+    if (gapMode === "1+1") return (playBar % 2) >= 1;
+    if (gapMode === "2+2") return (playBar % 4) >= 2;
+    if (gapMode === "1+3") return (playBar % 4) >= 1;
+    return false;
+  }
+
+  function scheduleRunAudio(bpm, numBars, startAudioT, playMetronome, demoTargets = null, timeSigKey = "4/4", gapClickMode = "OFF") {
     stopScheduledAudio();
     const ctx = ensureAudioCtx();
     const ts = TIME_SIGS[timeSigKey] || TIME_SIGS["4/4"];
@@ -3693,6 +3873,10 @@
       ? (ts.countInClicks + numBars * ts.clicksPerBar)
       : ts.countInClicks;
     for (let c = 0; c < clicksToSchedule; c++) {
+      if (!demoTargets && c >= ts.countInClicks) {
+        const playBar = Math.floor((c - ts.countInClicks) / ts.clicksPerBar);
+        if (isGapBar(playBar, gapClickMode)) continue;
+      }
       const pos = c < ts.countInClicks ? c : (c - ts.countInClicks) % ts.clicksPerBar;
       const isDownbeat = pos === 0;
       const isSubAcc = !isDownbeat && ts.subAcc.includes(pos);
@@ -4267,6 +4451,12 @@
     showBeatNums: false,
     showCursor: false,
     blindGrade: false,
+    gapClick: "OFF",  // Special Training BETA: OFF | 1+1 | 2+2 | 1+3
+    fadeBeats: 0,     // Special Training BETA: 0 | 1 | 2
+    rushOn: false,    // Special Training BETA: BPM Rush sudden death
+    rushMinAcc: 90,   // 85 | 90 | 95
+    rushRound: 0,
+    rushTimerId: null,
     inputMode: "KEY", // KEY | AUDIO | BOTH
     keyLatencyMs: 0,  // optional offset for KEY/Touch (e.g. Bluetooth headphones)
     state: "READY",   // READY | COUNTIN | PLAY | DEMO | CAL | DONE
@@ -4353,7 +4543,42 @@
     } catch (_) {}
   }
 
+  function cancelRushTimer(resetRound = false) {
+    if (app.rushTimerId) {
+      window.clearTimeout(app.rushTimerId);
+      app.rushTimerId = null;
+    }
+    if (resetRound) app.rushRound = 0;
+  }
+
+  function loadRushBest() {
+    try {
+      const raw = localStorage.getItem("rhythm_practice_rush_best");
+      if (raw) {
+        const p = JSON.parse(raw);
+        if (p && Number.isFinite(p.peakBpm)) return { peakBpm: p.peakBpm, rounds: p.rounds || 0 };
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  function saveRushBest(bpm, rounds) {
+    const prev = loadRushBest();
+    const next = {
+      peakBpm: prev ? Math.max(prev.peakBpm, bpm) : bpm,
+      rounds: prev ? Math.max(prev.rounds, rounds) : rounds,
+    };
+    try { localStorage.setItem("rhythm_practice_rush_best", JSON.stringify(next)); } catch (_) {}
+    syncDrillUi();
+    return next;
+  }
+
+  function clearFadeOutClasses() {
+    document.querySelectorAll("#scoreSvg .beat-fade.faded").forEach(n => n.classList.remove("faded"));
+  }
+
   function newPhrase(forcedSeed = null, keepDaily = false) {
+    cancelRushTimer(true);
     app.runSeq += 1;
     if (app.state === "CAL") stopCalibration(false);
     stopScheduledAudio();
@@ -4372,6 +4597,8 @@
   }
 
   function loadDailyChallenge(dateStr = null, isPlus = false) {
+    cancelRushTimer(true);
+    if (app.rushOn) { app.rushOn = false; syncDrillUi(); }
     const spec = getDailyChallengeSpec(dateStr, isPlus);
     app.dailyDate = spec.dateStr;
     app.dailyPlus = spec.isPlus;
@@ -4474,12 +4701,15 @@
     }
   }
 
-  function formatPlayMods(soundOn, showBeatNums, showCursor, blindGrade, inputMode) {
+  function formatPlayMods(soundOn, showBeatNums, showCursor, blindGrade, inputMode, gapClick = app.gapClick, fadeBeats = app.fadeBeats, rushOn = app.rushOn) {
     const parts = [inputMode === "AUDIO" ? "AUD" : inputMode];
     if (!soundOn) parts.push("M×");
     if (blindGrade) parts.push("Blind");
     if (showBeatNums) parts.push("+B");
     if (showCursor) parts.push("+C");
+    if (gapClick && gapClick !== "OFF") parts.push(`Gap${gapClick}`);
+    if (fadeBeats > 0) parts.push(`Fade${fadeBeats}b`);
+    if (rushOn) parts.push("Rush");
     return parts.join(" · ");
   }
 
@@ -4490,6 +4720,9 @@
     if (h.blindGrade) flags.push("Bl");
     if (h.showBeatNums) flags.push("+B");
     if (h.showCursor) flags.push("+C");
+    if (h.gapClick && h.gapClick !== "OFF") flags.push(`G${h.gapClick}`);
+    if (h.fadeBeats > 0) flags.push(`F${h.fadeBeats}b`);
+    if (h.rushOn) flags.push("Ru");
     return flags.length ? `${inp} ${flags.join(" ")}` : inp;
   }
 
@@ -4751,7 +4984,8 @@
     return new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
   }
 
-  async function startRun(demo = false) {
+  async function startRun(demo = false, keepRushRound = false) {
+    cancelRushTimer(!keepRushRound);
     const seq = ++app.runSeq;
     ensureAudioCtx(); // Synchronously unlock/resume inside user tap gesture on mobile
     if (app.state === "CAL") stopCalibration(false);
@@ -4759,6 +4993,7 @@
     // Immediately leave PLAY/COUNTIN before awaiting AudioContext so frame() cannot stamp stale misses
     app.state = "READY";
     resetTargets();
+    clearFadeOutClasses();
     setHitBadge(t("statusGetReady"), "");
     syncTransportButtons();
     const ctx = await ensureAudioCtxReady();
@@ -4774,17 +5009,21 @@
       app.startAudioT,
       demo ? true : app.soundOn,
       demo ? app.phrase.targets : null,
-      app.timeSig
+      app.timeSig,
+      demo ? "OFF" : app.gapClick
     );
   }
 
   function stopRun() {
+    const hadRushTimer = Boolean(app.rushTimerId);
+    cancelRushTimer(true);
     app.runSeq += 1;
+    clearFadeOutClasses();
     if (app.state === "CAL") {
       stopCalibration(true);
       return;
     }
-    if (app.state !== "COUNTIN" && app.state !== "PLAY" && app.state !== "DEMO") return;
+    if (app.state !== "COUNTIN" && app.state !== "PLAY" && app.state !== "DEMO" && !hadRushTimer) return;
     stopScheduledAudio();
     resetTargets();
     app.state = "READY";
@@ -5118,6 +5357,9 @@
       showBeatNums: app.showBeatNums,
       showCursor: app.showCursor,
       blindGrade: app.blindGrade,
+      gapClick: app.gapClick,
+      fadeBeats: app.fadeBeats,
+      rushOn: app.rushOn,
       hits, total, acc, tight, mean, sd, extra: app.extraHits,
       susTotal, susOk,
     });
@@ -5162,7 +5404,49 @@
     document.getElementById("btnShareResult").classList.remove("hidden");
     document.getElementById("btnBragCard").classList.remove("hidden");
     renderLog();
-    if (app.blindGrade) {
+    clearFadeOutClasses();
+
+    // Special Training BETA post-run feedback (Gap Click sub-score & BPM Rush sudden death)
+    const drillMsgEl = document.getElementById("drillMsg");
+    const tsDone = getTimeSig();
+    if (app.gapClick !== "OFF") {
+      const gapTgts = app.phrase.targets.filter(tg => isGapBar(Math.floor(tg.globalSlot / tsDone.barTicks), app.gapClick));
+      if (gapTgts.length) {
+        const gapHits = gapTgts.filter(tg => tg.hit && tg.errMs !== null);
+        const gAcc = (gapHits.length / gapTgts.length) * 100;
+        const gMean = gapHits.length ? gapHits.reduce((s, tg) => s + tg.errMs, 0) / gapHits.length : 0;
+        drillMsgEl.style.color = gAcc >= 85 ? "var(--green)" : "var(--amber)";
+        drillMsgEl.textContent = t("drillGapResult", gAcc, gapHits.length, gapTgts.length, gMean);
+      }
+    }
+
+    if (app.rushOn && !app.dailyDate && !app.customMode) {
+      if (acc >= app.rushMinAcc) {
+        app.rushRound += 1;
+        saveRushBest(app.bpm, app.rushRound);
+        const nextBpm = Math.min(180, app.bpm + 5);
+        drillMsgEl.style.color = "var(--green)";
+        drillMsgEl.textContent = t("drillRushClear", app.rushRound, acc, nextBpm);
+        setHitBadge(t("drillRushBadge", app.rushRound, nextBpm), "tight");
+        const rushSeq = app.runSeq;
+        app.rushTimerId = window.setTimeout(() => {
+          app.rushTimerId = null;
+          if (!app.rushOn || rushSeq !== app.runSeq) return;
+          app.bpm = nextBpm;
+          app.takeId += 1;
+          app.phrase = generatePhrase(app.numBars, app.level, app.tripletMode, app.timeSig, null, app.staccatoOn, app.ghostOn);
+          resetTargets();
+          updateMeta();
+          startRun(false, true);
+        }, 1500);
+      } else {
+        const peakBpm = app.rushRound > 0 ? Math.max(40, app.bpm - 5) : app.bpm;
+        drillMsgEl.style.color = "var(--red)";
+        drillMsgEl.textContent = t("drillRushFail", app.rushRound, peakBpm, acc, app.rushMinAcc);
+        setHitBadge(`💥 RUSH ${app.rushRound}R · ${peakBpm}BPM`, "err");
+        app.rushRound = 0;
+      }
+    } else if (app.blindGrade) {
       const cls = acc >= 90 ? "tight" : (acc >= 70 ? "warn" : "err");
       setHitBadge(t("badgeDone", hits, total), cls);
     }
@@ -5352,6 +5636,24 @@
     document.getElementById("btnDaily").textContent = t("btnDaily");
     document.getElementById("btnDailyPlus").textContent = t("btnDailyPlus");
     document.getElementById("btnEditor").textContent = t("btnEditor");
+    document.getElementById("btnDrillText").textContent = t("btnDrill");
+    document.getElementById("lblDrillTitle").textContent = t("drillTitle");
+    document.getElementById("lblGapClick").textContent = t("drillGapLbl");
+    const gapOpts = t("drillGapOpts") || [];
+    const gapSel = document.getElementById("gapClickSelect");
+    for (let i = 0; i < gapSel.options.length && i < gapOpts.length; i++) {
+      gapSel.options[i].textContent = gapOpts[i];
+    }
+    document.getElementById("lblFadeOut").textContent = t("drillFadeLbl");
+    const fadeOpts = t("drillFadeOpts") || [];
+    const fadeSel = document.getElementById("fadeOutSelect");
+    for (let i = 0; i < fadeSel.options.length && i < fadeOpts.length; i++) {
+      fadeSel.options[i].textContent = fadeOpts[i];
+    }
+    document.getElementById("btnDrillReset").textContent = t("drillReset");
+    document.getElementById("drillMsg").style.color = "var(--muted)";
+    document.getElementById("drillMsg").textContent = t("drillIdleMsg");
+    if (typeof syncDrillUi === "function") syncDrillUi();
     document.getElementById("btnShareUrl").textContent = t("btnShareUrl");
     document.getElementById("btnShareResult").textContent = t("btnShareResult");
     document.getElementById("btnBragCard").textContent = t("btnBragCard");
@@ -5435,8 +5737,9 @@
   }
 
   function setBpm(val) {
+    cancelRushTimer(true);
     if (app.state === "CAL") stopCalibration(true);
-    app.bpm = Math.max(40, Math.min(140, val));
+    app.bpm = Math.max(40, Math.min(180, val));
     stopScheduledAudio();
     resetTargets();
     if (app.state === "COUNTIN" || app.state === "PLAY" || app.state === "DEMO") {
@@ -5535,6 +5838,10 @@
         if (changed && !app.blindGrade) app.dirtyScore = true;
       }
 
+      const clickIdxNow = elapsed >= 0 ? Math.floor(elapsed / clickSec) : -1;
+      const inGapMuteNow = (app.state === "PLAY" && app.gapClick !== "OFF" && clickIdxNow >= ts.countInClicks)
+        && isGapBar(Math.floor((clickIdxNow - ts.countInClicks) / ts.clicksPerBar), app.gapClick);
+
       if (elapsed < 0) {
         statusMain.textContent = t("statusGetReady");
       } else if (elapsed < countIn) {
@@ -5542,16 +5849,18 @@
         statusMain.textContent = t("statusCountIn", ciBeat, ts.countInClicks);
       } else if (app.state === "DEMO") {
         statusMain.textContent = t("statusDemo");
+      } else if (inGapMuteNow) {
+        statusMain.textContent = t("statusGapMute");
       } else {
         statusMain.textContent = t("statusPlay");
       }
 
       if (elapsed >= 0) {
-        const clickIdx = Math.floor(elapsed / clickSec);
+        const clickIdx = clickIdxNow;
         const phase = elapsed - clickIdx * clickSec;
         const flashDur = Math.min(0.13, clickSec * 0.32);
         const ledLimit = (app.soundOn || app.state === "DEMO") ? totalClicks : ts.countInClicks;
-        if (clickIdx >= 0 && clickIdx < ledLimit && phase < flashDur) {
+        if (clickIdx >= 0 && clickIdx < ledLimit && phase < flashDur && !inGapMuteNow) {
           const pos = clickIdx < ts.countInClicks ? clickIdx : (clickIdx - ts.countInClicks) % ts.clicksPerBar;
           ledClass = pos === 0 ? "led-core beat1" : "led-core beatn";
         }
@@ -5610,6 +5919,28 @@
       if (!showNow && cursorEl.getAttribute("visibility") !== "hidden") {
         cursorEl.setAttribute("visibility", "hidden");
       }
+    }
+
+    // Special Training BETA: Look-ahead Fade-out (60 FPS lightweight SVG opacity toggle)
+    if (app.fadeBeats > 0 && (app.state === "COUNTIN" || app.state === "PLAY") && audioCtx) {
+      const ts = getTimeSig();
+      const clickSec = ts.clickSec(app.bpm);
+      const tickSec = clickSec / ts.clickTicks;
+      const countIn = ts.countInClicks * clickSec;
+      const playElapsed = (audioCtx.currentTime - app.startAudioT) - countIn;
+      const curTick = playElapsed / tickSec;
+      const fadeThresholdTick = curTick + app.fadeBeats * ts.clickTicks;
+      const nodes = scoreSvg.querySelectorAll(".beat-fade");
+      for (const n of nodes) {
+        const fTick = Number(n.dataset.fadeTick);
+        if (fTick <= fadeThresholdTick) {
+          if (!n.classList.contains("faded")) n.classList.add("faded");
+        } else if (n.classList.contains("faded")) {
+          n.classList.remove("faded");
+        }
+      }
+    } else if (scoreSvg.querySelector(".beat-fade.faded")) {
+      clearFadeOutClasses();
     }
 
     requestAnimationFrame(frame);
@@ -6795,6 +7126,88 @@
     app.phrase = generatePhrase(app.numBars, app.level, app.tripletMode, app.timeSig, null, app.staccatoOn, app.ghostOn);
     resetTargets();
   }
+
+  // -------------------------------------------------------------------------
+  // Special Training BETA Controls (Gap Click · Look-ahead Fade-out · BPM Rush)
+  // -------------------------------------------------------------------------
+  function syncDrillUi() {
+    const bar = document.getElementById("drillBar");
+    const barOpen = !bar.classList.contains("hidden");
+    const anyActive = (app.gapClick !== "OFF") || (app.fadeBeats > 0) || app.rushOn;
+    document.getElementById("btnDrill").classList.toggle("active", barOpen || anyActive);
+    document.getElementById("gapClickSelect").value = app.gapClick;
+    document.getElementById("fadeOutSelect").value = String(app.fadeBeats);
+    const rushBtn = document.getElementById("btnRushToggle");
+    rushBtn.textContent = app.rushOn ? t("drillRushOn") : t("drillRushOff");
+    rushBtn.classList.toggle("active", app.rushOn);
+    document.getElementById("rushAccSelect").value = String(app.rushMinAcc);
+    const bestEl = document.getElementById("rushBestBadge");
+    const best = loadRushBest();
+    if (best && best.rounds > 0) {
+      bestEl.textContent = t("drillRushBest", best.peakBpm, best.rounds);
+      bestEl.classList.remove("hidden");
+    } else {
+      bestEl.classList.add("hidden");
+    }
+  }
+
+  document.getElementById("btnDrill").addEventListener("click", (e) => {
+    e.currentTarget.blur();
+    document.getElementById("drillBar").classList.toggle("hidden");
+    syncDrillUi();
+  });
+  document.getElementById("btnDrillClose").addEventListener("click", () => {
+    document.getElementById("drillBar").classList.add("hidden");
+    syncDrillUi();
+  });
+  document.getElementById("gapClickSelect").addEventListener("change", (e) => {
+    app.gapClick = e.target.value;
+    if (app.gapClick !== "OFF" && !app.soundOn) {
+      app.soundOn = true; // Ensure metronome is ON so Gap Click has audible ON bars
+    }
+    e.target.blur();
+    app.dirtyScore = true;
+    updateMeta();
+    syncDrillUi();
+  });
+  document.getElementById("fadeOutSelect").addEventListener("change", (e) => {
+    app.fadeBeats = Number(e.target.value) || 0;
+    clearFadeOutClasses();
+    e.target.blur();
+    updateMeta();
+    syncDrillUi();
+  });
+  document.getElementById("btnRushToggle").addEventListener("click", (e) => {
+    e.currentTarget.blur();
+    app.rushOn = !app.rushOn;
+    cancelRushTimer(true);
+    if (app.rushOn && (app.dailyDate || app.customMode)) {
+      newPhrase(); // Exit Daily/Custom so Rush can generate fresh phrases each round
+    }
+    const msgEl = document.getElementById("drillMsg");
+    msgEl.style.color = "var(--muted)";
+    msgEl.textContent = t("drillIdleMsg");
+    updateMeta();
+    syncDrillUi();
+  });
+  document.getElementById("rushAccSelect").addEventListener("change", (e) => {
+    app.rushMinAcc = Number(e.target.value) || 90;
+    e.target.blur();
+  });
+  document.getElementById("btnDrillReset").addEventListener("click", (e) => {
+    e.currentTarget.blur();
+    cancelRushTimer(true);
+    app.gapClick = "OFF";
+    app.fadeBeats = 0;
+    app.rushOn = false;
+    clearFadeOutClasses();
+    const msgEl = document.getElementById("drillMsg");
+    msgEl.style.color = "var(--muted)";
+    msgEl.textContent = t("drillIdleMsg");
+    app.dirtyScore = true;
+    updateMeta();
+    syncDrillUi();
+  });
 
   // -------------------------------------------------------------------------
   // First-Visit Interactive Onboarding Spotlight Tour
