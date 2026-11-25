@@ -868,6 +868,17 @@
     color: var(--ink);
   }
 
+  .log-lv.replayable {
+    cursor: pointer;
+    text-decoration: underline dotted #cbd5e1;
+    text-underline-offset: 3px;
+  }
+
+  .log-lv.replayable:hover {
+    color: var(--accent);
+    text-decoration-color: var(--accent);
+  }
+
   .log-rank {
     display: inline-flex;
     align-items: center;
@@ -1747,9 +1758,9 @@
           </div>
         </div>
       </div>
-    </div>
 
-    <div class="toolbar-row secondary">
+      <div class="divider"></div>
+
       <div class="group">
         <button id="btnDaily" class="daily-btn" title="오늘의 4/4 데일리 챌린지 (고정 8마디)">🏆 데일리</button>
         <button id="btnDailyPlus" class="daily-plus-btn" title="오늘의 변박·고급 데일리+ 챌린지 (3/4·2/4·5/4·6/8)">🔥 데일리+</button>
@@ -2104,7 +2115,7 @@
         {
           target: "#inputGroup",
           title: "🎤 키보드 · 터치 패드 · 실제 베이스 연결",
-          body: "입력: KEY / AUDIO / BOTH 전환으로 오디오 인터페이스나 마이크를 연결해 실제 베이스 연주(어택·서스테인·쉼표 뮤트)를 채점할 수 있습니다. 블루투스 이어폰 등 지연이 느껴지면 ⏱ 보정(16박)으로 간편하게 맞추세요.",
+          body: "⌨️ 키 · 🎤 오디오 · 👆 패드 3종 독립 토글로 원하는 입력을 자유롭게 조합하세요. 🎤 오디오를 켜면 오디오 인터페이스나 마이크를 통해 실제 베이스 연주(어택·서스테인·쉼표 뮤트)를 채점합니다. 지연이 느껴지면 ⋯ 도구 → ⏱ 보정(16박)으로 맞추세요.",
         },
         {
           target: "#btnDaily",
@@ -2265,7 +2276,7 @@
         <div class="guide-sec">
           <h3>3. 베이스 / 오디오 인터페이스 연결 팁</h3>
           <ul>
-            <li><kbd>I</kbd> 키 또는 <strong>입력: KEY</strong> 버튼을 눌러 <code>AUDIO</code> 또는 <code>BOTH</code>로 전환하세요.</li>
+            <li><kbd>I</kbd> 키 또는 상단 <strong>🎤 오디오</strong> 토글 버튼을 켜면 오디오 인터페이스/마이크 입력이 활성화됩니다(<strong>⌨️ 키</strong>·<strong>👆 패드</strong>와 동시 사용 가능).</li>
             <li>오디오 바의 장치 목록에서 인터페이스를 고르고, 대기 상태에서 줄을 튕겨 미터와 <code>-XXdB (Ch1)</code> 반응을 확인하세요.</li>
             <li><strong>안 칠 때도 노이즈가 잡히면</strong>: 줄을 건드리지 않은 상태에서 <strong>🔇 노이즈 보정</strong>을 한 번 누르면 0.6초간 바닥 노이즈를 측정해 임계값을 자동 설정합니다.</li>
             <li><strong>미터 선 의미</strong>: 빨간선 = 어택 감지 임계값 / 파란선 = 서스테인 유지 하한선.</li>
@@ -2367,7 +2378,7 @@
         {
           target: "#inputGroup",
           title: "🎤 Keyboard, Touch Pads, or Real Bass",
-          body: "Switch Input: KEY / AUDIO / BOTH to plug in your audio interface or mic and grade real bass attacks, sustain length, and rest mutes. Notice latency on Bluetooth headphones? Use ⏱ Sync (16 beats) to calibrate.",
+          body: "Mix and match ⌨️ Key · 🎤 Audio · 👆 Pad toggles independently. Turn on 🎤 Audio to grade real bass attacks, sustain length, and rest mutes via your audio interface or mic. Notice Bluetooth latency? Calibrate in ⋯ Tools → ⏱ Sync (16 beats).",
         },
         {
           target: "#btnDaily",
@@ -2528,7 +2539,7 @@
         <div class="guide-sec">
           <h3>3. Bass &amp; Audio Interface Setup</h3>
           <ul>
-            <li>Press <kbd>I</kbd> or click <strong>Input: KEY</strong> to switch to <code>AUDIO</code> or <code>BOTH</code>.</li>
+            <li>Press <kbd>I</kbd> or toggle <strong>🎤 Audio</strong> in the input bar to enable your audio interface or mic (can be combined with <strong>⌨️ Key</strong> or <strong>👆 Pad</strong>).</li>
             <li>Choose your interface in the device dropdown and pluck a string while idle to verify the meter and <code>-XXdB (Ch1)</code> readout.</li>
             <li><strong>If idle noise triggers hits</strong>: Keep strings muted and click <strong>🔇 Noise Cal</strong> (measures 0.6s noise floor and sets threshold automatically).</li>
             <li><strong>Meter markers</strong>: Red line = attack threshold / Blue line = sustain hold floor.</li>
@@ -2630,7 +2641,7 @@
         {
           target: "#inputGroup",
           title: "🎤 キーボード・パッド・生ベース接続",
-          body: "入力: KEY / AUDIO / BOTH 切替でオーディオI/Fやマイクから生ベースのアタック・サステイン・休符ミュートまで採点可能。Bluetooth等でズレを感じたら ⏱ 補正（16拍）で簡単に調整できます。",
+          body: "⌨️ キー・🎤 音声・👆 パッドの3種トグルを自由に組み合わせられます。🎤 音声をオンにするとオーディオI/Fやマイクから生ベースのアタック・サステイン・休符ミュートまで採点可能。ズレを感じたら ⋯ ツール → ⏱ 補正（16拍）で調整できます。",
         },
         {
           target: "#btnDaily",
@@ -2791,7 +2802,7 @@
         <div class="guide-sec">
           <h3>3. ベース／オーディオインターフェース接続のコツ</h3>
           <ul>
-            <li><kbd>I</kbd> キーまたは <strong>入力: KEY</strong> ボタンで <code>AUDIO</code> または <code>BOTH</code> に切り替えます。</li>
+            <li><kbd>I</kbd> キーまたは上部の <strong>🎤 音声</strong> トグルをオンにするとオーディオI/F・マイク入力が有効になります（<strong>⌨️ キー</strong>・<strong>👆 パッド</strong>との同時使用も可能）。</li>
             <li>機器プルダウンからインターフェースを選び、待機中に弦を弾いてメーターと <code>-XXdB (Ch1)</code> の反応を確認してください。</li>
             <li><strong>弾いていないのにノイズが反応する場合</strong>: 弦をミュートした状態で <strong>🔇 ノイズ補正</strong> を押すと、0.6秒間ノイズを測定してしきい値を自動設定します。</li>
             <li><strong>メーターの基準線</strong>: 赤線 = アタック検出しきい値 / 青線 = サステイン維持ライン。</li>
@@ -5146,13 +5157,13 @@
     const inp = h.mode === "AUDIO" ? "AUD" : (h.mode || "KEY");
     const flags = [];
     if (h.gapClick && h.gapClick !== "OFF") flags.push(`Gap${h.gapClick}`);
-    else flags.push(h.soundOn === false ? "M×" : "M✓");
+    else if (h.soundOn === false) flags.push("M×");
     if (h.blindGrade) flags.push("Blind");
     if (h.showBeatNums) flags.push("+B");
     if (h.showCursor) flags.push("+C");
     if (h.fadeBeats > 0) flags.push(`Fade${h.fadeBeats}b`);
     if (h.rushOn) flags.push("Rush");
-    return `${inp} · ${flags.join(" · ")}`;
+    return flags.length ? `${inp} · ${flags.join(" · ")}` : inp;
   }
 
   function computeScoreRank(r) {
@@ -5947,7 +5958,7 @@
       return;
     }
     box.className = "";
-    const rows = app.history.map(h => {
+    const rows = app.history.map((h, idx) => {
       const mStr = h.hits ? `${h.mean >= 0 ? "+" : ""}${h.mean.toFixed(1)}ms` : "—";
       const sStr = h.hits ? `${h.sd.toFixed(1)}ms` : "—";
       const susStr = h.susTotal ? `${Math.round((h.susOk / h.susTotal) * 100)}%` : "—";
@@ -5957,7 +5968,9 @@
       const modePrefix = h.custom ? "✏️" : (h.dailyPlus ? "🔥" : (h.daily ? "🏆" : ""));
       const lvCore = h.custom ? "Custom" : `Lv${h.lv}${lvFlags}`;
       const lvLabel = `${modePrefix}${modePrefix ? " " : ""}${lvCore} · ${h.ts || "4/4"}${barsTag ? ` · ${barsTag}` : ""}`;
-      const lvTip = `${h.fullSeed ? `#${h.fullSeed} · ` : ""}${lvCore} (${h.ts || "4/4"}${barsTag ? ` ${barsTag}` : ""}) | T1=8th Triplets · T2=+2-Beat Triplets · S=Staccato · G=Ghost`;
+      const canReplay = Boolean(h.daily || h.dailyPlus || (h.fullSeed && (h.fullSeed.startsWith("C1_") || decodeFullSeedCode(h.fullSeed))));
+      const replayHint = canReplay ? " · Click to replay" : "";
+      const lvTip = `${h.fullSeed ? `#${h.fullSeed} · ` : ""}${lvCore} (${h.ts || "4/4"}${barsTag ? ` ${barsTag}` : ""})${replayHint}`;
       const modStr = formatPlayModsCompact(h);
       const metroTxt = (h.gapClick && h.gapClick !== "OFF") ? `Gap ${h.gapClick}` : (h.soundOn === false ? "OFF" : "ON");
       const modTip = `Input:${h.mode || "KEY"} | Metro:${metroTxt} | Beats:${h.showBeatNums ? "ON" : "OFF"} | Cursor:${h.showCursor ? "ON" : "OFF"} | Grade:${h.blindGrade ? "End" : "Live"} | Fade:${h.fadeBeats ? `${h.fadeBeats}b` : "OFF"} | Rush:${h.rushOn ? "ON" : "OFF"}`;
@@ -5968,7 +5981,7 @@
       return `<tr>
         <td>#${h.take}</td>
         <td><span class="log-rank ${rk.cls}">${rk.grade}</span></td>
-        <td class="log-lv" title="${lvTip}">${lvLabel}</td>
+        <td class="log-lv${canReplay ? " replayable" : ""}"${canReplay ? ` data-replay-idx="${idx}"` : ""} title="${lvTip}">${lvLabel}</td>
         <td>${h.bpm}</td>
         <td title="${modTip}">${modStr}</td>
         <td><strong>${h.hits}/${h.total}</strong> (${h.acc.toFixed(0)}%)</td>
@@ -5985,7 +5998,25 @@
     </table>`;
   }
 
+  document.getElementById("logContainer").addEventListener("click", (e) => {
+    const cell = e.target.closest("[data-replay-idx]");
+    if (!cell) return;
+    const h = app.history[Number(cell.dataset.replayIdx)];
+    if (!h) return;
+    if (h.daily || h.dailyPlus) {
+      loadDailyChallenge(h.dailyDate || null, Boolean(h.dailyPlus));
+    } else if (h.fullSeed && h.fullSeed.startsWith("C1_")) {
+      if (Number.isFinite(Number(h.bpm))) app.bpm = Math.max(40, Math.min(180, Math.round(Number(h.bpm))));
+      loadCustomFromInput(h.fullSeed);
+    } else if (h.fullSeed) {
+      const cfg = decodeFullSeedCode(h.fullSeed);
+      if (cfg) applyFullSeedObj(cfg);
+    }
+    document.querySelector(".sheet-paper").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  });
+
   function updateMeta() {
+    app.inputMode = deriveInputMode();
     const ts = getTimeSig();
     document.getElementById("bpmVal").textContent = String(app.bpm);
     document.getElementById("bpmSlider").value = String(app.bpm);
@@ -6046,7 +6077,6 @@
     if (typeof syncAllDropdownBadges === "function") syncAllDropdownBadges();
     btnBlind.classList.toggle("active", app.blindGrade);
 
-    app.inputMode = deriveInputMode();
     document.getElementById("btnInKey").classList.toggle("active", app.keyOn);
     document.getElementById("btnInAudio").classList.toggle("active", app.audioOn);
     document.getElementById("btnTouchPad").classList.toggle("active", showTouchDock);
