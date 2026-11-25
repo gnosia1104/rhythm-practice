@@ -1364,6 +1364,71 @@
     opacity: 0.02;
   }
 
+  /* Toolbar Tools Dropdown (⋯ 도구) */
+  .tools-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .tools-dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    min-width: 196px;
+    background: #ffffff;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 6px;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.14);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    z-index: 80;
+  }
+
+  .tools-dropdown button {
+    width: 100%;
+    text-align: left;
+    justify-content: flex-start;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    border-color: transparent;
+    background: transparent;
+    padding: 7px 10px;
+    border-radius: 8px;
+    font-size: 12.5px;
+  }
+
+  .tools-dropdown button:hover:not(:disabled) {
+    background: #f4f4f5;
+    border-color: transparent;
+  }
+
+  .tools-dropdown button.active {
+    background: #171717;
+    color: #ffffff;
+    border-color: #171717;
+  }
+
+  .tools-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #f59e0b;
+    margin-left: 5px;
+    vertical-align: 1px;
+  }
+
+  @media (max-width: 640px) {
+    .tools-dropdown {
+      right: auto;
+      left: 0;
+    }
+  }
+
   .hidden { display: none !important; }
 
   @page { margin: 12mm; }
@@ -1444,14 +1509,19 @@
       <div class="group">
         <button id="btnDaily" class="daily-btn" title="오늘의 4/4 데일리 챌린지 (고정 8마디)">🏆 데일리</button>
         <button id="btnDailyPlus" class="daily-plus-btn" title="오늘의 변박·고급 데일리+ 챌린지 (3/4·2/4·5/4·6/8)">🔥 데일리+</button>
-        <button id="btnEditor" title="커스텀 악보 에디터 열기/닫기">✏️ 에디터</button>
-        <button id="btnDrill" title="특수 훈련 베타 (갭 클릭 · 시야 방해 · BPM 러쉬)"><span id="btnDrillText">🧪 특수훈련</span><span class="beta-tag">BETA</span></button>
         <button id="btnInputMode" title="i">입력: KEY</button>
         <button id="btnTouchPad" title="모바일 투핑거 터치 패드">👆 패드</button>
-        <button id="btnSyncCal" title="타이밍 지연 보정 (블루투스 이어폰 / 오디오 인터페이스)">⏱ 보정</button>
-        <button id="btnPrint" title="PDF 저장 / 인쇄">🖨 PDF</button>
-        <button id="btnTour" title="처음 사용자를 위한 단계별 튜토리얼">🧭 튜토리얼</button>
-        <button id="btnGuide" title="사용 방법 및 판정 기준 설명 열기">❓ 설명</button>
+        <div id="toolsWrap" class="tools-wrap">
+          <button id="btnToolsMenu" type="button" aria-haspopup="true" aria-expanded="false" title="에디터 · 특수훈련 · 싱크보정 · PDF · 튜토리얼 · 설명"><span id="btnToolsText">⋯ 도구</span><span id="toolsActiveDot" class="tools-dot hidden"></span></button>
+          <div id="toolsDropdown" class="tools-dropdown hidden" role="menu">
+            <button id="btnEditor" type="button" role="menuitem" title="커스텀 악보 에디터 열기/닫기">✏️ 에디터</button>
+            <button id="btnDrill" type="button" role="menuitem" title="특수 훈련 베타 (갭 클릭 · 시야 방해 · BPM 러쉬)"><span id="btnDrillText">🧪 특수훈련</span><span class="beta-tag">BETA</span></button>
+            <button id="btnSyncCal" type="button" role="menuitem" title="타이밍 지연 보정 (블루투스 이어폰 / 오디오 인터페이스)">⏱ 보정</button>
+            <button id="btnPrint" type="button" role="menuitem" title="PDF 저장 / 인쇄">🖨 PDF</button>
+            <button id="btnTour" type="button" role="menuitem" title="처음 사용자를 위한 단계별 튜토리얼">🧭 튜토리얼</button>
+            <button id="btnGuide" type="button" role="menuitem" title="사용 방법 및 판정 기준 설명 열기">❓ 설명</button>
+          </div>
+        </div>
         <select id="langSelect" title="Language / 언어 / 言語">
           <option value="ko">🌐 Language | 한국어</option>
           <option value="en">🌐 Language | English</option>
@@ -1815,6 +1885,7 @@
       btnDaily: "🏆 데일리",
       btnDailyPlus: "🔥 데일리+",
       btnEditor: "✏️ 에디터",
+      btnToolsMenu: "⋯ 도구",
       btnDrill: "🧪 특수훈련",
       drillTitle: "🧪 특수 훈련",
       drillGapLbl: "🔇 갭 클릭",
@@ -2067,6 +2138,7 @@
       btnDaily: "🏆 Daily",
       btnDailyPlus: "🔥 Daily+",
       btnEditor: "✏️ Editor",
+      btnToolsMenu: "⋯ Tools",
       btnDrill: "🧪 Drills",
       drillTitle: "🧪 Special Drills",
       drillGapLbl: "🔇 Gap Click",
@@ -2319,6 +2391,7 @@
       btnDaily: "🏆 デイリー",
       btnDailyPlus: "🔥 デイリー+",
       btnEditor: "✏️ 編集",
+      btnToolsMenu: "⋯ ツール",
       btnDrill: "🧪 特訓",
       drillTitle: "🧪 特殊トレーニング",
       drillGapLbl: "🔇 ギャップクリック",
@@ -2861,7 +2934,7 @@
         const c = u.searchParams.get("custom");
         const b = u.searchParams.get("bpm");
         if (c) code = c.trim();
-        if (b && Number.isFinite(Number(b))) parsedBpm = Math.max(40, Math.min(140, Math.round(Number(b))));
+        if (b && Number.isFinite(Number(b))) parsedBpm = Math.max(40, Math.min(180, Math.round(Number(b))));
       } catch (_) {}
     }
     if (!code.startsWith("C1_")) return null;
@@ -2942,7 +3015,7 @@
     const numBars = Number(m[6]);
     const bpm = Number(m[7]);
     const seed = parseInt(m[8], 16);
-    if (!timeSig || !BAR_OPTIONS.includes(numBars) || bpm < 40 || bpm > 140 || !Number.isFinite(seed) || seed <= 0) {
+    if (!timeSig || !BAR_OPTIONS.includes(numBars) || bpm < 40 || bpm > 180 || !Number.isFinite(seed) || seed <= 0) {
       return null;
     }
     return { timeSig, level, tripletMode, staccatoOn, ghostOn, numBars, bpm, seed };
@@ -5680,6 +5753,7 @@
     document.getElementById("btnDaily").textContent = t("btnDaily");
     document.getElementById("btnDailyPlus").textContent = t("btnDailyPlus");
     document.getElementById("btnEditor").textContent = t("btnEditor");
+    document.getElementById("btnToolsText").textContent = t("btnToolsMenu");
     document.getElementById("btnDrillText").textContent = t("btnDrill");
     document.getElementById("lblDrillTitle").textContent = t("drillTitle");
     document.getElementById("lblGapClick").textContent = t("drillGapLbl");
@@ -6910,7 +6984,7 @@
     if (customParam) {
       const bpmP = params.get("bpm");
       if (bpmP && Number.isFinite(Number(bpmP))) {
-        app.bpm = Math.max(40, Math.min(140, Math.round(Number(bpmP))));
+        app.bpm = Math.max(40, Math.min(180, Math.round(Number(bpmP))));
       }
       return loadCustomFromInput(customParam);
     }
@@ -6940,7 +7014,7 @@
       const bP = Number(params.get("b"));
       if (BAR_OPTIONS.includes(bP)) app.numBars = bP;
       const bpmP = Number(params.get("bpm"));
-      if (bpmP >= 40 && bpmP <= 140) app.bpm = Math.round(bpmP);
+      if (bpmP >= 40 && bpmP <= 180) app.bpm = Math.round(bpmP);
       const tP = Number(params.get("t"));
       app.tripletMode = (tP === 1 || tP === 2) ? tP : 0;
       app.staccatoOn = params.get("s") === "1";
@@ -7179,6 +7253,7 @@
     const barOpen = !bar.classList.contains("hidden");
     const anyActive = (app.gapClick !== "OFF") || (app.fadeBeats > 0) || app.rushOn;
     document.getElementById("btnDrill").classList.toggle("active", barOpen || anyActive);
+    if (typeof syncToolsMenuBadge === "function") syncToolsMenuBadge();
     document.getElementById("gapClickSelect").value = app.gapClick;
     document.getElementById("fadeOutSelect").value = String(app.fadeBeats);
     const rushBtn = document.getElementById("btnRushToggle");
@@ -7428,7 +7503,55 @@
   window.addEventListener("resize", () => { if (tourState.open) positionTourElements(); });
   window.addEventListener("scroll", () => { if (tourState.open) positionTourElements(); }, { passive: true });
 
+  // -------------------------------------------------------------------------
+  // Toolbar Tools Dropdown (⋯ 도구)
+  // -------------------------------------------------------------------------
+  const btnToolsMenu = document.getElementById("btnToolsMenu");
+  const toolsDropdown = document.getElementById("toolsDropdown");
+  const toolsWrap = document.getElementById("toolsWrap");
+  function setToolsMenuOpen(open) {
+    toolsDropdown.classList.toggle("hidden", !open);
+    btnToolsMenu.setAttribute("aria-expanded", open ? "true" : "false");
+    syncToolsMenuBadge();
+  }
+  function syncToolsMenuBadge() {
+    const anyDrill = (app.gapClick !== "OFF") || (app.fadeBeats > 0) || app.rushOn;
+    const anyPanelOpen =
+      !document.getElementById("editorBar").classList.contains("hidden") ||
+      !document.getElementById("drillBar").classList.contains("hidden") ||
+      !document.getElementById("calBar").classList.contains("hidden");
+    const menuOpen = !toolsDropdown.classList.contains("hidden");
+    btnToolsMenu.classList.toggle("active", menuOpen || anyDrill || anyPanelOpen);
+    document.getElementById("toolsActiveDot").classList.toggle("hidden", !anyDrill);
+  }
+  btnToolsMenu.addEventListener("click", (e) => {
+    e.stopPropagation();
+    e.currentTarget.blur();
+    setToolsMenuOpen(toolsDropdown.classList.contains("hidden"));
+  });
+  toolsDropdown.addEventListener("click", (e) => {
+    if (e.target.closest("button")) {
+      window.setTimeout(() => setToolsMenuOpen(false), 0);
+    }
+  });
+  document.addEventListener("click", (e) => {
+    if (!toolsDropdown.classList.contains("hidden") && !toolsWrap.contains(e.target)) {
+      setToolsMenuOpen(false);
+    }
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.code === "Escape" && !toolsDropdown.classList.contains("hidden")) {
+      setToolsMenuOpen(false);
+    }
+  });
+  ["btnEdClose", "btnCalClose", "btnDrillClose"].forEach(id => {
+    const elBtn = document.getElementById(id);
+    if (elBtn) elBtn.addEventListener("click", () => window.setTimeout(syncToolsMenuBadge, 0));
+  });
+
   // Boot
+  const bootParams = new URLSearchParams(location.search || "");
+  const arrivedViaSharedLink = ["seed", "daily", "dailyplus", "custom"].some(k => bootParams.has(k));
   bootInitialScore();
   syncGain(2);
   syncThreshold(16);
@@ -7456,9 +7579,10 @@
   syncTouchDock();
   drawDistribution([], 0, 0, 0, 0, 0);
   applyLanguage(curLang);
+  syncToolsMenuBadge();
   renderLog();
   requestAnimationFrame(frame);
-  if (!hasSeenTour()) {
+  if (!hasSeenTour() && !arrivedViaSharedLink) {
     window.setTimeout(() => openTour(0), 260);
   }
 })();
