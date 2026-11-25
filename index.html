@@ -701,7 +701,15 @@
     color: #52525b;
     display: flex;
     flex-wrap: wrap;
-    gap: 4px 14px;
+    align-items: center;
+    gap: 4px 12px;
+  }
+
+  .meta-share-btn {
+    padding: 2px 8px;
+    font-size: 11.5px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
+    border-radius: 6px;
   }
 
   #metaSeed {
@@ -1056,7 +1064,7 @@
   @media print {
     body { background: #fff; padding: 0; }
     .app { max-width: none; }
-    .toolbar, .status-strip, .audio-bar, .cal-bar, .editor-bar, .results-grid, .guide-card, .sheet-footer, .touch-dock { display: none !important; }
+    .toolbar, .status-strip, .audio-bar, .cal-bar, .editor-bar, .meta-share-btn, .results-grid, .guide-card, .sheet-footer, .touch-dock { display: none !important; }
     .sheet-paper { border: none; box-shadow: none; padding: 0; }
   }
 </style>
@@ -1130,7 +1138,6 @@
         <button id="btnDaily" class="daily-btn" title="오늘의 4/4 데일리 챌린지 (고정 8마디)">🏆 데일리</button>
         <button id="btnDailyPlus" class="daily-plus-btn" title="오늘의 변박·고급 데일리+ 챌린지 (3/4·2/4·5/4·6/8)">🔥 데일리+</button>
         <button id="btnEditor" title="커스텀 악보 에디터 열기/닫기">✏️ 에디터</button>
-        <button id="btnShareUrl" title="현재 악보 공유 링크 복사">🔗 공유</button>
         <button id="btnInputMode" title="i">입력: KEY</button>
         <button id="btnTouchPad" title="모바일 투핑거 터치 패드">👆 패드</button>
         <button id="btnSyncCal" title="타이밍 지연 보정 (블루투스 이어폰 / 오디오 인터페이스)">⏱ 보정</button>
@@ -1261,6 +1268,7 @@
         <span id="metaTempo">♩ = 60</span>
         <span id="metaLevel">4/4 · Lv1 Quarter &amp; Rest Basics</span>
         <span id="metaSeed">Seed #0000</span>
+        <button id="btnShareUrl" type="button" class="meta-share-btn" title="현재 악보 공유 링크 복사">🔗 공유</button>
       </div>
     </div>
     <div class="score-wrap">
@@ -3312,17 +3320,17 @@
     const tickSec = clickSec / ts.clickTicks;
     const countInSec = ts.countInClicks * clickSec;
 
-    if (playMetronome || demoTargets) {
-      // Consistent concert-pitch clicks: E6 (1318.5Hz) on beat 1, C6 (1046.5Hz) on sub-accent, A5 (880Hz) otherwise
-      const totalClicks = ts.countInClicks + numBars * ts.clicksPerBar;
-      for (let c = 0; c < totalClicks; c++) {
-        const pos = c < ts.countInClicks ? c : (c - ts.countInClicks) % ts.clicksPerBar;
-        const isDownbeat = pos === 0;
-        const isSubAcc = !isDownbeat && ts.subAcc.includes(pos);
-        const freq = isDownbeat ? 1318.51 : (isSubAcc ? 1046.50 : 880.0);
-        const amp = isDownbeat ? 0.32 : (isSubAcc ? 0.25 : 0.20);
-        scheduleClick(ctx, startAudioT + c * clickSec, freq, amp);
-      }
+    // Always play count-in clicks so the player gets the tempo; play bar clicks only when metronome is ON (or demo)
+    const clicksToSchedule = (playMetronome || demoTargets)
+      ? (ts.countInClicks + numBars * ts.clicksPerBar)
+      : ts.countInClicks;
+    for (let c = 0; c < clicksToSchedule; c++) {
+      const pos = c < ts.countInClicks ? c : (c - ts.countInClicks) % ts.clicksPerBar;
+      const isDownbeat = pos === 0;
+      const isSubAcc = !isDownbeat && ts.subAcc.includes(pos);
+      const freq = isDownbeat ? 1318.51 : (isSubAcc ? 1046.50 : 880.0);
+      const amp = isDownbeat ? 0.32 : (isSubAcc ? 0.25 : 0.20);
+      scheduleClick(ctx, startAudioT + c * clickSec, freq, amp);
     }
     if (demoTargets) {
       for (const tgt of demoTargets) {
@@ -4892,7 +4900,8 @@
         const clickIdx = Math.floor(elapsed / clickSec);
         const phase = elapsed - clickIdx * clickSec;
         const flashDur = Math.min(0.13, clickSec * 0.32);
-        if (clickIdx >= 0 && clickIdx < totalClicks && phase < flashDur) {
+        const ledLimit = (app.soundOn || app.state === "DEMO") ? totalClicks : ts.countInClicks;
+        if (clickIdx >= 0 && clickIdx < ledLimit && phase < flashDur) {
           const pos = clickIdx < ts.countInClicks ? clickIdx : (clickIdx - ts.countInClicks) % ts.clicksPerBar;
           ledClass = pos === 0 ? "led-core beat1" : "led-core beatn";
         }
