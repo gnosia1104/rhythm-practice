@@ -3963,9 +3963,10 @@
             const fbY = staffTop + 59;
             let sym = "", color = "";
             if (tgt.hit && tgt.errMs !== null) {
+              const tw = getTimingThresholds(app.bpm);
               const ae = Math.abs(tgt.errMs);
-              if (ae <= 35) { sym = "★"; color = "#16a34a"; }
-              else if (ae <= 80) { sym = tgt.errMs > 0 ? "+" : "−"; color = "#d97706"; }
+              if (ae <= tw.tight) { sym = "★"; color = "#16a34a"; }
+              else if (ae <= tw.ok) { sym = tgt.errMs > 0 ? "+" : "−"; color = "#d97706"; }
               else { sym = tgt.errMs > 0 ? ">" : "<"; color = "#dc2626"; }
             } else if (tgt.missed) {
               sym = "×"; color = "#dc2626";
@@ -5283,15 +5284,27 @@
     return { weights, rawWeightSum, meterMult, bpmMult, modMult, modTags, unitScale, baseMax, maxScore };
   }
 
-  function computeAttackPrecision(absMs) {
-    // Musician-friendly forgiving pocket curve:
-    // <=18ms: 100% | 18..35ms: 100%->92% | 35..60ms: 92%->74% | 60..80ms: 74%->56% | >80ms: 56%->25%
+  function getTimingThresholds(bpm = app.bpm) {
+    // BPM-adaptive timing windows (blends human absolute floor + musical subdivision spacing):
+    // 40..75 BPM: P+<=18ms, TIGHT<=35ms, GOOD<=60ms, OK<=80ms
+    // 120 BPM:    P+<=14ms, TIGHT<=28ms, GOOD<=47ms, OK<=63ms
+    // 180 BPM:    P+<=12ms, TIGHT<=23ms, GOOD<=39ms, OK<=52ms
+    const scale = Math.max(0.64, Math.min(1.0, Math.sqrt(75 / Math.max(60, bpm || 60))));
+    const pPlus = Math.max(12, Math.round(18 * scale));
+    const tight = Math.max(22, Math.round(35 * scale));
+    const good = Math.max(38, Math.round(60 * scale));
+    const ok = Math.max(50, Math.round(80 * scale));
+    return { pPlus, tight, good, ok, scale };
+  }
+
+  function computeAttackPrecision(absMs, bpm = app.bpm) {
+    const tw = getTimingThresholds(bpm);
     const ae = Math.max(0, Number(absMs) || 0);
-    if (ae <= 18) return 1.0;
-    if (ae <= 35) return 1.0 - ((ae - 18) / 17) * 0.08;
-    if (ae <= 60) return 0.92 - ((ae - 35) / 25) * 0.18;
-    if (ae <= 80) return 0.74 - ((ae - 60) / 20) * 0.18;
-    return Math.max(0.25, 0.56 - ((ae - 80) / 70) * 0.31);
+    if (ae <= tw.pPlus) return 1.0;
+    if (ae <= tw.tight) return 1.0 - ((ae - tw.pPlus) / Math.max(1, tw.tight - tw.pPlus)) * 0.08;
+    if (ae <= tw.good) return 0.92 - ((ae - tw.tight) / Math.max(1, tw.good - tw.tight)) * 0.18;
+    if (ae <= tw.ok) return 0.74 - ((ae - tw.good) / Math.max(1, tw.ok - tw.good)) * 0.18;
+    return Math.max(0.25, 0.56 - ((ae - tw.ok) / Math.max(1, 150 - tw.ok)) * 0.31);
   }
 
   function computeDetailedScore(phrase, hits, total, sd, extraHits, restErrs) {
@@ -5496,9 +5509,10 @@
       ? `${Math.round((r.sustainStats.ok / r.sustainStats.total) * 100)}%`
       : `${r.sustainStats ? (r.sustainStats.restErrs || 0) : 0} err`;
     const susLbl = (r.sustainStats && r.sustainStats.total > 0) ? "SUSTAIN / ART" : "REST ERRORS";
+    const twCard = getTimingThresholds(bpm);
     const tiles = [
       { lbl: "ACCURACY", val: `${acc}%`, sub: `${r.hits} / ${r.total} notes`, col: "#22c55e" },
-      { lbl: "TIGHT (≤35ms)", val: `${r.tight}`, sub: `${r.total ? Math.round((r.tight / r.total) * 100) : 0}% in pocket`, col: "#38bdf8" },
+      { lbl: `TIGHT (≤${twCard.tight}ms)`, val: `${r.tight}`, sub: `${r.total ? Math.round((r.tight / r.total) * 100) : 0}% in pocket`, col: "#38bdf8" },
       { lbl: "TIMING MEAN", val: r.hits ? `${sign}${r.mean.toFixed(1)}ms` : "—", sub: r.hits ? `SD ${r.sd.toFixed(1)}ms` : "—", col: "#f8fafc" },
       { lbl: susLbl, val: susStr, sub: `Extra hits: ${r.extra}`, col: "#fbbf24" },
     ];
@@ -5528,9 +5542,9 @@
     c.fillStyle = "rgba(15, 23, 42, 0.65)";
     c.fill();
     const mapX = (ms) => (dx0 + 36) + ((Math.max(-150, Math.min(150, ms)) + 150) / 300) * ((dx1 - dx0) - 72);
-    // Green tight zone
+    // Green tight zone (BPM-adaptive)
     c.fillStyle = "rgba(34, 197, 94, 0.18)";
-    c.fillRect(mapX(-35), dy - 22, mapX(35) - mapX(-35), 44);
+    c.fillRect(mapX(-twCard.tight), dy - 22, mapX(twCard.tight) - mapX(-twCard.tight), 44);
     // Axis line
     c.strokeStyle = "rgba(148, 163, 184, 0.45)";
     c.lineWidth = 2;
@@ -5542,7 +5556,7 @@
     // Scatter dots
     for (const e of r.errs) {
       const ae = Math.abs(e);
-      c.fillStyle = ae <= 35 ? "#22c55e" : (ae <= 80 ? "#f59e0b" : "#ef4444");
+      c.fillStyle = ae <= twCard.tight ? "#22c55e" : (ae <= twCard.ok ? "#f59e0b" : "#ef4444");
       c.beginPath(); c.arc(mapX(e), dy, 7, 0, Math.PI * 2); c.fill();
     }
     // Axis labels
@@ -5875,10 +5889,11 @@
         if (artBadgeOverride) {
           setHitBadge(artBadgeOverride.text, artBadgeOverride.cls);
         } else {
+          const tw = getTimingThresholds(app.bpm);
           const ae = Math.abs(best.errMs);
           const sign = best.errMs >= 0 ? "+" : "";
-          const tag = ae <= 35 ? "TIGHT" : (best.errMs > 0 ? "LATE" : "EARLY");
-          const cls = ae <= 35 ? "tight" : (ae <= 80 ? "warn" : "err");
+          const tag = ae <= tw.tight ? "TIGHT" : (best.errMs > 0 ? "LATE" : "EARLY");
+          const cls = ae <= tw.tight ? "tight" : (ae <= tw.ok ? "warn" : "err");
           const gPrefix = (best.art === "ghost" && hitKind === "GHOST") ? "× " : "";
           setHitBadge(`[${src}] ${gPrefix}${sign}${best.errMs.toFixed(1)}ms ${tag}`, cls);
         }
@@ -5924,10 +5939,11 @@
     const hits = errs.length;
     const acc = total ? (hits / total) * 100 : 0;
     let mean = 0, sd = 0, tight = 0;
+    const twFin = getTimingThresholds(app.bpm);
     if (hits > 0) {
       mean = errs.reduce((a, b) => a + b, 0) / hits;
       sd = Math.sqrt(errs.reduce((a, b) => a + (b - mean) ** 2, 0) / hits);
-      tight = errs.filter(e => Math.abs(e) <= 35).length;
+      tight = errs.filter(e => Math.abs(e) <= twFin.tight).length;
     }
 
     const susTargets = app.phrase.targets.filter(t => t.hit && t.sustainStatus);
@@ -5990,7 +6006,7 @@
       noteGrades: app.phrase.targets.map(tgt => {
         if (!tgt.hit || tgt.errMs === null) return "miss";
         const ae = Math.abs(tgt.errMs);
-        return ae <= 35 ? "tight" : (ae <= 80 ? "ok" : "miss");
+        return ae <= twFin.tight ? "tight" : (ae <= twFin.ok ? "ok" : "miss");
       }),
       snap: {
         timeSig: app.timeSig,
@@ -6072,15 +6088,16 @@
     app.dirtyScore = true;
   }
 
-  function drawDistribution(errs, hits, total, mean, sd, tight, sustainStats = null, extraHits = app.extraHits) {
+  function drawDistribution(errs, hits, total, mean, sd, tight, sustainStats = null, extraHits = app.extraHits, distBpm = app.bpm) {
     const svg = document.getElementById("distSvg");
     while (svg.firstChild) svg.removeChild(svg.firstChild);
     const W = 380, cy = 30, pad = 28;
     const mapX = (ms) => pad + ((Math.max(-150, Math.min(150, ms)) + 150) / 300) * (W - pad * 2);
+    const tw = getTimingThresholds(distBpm);
 
-    // Tight zone (-35..+35)
+    // Tight zone (-tw.tight..+tw.tight)
     svg.appendChild(el("rect", {
-      x: mapX(-35), y: 12, width: mapX(35) - mapX(-35), height: 36,
+      x: mapX(-tw.tight), y: 12, width: mapX(tw.tight) - mapX(-tw.tight), height: 36,
       fill: "#dcfce7", rx: 4
     }));
     // Axis line & ticks
@@ -6098,7 +6115,7 @@
     }
     for (const e of errs) {
       const ae = Math.abs(e);
-      const fill = ae <= 35 ? "#16a34a" : (ae <= 80 ? "#d97706" : "#dc2626");
+      const fill = ae <= tw.tight ? "#16a34a" : (ae <= tw.ok ? "#d97706" : "#dc2626");
       svg.appendChild(el("circle", { cx: mapX(e), cy, r: 5, fill, opacity: 0.85 }));
     }
 
@@ -6217,6 +6234,10 @@
     maxEl.textContent = `Max ${chartMax.maxScore.toLocaleString()}`;
     const modDesc = chartMax.modTags.length ? ` · ${chartMax.modTags.join(", ")}` : "";
     maxEl.title = `Chart Max: ${chartMax.maxScore.toLocaleString()} pts (Notes × Meter ×${chartMax.meterMult.toFixed(2)} · Log BPM ×${chartMax.bpmMult.toFixed(2)}${modDesc})`;
+    const twMeta = getTimingThresholds(app.bpm);
+    document.getElementById("legendLine").innerHTML = t("legendHtml")
+      .replace(/35ms/g, `${twMeta.tight}ms`)
+      .replace(/80ms/g, `${twMeta.ok}ms`);
     document.getElementById("btnDaily").classList.toggle("active", Boolean(app.dailyDate && !app.dailyPlus));
     document.getElementById("btnDailyPlus").classList.toggle("active", Boolean(app.dailyDate && app.dailyPlus));
     document.getElementById("levelSelect").value = String(app.level);
