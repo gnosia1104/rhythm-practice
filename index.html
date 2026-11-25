@@ -872,7 +872,7 @@
 
       <div class="group">
         <span id="lblLevel" class="label">난이도</span>
-        <select id="levelSelect" title="난이도 (단축키 1~6)">
+        <select id="levelSelect" title="난이도 (단축키 1~6, ↑↓)">
           <option value="1" selected>Lv1 · 정박 &amp; 쉼표 기초</option>
           <option value="2">Lv2 · 정박 8분 입문</option>
           <option value="3">Lv3 · 8분 엇박 &amp; 점4분</option>
@@ -1172,7 +1172,7 @@
       audioFail: (err, isFile) => `오디오 입력 연결 실패: ${err}${isFile ? " (file:// 보안 제한일 수 있음 — python3 -m http.server 로 http://localhost 접속 권장)" : " (브라우저/OS 마이크 권한 및 장치 선택 확인)"}`,
       calMeasuring: "줄을 건드리지 말고 잠시 기다리세요 (바닥 노이즈 측정 중)...",
       calDone: (pct) => `노이즈 보정 완료 — 임계값 ${pct}%로 자동 설정됨`,
-      tapHintHtml: `입력: <kbd>Space</kbd> / <kbd>J</kbd> / <kbd>K</kbd> 또는 오디오 · <kbd>Enter</kbd> 시작 · <kbd>Esc</kbd> 정지 · <kbd>N</kbd> 새 악보 · <kbd>P</kbd> 정답 듣기 · <kbd>1</kbd>~<kbd>6</kbd> 난이도 · <kbd>T</kbd> 3연음 · <kbd>S</kbd> 박자표 · <kbd>L</kbd> 마디 수 · <kbd>+</kbd><kbd>−</kbd> BPM · <kbd>M</kbd> 메트로놈 · <kbd>B</kbd> 박자표기 · <kbd>C</kbd> 커서 · <kbd>G</kbd> 채점시점 · <kbd>I</kbd> 입력모드`,
+      tapHintHtml: `입력: <kbd>Space</kbd> / <kbd>J</kbd> / <kbd>K</kbd> 또는 오디오 · <kbd>Enter</kbd> 시작 · <kbd>Esc</kbd> 정지 · <kbd>N</kbd> 새 악보 · <kbd>P</kbd> 정답 듣기 · <kbd>1</kbd>~<kbd>6</kbd>/<kbd>↑</kbd><kbd>↓</kbd> 난이도 · <kbd>T</kbd> 3연음 · <kbd>S</kbd> 박자표 · <kbd>L</kbd> 마디 수 · <kbd>+</kbd><kbd>−</kbd> BPM · <kbd>M</kbd> 메트로놈 · <kbd>B</kbd> 박자표기 · <kbd>C</kbd> 커서 · <kbd>G</kbd> 채점시점 · <kbd>I</kbd> 입력모드`,
       legendHtml: `판정: <strong style="color:var(--green)">★ ≤35ms/쉼표통과</strong> · <strong style="color:var(--amber)">−/+ ≤80ms</strong> · <strong style="color:var(--red)">&lt;/&gt; &gt;80ms · × miss/쉼표에러</strong> · 서스테인(AUD): <strong style="color:var(--green)">▬ 양호</strong> / <strong style="color:var(--amber)">▬ 짧음</strong> / <strong style="color:var(--red)">▬ 침범</strong>`,
       summaryIdle: "연주를 마치면 타이밍 분포가 표시됩니다.",
       summaryHits: (hits, total, pct, tight, sign, mean, sd, extra, sus, restErrs) => {
@@ -1236,7 +1236,7 @@
             <div><kbd>Enter</kbd> / <kbd>R</kbd></div><div>시작 / 같은 악보 재시도</div>
             <div><kbd>Esc</kbd></div><div>즉시 정지</div>
             <div><kbd>N</kbd> / <kbd>P</kbd></div><div>새 악보 생성 / 정답 베이스 듣기</div>
-            <div><kbd>1</kbd>~<kbd>6</kbd> / <kbd>T</kbd></div><div>난이도 6단계 변경 · 3연음 포함 ON/OFF</div>
+            <div><kbd>1</kbd>~<kbd>6</kbd> / <kbd>↑</kbd> <kbd>↓</kbd> / <kbd>T</kbd></div><div>난이도 6단계 선택 · ±1 조절 · 3연음 ON/OFF</div>
             <div><kbd>S</kbd> / <kbd>L</kbd></div><div>박자표 변경 (4/4·3/4·2/4·5/4·6/8) · 마디 수 변경</div>
             <div><kbd>+</kbd> / <kbd>−</kbd></div><div>BPM ±5 조절</div>
             <div><kbd>M</kbd> / <kbd>B</kbd> / <kbd>C</kbd> / <kbd>G</kbd></div><div>메트로놈 · 박자표기 · 입문 커서 · 채점시점(즉시/완료후)</div>
@@ -1322,7 +1322,7 @@
       audioFail: (err, isFile) => `Audio input failed: ${err}${isFile ? " (file:// restriction — try http://localhost via python3 -m http.server)" : " (check browser/OS microphone permissions)"}`,
       calMeasuring: "Keep strings muted — measuring idle noise floor...",
       calDone: (pct) => `Noise calibrated — threshold auto-set to ${pct}%`,
-      tapHintHtml: `Play: <kbd>Space</kbd> / <kbd>J</kbd> / <kbd>K</kbd> or Audio · <kbd>Enter</kbd> Start · <kbd>Esc</kbd> Stop · <kbd>N</kbd> New · <kbd>P</kbd> Demo · <kbd>1</kbd>–<kbd>6</kbd> Level · <kbd>T</kbd> Triplets · <kbd>S</kbd> Meter · <kbd>L</kbd> Bars · <kbd>+</kbd><kbd>−</kbd> BPM · <kbd>M</kbd> Click · <kbd>B</kbd> Beats · <kbd>C</kbd> Cursor · <kbd>G</kbd> Grading · <kbd>I</kbd> Input`,
+      tapHintHtml: `Play: <kbd>Space</kbd> / <kbd>J</kbd> / <kbd>K</kbd> or Audio · <kbd>Enter</kbd> Start · <kbd>Esc</kbd> Stop · <kbd>N</kbd> New · <kbd>P</kbd> Demo · <kbd>1</kbd>–<kbd>6</kbd>/<kbd>↑</kbd><kbd>↓</kbd> Level · <kbd>T</kbd> Triplets · <kbd>S</kbd> Meter · <kbd>L</kbd> Bars · <kbd>+</kbd><kbd>−</kbd> BPM · <kbd>M</kbd> Click · <kbd>B</kbd> Beats · <kbd>C</kbd> Cursor · <kbd>G</kbd> Grading · <kbd>I</kbd> Input`,
       legendHtml: `Grade: <strong style="color:var(--green)">★ ≤35ms/Rest OK</strong> · <strong style="color:var(--amber)">−/+ ≤80ms</strong> · <strong style="color:var(--red)">&lt;/&gt; &gt;80ms · × Miss/Rest Err</strong> · Sustain(AUD): <strong style="color:var(--green)">▬ OK</strong> / <strong style="color:var(--amber)">▬ Short</strong> / <strong style="color:var(--red)">▬ Bleed</strong>`,
       summaryIdle: "Finish a take to see your timing distribution.",
       summaryHits: (hits, total, pct, tight, sign, mean, sd, extra, sus, restErrs) => {
@@ -1386,7 +1386,7 @@
             <div><kbd>Enter</kbd> / <kbd>R</kbd></div><div>Start / Retry current score</div>
             <div><kbd>Esc</kbd></div><div>Stop immediately</div>
             <div><kbd>N</kbd> / <kbd>P</kbd></div><div>New score / Play demo bass</div>
-            <div><kbd>1</kbd>–<kbd>6</kbd> / <kbd>T</kbd></div><div>6 difficulty levels · Triplets ON/OFF</div>
+            <div><kbd>1</kbd>–<kbd>6</kbd> / <kbd>↑</kbd> <kbd>↓</kbd> / <kbd>T</kbd></div><div>6 difficulty levels (±1) · Triplets ON/OFF</div>
             <div><kbd>S</kbd> / <kbd>L</kbd></div><div>Cycle time signature (4/4..6/8) · Cycle bar count</div>
             <div><kbd>+</kbd> / <kbd>−</kbd></div><div>BPM ±5</div>
             <div><kbd>M</kbd> / <kbd>B</kbd> / <kbd>C</kbd> / <kbd>G</kbd></div><div>Metronome · Beat numbers · Guide cursor · Grading (Live/End)</div>
@@ -1472,7 +1472,7 @@
       audioFail: (err, isFile) => `オーディオ入力接続失敗: ${err}${isFile ? " (file:// の制限の可能性 — python3 -m http.server で http://localhost 接続推奨)" : " (ブラウザ/OSのマイク権限を確認)"}`,
       calMeasuring: "弦に触れずにお待ちください（フロアノイズ測定中）...",
       calDone: (pct) => `ノイズ補正完了 — しきい値を ${pct}% に自動設定しました`,
-      tapHintHtml: `入力: <kbd>Space</kbd> / <kbd>J</kbd> / <kbd>K</kbd> またはオーディオ · <kbd>Enter</kbd> 開始 · <kbd>Esc</kbd> 停止 · <kbd>N</kbd> 新規 · <kbd>P</kbd> お手本 · <kbd>1</kbd>〜<kbd>6</kbd> 難易度 · <kbd>T</kbd> 3連符 · <kbd>S</kbd> 拍子 · <kbd>L</kbd> 小節数 · <kbd>+</kbd><kbd>−</kbd> BPM · <kbd>M</kbd> クリック · <kbd>B</kbd> 拍番号 · <kbd>C</kbd> カーソル · <kbd>G</kbd> 採点表示 · <kbd>I</kbd> 入力切替`,
+      tapHintHtml: `入力: <kbd>Space</kbd> / <kbd>J</kbd> / <kbd>K</kbd> またはオーディオ · <kbd>Enter</kbd> 開始 · <kbd>Esc</kbd> 停止 · <kbd>N</kbd> 新規 · <kbd>P</kbd> お手本 · <kbd>1</kbd>〜<kbd>6</kbd>/<kbd>↑</kbd><kbd>↓</kbd> 難易度 · <kbd>T</kbd> 3連符 · <kbd>S</kbd> 拍子 · <kbd>L</kbd> 小節数 · <kbd>+</kbd><kbd>−</kbd> BPM · <kbd>M</kbd> クリック · <kbd>B</kbd> 拍番号 · <kbd>C</kbd> カーソル · <kbd>G</kbd> 採点表示 · <kbd>I</kbd> 入力切替`,
       legendHtml: `判定: <strong style="color:var(--green)">★ ≤35ms/休符OK</strong> · <strong style="color:var(--amber)">−/+ ≤80ms</strong> · <strong style="color:var(--red)">&lt;/&gt; &gt;80ms · × ミス/休符エラー</strong> · サステイン(AUD): <strong style="color:var(--green)">▬ 良好</strong> / <strong style="color:var(--amber)">▬ 短い</strong> / <strong style="color:var(--red)">▬ はみ出し</strong>`,
       summaryIdle: "演奏を終えるとタイミング分布が表示されます。",
       summaryHits: (hits, total, pct, tight, sign, mean, sd, extra, sus, restErrs) => {
@@ -1536,7 +1536,7 @@
             <div><kbd>Enter</kbd> / <kbd>R</kbd></div><div>開始 / 同じ譜面で再挑戦</div>
             <div><kbd>Esc</kbd></div><div>即座に停止</div>
             <div><kbd>N</kbd> / <kbd>P</kbd></div><div>新しい譜面 / お手本ベース再生</div>
-            <div><kbd>1</kbd>〜<kbd>6</kbd> / <kbd>T</kbd></div><div>難易度6段階切替 · 3連符 ON/OFF</div>
+            <div><kbd>1</kbd>〜<kbd>6</kbd> / <kbd>↑</kbd> <kbd>↓</kbd> / <kbd>T</kbd></div><div>難易度6段階選択 · ±1調整 · 3連符 ON/OFF</div>
             <div><kbd>S</kbd> / <kbd>L</kbd></div><div>拍子切替（4/4·3/4·2/4·5/4·6/8）· 小節数切替</div>
             <div><kbd>+</kbd> / <kbd>−</kbd></div><div>BPM ±5 調整</div>
             <div><kbd>M</kbd> / <kbd>B</kbd> / <kbd>C</kbd> / <kbd>G</kbd></div><div>メトロノーム · 拍番号 · 入門カーソル · 採点表示（即時/終了後）</div>
@@ -4139,6 +4139,18 @@
     } else if (/^(Digit|Numpad)[1-6]$/.test(code)) {
       app.level = Number(code.slice(-1));
       newPhrase();
+    } else if (code === "ArrowUp") {
+      e.preventDefault();
+      if (app.level < 6) {
+        app.level += 1;
+        newPhrase();
+      }
+    } else if (code === "ArrowDown") {
+      e.preventDefault();
+      if (app.level > 1) {
+        app.level -= 1;
+        newPhrase();
+      }
     } else if (code === "KeyC") {
       e.preventDefault();
       app.showCursor = !app.showCursor;
