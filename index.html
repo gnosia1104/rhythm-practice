@@ -3784,6 +3784,8 @@
       bpm: app.bpm,
       lv: app.level,
       triplets: app.tripletsOn && !getTimeSig().compound,
+      staccato: app.staccatoOn,
+      ghost: app.ghostOn,
       ts: app.timeSig,
       mode: app.inputMode,
       hits, total, acc, tight, mean, sd, extra: app.extraHits,
@@ -3866,10 +3868,12 @@
       const mStr = h.hits ? `${h.mean >= 0 ? "+" : ""}${h.mean.toFixed(1)}ms` : "—";
       const sStr = h.hits ? `${h.sd.toFixed(1)}ms` : "—";
       const susStr = h.susTotal ? `${Math.round((h.susOk / h.susTotal) * 100)}%` : "—";
+      const lvFlags = `${h.triplets ? "T" : ""}${h.staccato ? "S" : ""}${h.ghost ? "G" : ""}`;
+      const lvTip = lvFlags ? ` title="T=Triplets · S=Staccato · G=Ghost"` : "";
       return `<tr>
         <td>#${h.take}</td>
         <td>${h.bpm}</td>
-        <td>L${h.lv}${h.triplets ? "T" : ""} ${h.ts || "4/4"}</td>
+        <td${lvTip}>L${h.lv}${lvFlags} ${h.ts || "4/4"}</td>
         <td>${h.mode}</td>
         <td><strong>${h.hits}/${h.total}</strong> (${h.acc.toFixed(0)}%)</td>
         <td>${h.tight}</td>
@@ -3890,11 +3894,9 @@
     document.getElementById("bpmVal").textContent = String(app.bpm);
     document.getElementById("bpmSlider").value = String(app.bpm);
     document.getElementById("metaTempo").textContent = ts.compound ? `♩. = ${app.bpm}` : `♩ = ${app.bpm}`;
-    const artTags = [];
-    if (app.tripletsOn && !ts.compound) artTags.push("Triplets");
-    if (app.staccatoOn) artTags.push("Staccato");
-    if (app.ghostOn) artTags.push("Ghost");
-    document.getElementById("metaLevel").textContent = `${app.timeSig} · ${LEVEL_TITLES[app.level]}${artTags.length ? " + " + artTags.join("/") : ""}`;
+    const lvFlags = `${(app.tripletsOn && !ts.compound) ? "T" : ""}${app.staccatoOn ? "S" : ""}${app.ghostOn ? "G" : ""}`;
+    const baseTitle = LEVEL_TITLES[app.level].replace(/^Lv\d+/, `Lv${app.level}${lvFlags}`);
+    document.getElementById("metaLevel").textContent = `${app.timeSig} · ${baseTitle}`;
     document.getElementById("metaSeed").textContent = `Seed #${app.phrase.seed.toString(16).toUpperCase().padStart(4, "0")}`;
     document.getElementById("levelSelect").value = String(app.level);
     document.getElementById("timeSigSelect").value = app.timeSig;
