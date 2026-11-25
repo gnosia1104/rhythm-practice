@@ -4106,6 +4106,25 @@
     }
   }
 
+  function formatPlayMods(soundOn, showBeatNums, showCursor, blindGrade, inputMode) {
+    const parts = [inputMode === "AUDIO" ? "AUD" : inputMode];
+    if (!soundOn) parts.push("M×");
+    if (blindGrade) parts.push("Blind");
+    if (showBeatNums) parts.push("+B");
+    if (showCursor) parts.push("+C");
+    return parts.join(" · ");
+  }
+
+  function formatPlayModsCompact(h) {
+    const inp = h.mode === "AUDIO" ? "AUD" : (h.mode || "KEY");
+    const flags = [];
+    if (h.soundOn === false) flags.push("M×");
+    if (h.blindGrade) flags.push("Bl");
+    if (h.showBeatNums) flags.push("+B");
+    if (h.showCursor) flags.push("+C");
+    return flags.length ? `${inp} ${flags.join(" ")}` : inp;
+  }
+
   function buildResultCardText() {
     const r = app.lastResult;
     if (!r || !app.phrase) return "";
@@ -4113,14 +4132,15 @@
     const effTri = tripletsAllowed() ? app.tripletMode : 0;
     const tTag = effTri === 2 ? "T2" : (effTri === 1 ? "T1" : "");
     const lvFlags = `${tTag}${app.staccatoOn ? "S" : ""}${app.ghostOn ? "G" : ""}`;
+    const mods = formatPlayMods(app.soundOn, app.showBeatNums, app.showCursor, app.blindGrade, app.inputMode);
     const header = app.dailyDate
       ? `🎸 Rhythm Sight-Reader — ${app.dailyPlus ? "🔥 Daily+" : "🏆 Daily"} ${app.dailyDate}`
       : (app.customMode
         ? `🎸 Rhythm Sight-Reader — ✏️ Custom Score`
         : `🎸 Rhythm Sight-Reader — #${currentFullSeedCode()}`);
     const meta = app.customMode
-      ? `${app.timeSig} · ${app.numBars} bars · ${app.bpm} BPM · ${app.inputMode}`
-      : `${app.timeSig} · Lv${app.level}${lvFlags} · ${app.bpm} BPM · ${app.inputMode}`;
+      ? `${app.timeSig} · ${app.numBars} bars · ${app.bpm} BPM · ${mods}`
+      : `${app.timeSig} · Lv${app.level}${lvFlags} · ${app.bpm} BPM · ${mods}`;
     const pct = r.total ? ((r.hits / r.total) * 100).toFixed(0) : "0";
     const sign = r.mean >= 0 ? "+" : "";
     const stat = `Score: ${r.hits}/${r.total} (${pct}%) · TIGHT ${r.tight}${r.hits ? ` · Mean ${sign}${r.mean.toFixed(1)}ms` : ""}`;
@@ -4501,6 +4521,10 @@
       custom: app.customMode,
       ts: app.timeSig,
       mode: app.inputMode,
+      soundOn: app.soundOn,
+      showBeatNums: app.showBeatNums,
+      showCursor: app.showCursor,
+      blindGrade: app.blindGrade,
       hits, total, acc, tight, mean, sd, extra: app.extraHits,
       susTotal, susOk,
     });
@@ -4590,11 +4614,13 @@
       const lvFlags = `${tTag}${h.staccato ? "S" : ""}${h.ghost ? "G" : ""}`;
       const lvLabel = h.custom ? "✏️" : `${h.dailyPlus ? "🔥" : (h.daily ? "🏆" : "")}L${h.lv}${lvFlags}`;
       const lvTip = lvFlags ? ` title="T1=8th Triplets · T2=+2-Beat Triplets · S=Staccato · G=Ghost"` : "";
+      const modStr = formatPlayModsCompact(h);
+      const modTip = `M(Metro):${h.soundOn === false ? "OFF" : "ON"} · B(Beats):${h.showBeatNums ? "ON" : "OFF"} · C(Cursor):${h.showCursor ? "ON" : "OFF"} · G(Grade):${h.blindGrade ? "End" : "Live"} · I:${h.mode}`;
       return `<tr>
         <td>#${h.take}</td>
         <td>${h.bpm}</td>
         <td${lvTip}>${lvLabel} ${h.ts || "4/4"}</td>
-        <td>${h.mode}</td>
+        <td title="${modTip}">${modStr}</td>
         <td><strong>${h.hits}/${h.total}</strong> (${h.acc.toFixed(0)}%)</td>
         <td>${h.tight}</td>
         <td>${susStr}</td>
@@ -4618,16 +4644,17 @@
     const effTri = allowTri ? app.tripletMode : 0;
     const tTag = effTri === 2 ? "T2" : (effTri === 1 ? "T1" : "");
     const lvFlags = `${tTag}${app.staccatoOn ? "S" : ""}${app.ghostOn ? "G" : ""}`;
+    const playMods = formatPlayMods(app.soundOn, app.showBeatNums, app.showCursor, app.blindGrade, app.inputMode);
     const baseTitle = LEVEL_TITLES[app.level].replace(/^Lv\d+/, `Lv${app.level}${lvFlags}`);
     if (app.customMode) {
-      document.getElementById("metaLevel").textContent = `✏️ Custom · ${app.timeSig} · ${app.numBars} bars`;
+      document.getElementById("metaLevel").textContent = `✏️ Custom · ${app.timeSig} · ${app.numBars} bars · [${playMods}]`;
       document.getElementById("metaSeed").textContent = app.phrase.customCode ? app.phrase.customCode.slice(0, 14) + "…" : "Custom";
     } else if (app.dailyDate) {
       const dTag = app.dailyPlus ? "🔥 Daily+" : "🏆 Daily";
-      document.getElementById("metaLevel").textContent = `${dTag} ${app.dailyDate} · ${app.timeSig} · ${baseTitle}`;
+      document.getElementById("metaLevel").textContent = `${dTag} ${app.dailyDate} · ${app.timeSig} · ${baseTitle} · [${playMods}]`;
       document.getElementById("metaSeed").textContent = `#${currentFullSeedCode()}`;
     } else {
-      document.getElementById("metaLevel").textContent = `${app.timeSig} · ${baseTitle}`;
+      document.getElementById("metaLevel").textContent = `${app.timeSig} · ${baseTitle} · [${playMods}]`;
       document.getElementById("metaSeed").textContent = `#${currentFullSeedCode()}`;
     }
     document.getElementById("btnDaily").classList.toggle("active", Boolean(app.dailyDate && !app.dailyPlus));
