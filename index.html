@@ -5386,8 +5386,26 @@
   function computeScoreRank(r) {
     if (!r || !r.total) return { grade: "C", cls: "rank-c", color: "#ef4444" };
     const acc = (r.hits / r.total) * 100;
-    const tightPct = (r.tight / r.total) * 100;
     const restErrs = r.sustainStats ? (r.sustainStats.restErrs || 0) : 0;
+    // Primary: synced directly with difficulty-weighted Score % (score / maxScore)
+    if (r.maxScore > 0 && Number.isFinite(r.score)) {
+      const scorePct = (r.score / r.maxScore) * 100;
+      if (scorePct >= 95 && acc >= 99.9 && restErrs === 0) {
+        return { grade: "S+", cls: "rank-sp", color: "#f59e0b" };
+      }
+      if (scorePct >= 88 && acc >= 90) {
+        return { grade: "S", cls: "rank-s", color: "#22c55e" };
+      }
+      if (scorePct >= 78) {
+        return { grade: "A", cls: "rank-a", color: "#3b82f6" };
+      }
+      if (scorePct >= 62) {
+        return { grade: "B", cls: "rank-b", color: "#94a3b8" };
+      }
+      return { grade: "C", cls: "rank-c", color: "#ef4444" };
+    }
+    // Fallback for legacy persisted Practice Log rows without maxScore
+    const tightPct = (r.tight / r.total) * 100;
     const susPct = (r.sustainStats && r.sustainStats.total > 0)
       ? (r.sustainStats.ok / r.sustainStats.total) * 100
       : 100;
@@ -6006,8 +6024,8 @@
     const restErrs = (app.phrase.rests || []).filter(r => r.error).length;
     const sustainStats = { total: susTotal, ok: susOk, short: susShort, long: susLong, restErrs };
 
-    const rankNow = computeScoreRank({ hits, total, tight, sustainStats });
     const scoreDetail = computeDetailedScore(app.phrase, hits, total, sd, app.extraHits, restErrs);
+    const rankNow = computeScoreRank({ hits, total, tight, sustainStats, score: scoreDetail.score, maxScore: scoreDetail.maxScore });
     app.history.unshift({
       take: app.takeId,
       tsIso: new Date().toISOString(),
