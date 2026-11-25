@@ -889,7 +889,7 @@
 
       <div class="group">
         <span id="lblLevel" class="label">난이도</span>
-        <select id="levelSelect" title="난이도 (단축키 1~9, ↑↓)">
+        <select id="levelSelect" title="난이도 (단축키 1~9·0, ↑↓)">
           <option value="1" selected>Lv1 · 정박 &amp; 쉼표 기초</option>
           <option value="2">Lv2 · 정박 스타카토 (•)</option>
           <option value="3">Lv3 · 정박 8분 입문</option>
@@ -897,8 +897,9 @@
           <option value="5">Lv5 · 8분 싱코페이션 &amp; 스타카토 (•)</option>
           <option value="6">Lv6 · 8분 그루브 &amp; 고스트 (×)</option>
           <option value="7">Lv7 · 16분음표 기초</option>
-          <option value="8">Lv8 · 16분 펑크 &amp; 고스트 (×)</option>
-          <option value="9">Lv9 · 16분 마스터 (• + ×)</option>
+          <option value="8">Lv8 · 16분 펑크</option>
+          <option value="9">Lv9 · 16분 펑크 &amp; 고스트 (×)</option>
+          <option value="10">Lv10 · 16분 마스터 (• + ×)</option>
         </select>
         <button id="btnTriplets" title="3연음(셋잇단음표) 포함 ON/OFF (단축키 t)">3연음 OFF</button>
         <button id="btnStaccato" title="스타카토(.) 역서스테인 훈련 ON/OFF (단축키 q)">• 스타카토 OFF</button>
@@ -1137,8 +1138,9 @@
         5: "Lv5 · 8분 싱코페이션 & 스타카토 (•)",
         6: "Lv6 · 8분 그루브 & 고스트 (×)",
         7: "Lv7 · 16분음표 기초",
-        8: "Lv8 · 16분 펑크 & 고스트 (×)",
-        9: "Lv9 · 16분 마스터 (• + ×)",
+        8: "Lv8 · 16분 펑크",
+        9: "Lv9 · 16분 펑크 & 고스트 (×)",
+        10: "Lv10 · 16분 마스터 (• + ×)",
       },
       tripletsOn: "3연음 ON",
       tripletsOff: "3연음 OFF",
@@ -1211,7 +1213,7 @@
       audioFail: (err, isFile) => `오디오 입력 연결 실패: ${err}${isFile ? " (file:// 보안 제한일 수 있음 — python3 -m http.server 로 http://localhost 접속 권장)" : " (브라우저/OS 마이크 권한 및 장치 선택 확인)"}`,
       calMeasuring: "줄을 건드리지 말고 잠시 기다리세요 (바닥 노이즈 측정 중)...",
       calDone: (pct) => `노이즈 보정 완료 — 임계값 ${pct}%로 자동 설정됨`,
-      tapHintHtml: `입력: <kbd>Space</kbd>/<kbd>J</kbd>/<kbd>K</kbd> (고스트 <kbd>F</kbd>/<kbd>D</kbd>) 또는 오디오 · <kbd>Enter</kbd> 시작 · <kbd>Esc</kbd> 정지 · <kbd>N</kbd> 새 악보 · <kbd>P</kbd> 정답 · <kbd>1</kbd>~<kbd>9</kbd>/<kbd>↑</kbd><kbd>↓</kbd> 난이도 · <kbd>T</kbd> 3연음 · <kbd>Q</kbd> 스타카토 · <kbd>X</kbd> 고스트 · <kbd>S</kbd> 박자표 · <kbd>L</kbd> 마디수 · <kbd>+</kbd><kbd>−</kbd> BPM · <kbd>M</kbd>/<kbd>B</kbd>/<kbd>C</kbd>/<kbd>G</kbd>/<kbd>I</kbd>`,
+      tapHintHtml: `입력: <kbd>Space</kbd>/<kbd>J</kbd>/<kbd>K</kbd> (고스트 <kbd>F</kbd>/<kbd>D</kbd>) 또는 오디오 · <kbd>Enter</kbd> 시작 · <kbd>Esc</kbd> 정지 · <kbd>N</kbd> 새 악보 · <kbd>P</kbd> 정답 · <kbd>1</kbd>~<kbd>0</kbd>/<kbd>↑</kbd><kbd>↓</kbd> 난이도 · <kbd>T</kbd> 3연음 · <kbd>Q</kbd> 스타카토 · <kbd>X</kbd> 고스트 · <kbd>S</kbd> 박자표 · <kbd>L</kbd> 마디수 · <kbd>+</kbd><kbd>−</kbd> BPM · <kbd>M</kbd>/<kbd>B</kbd>/<kbd>C</kbd>/<kbd>G</kbd>/<kbd>I</kbd>`,
       legendHtml: `판정: <strong style="color:var(--green)">★ ≤35ms/쉼표통과</strong> · <strong style="color:var(--amber)">−/+ ≤80ms</strong> · <strong style="color:var(--red)">&lt;/&gt; &gt;80ms · × miss/쉼표에러</strong> · 서스테인(AUD): <strong style="color:var(--green)">▬ 양호</strong> / <strong style="color:var(--amber)">▬ 짧음</strong> / <strong style="color:var(--red)">▬ 침범</strong>`,
       summaryIdle: "연주를 마치면 타이밍 분포가 표시됩니다.",
       summaryHits: (hits, total, pct, tight, sign, mean, sd, extra, sus, restErrs) => {
@@ -1238,7 +1240,7 @@
           <ul>
             <li><strong>시작 / 정지</strong>: <kbd>Enter</kbd> 또는 <strong>▶ 시작</strong>을 누르면 1마디 카운트인(1박 초록 LED, 나머지 박 노랑 LED) 후 연주가 시작됩니다. 중간에 멈추려면 <kbd>Esc</kbd> 또는 <strong>■ 정지</strong>를 누르세요.</li>
             <li><strong>정답 미리듣기</strong>: <kbd>P</kbd> 또는 <strong>♪ 정답 듣기</strong>를 누르면 메트로놈에 맞춰 베이스 가이드 음(D)이 재생됩니다.</li>
-            <li><strong>악보 커스터마이즈</strong>: 9단계 난이도(<kbd>1</kbd>~<kbd>9</kbd>, <kbd>↑</kbd><kbd>↓</kbd>: 정박 기초 → 정박 스타카토 → 정박 8분 → 8분 엇박 → 8분 싱코+스타카토 → 8분 고스트 → 16분 기초 → 16분 고스트 → 16분 풀 마스터), 박자표(<kbd>S</kbd>), 마디 수(<kbd>L</kbd>, 2~32마디), BPM(<kbd>+</kbd>/<kbd>−</kbd>), <strong>박자표기(<kbd>B</kbd>)</strong>를 자유롭게 바꿀 수 있습니다.</li>
+            <li><strong>악보 커스터마이즈</strong>: 10단계 난이도(<kbd>1</kbd>~<kbd>9</kbd>·<kbd>0</kbd>, <kbd>↑</kbd><kbd>↓</kbd>: 정박 기초 → 정박 스타카토 → 정박 8분 → 8분 엇박 → 8분 싱코+스타카토 → 8분 고스트 → 16분 기초 → 16분 펑크 → 16분 펑크+고스트 → 16분 마스터), 박자표(<kbd>S</kbd>), 마디 수(<kbd>L</kbd>, 2~32마디), BPM(<kbd>+</kbd>/<kbd>−</kbd>), <strong>박자표기(<kbd>B</kbd>)</strong>를 자유롭게 바꿀 수 있습니다.</li>
             <li><strong>시창(초견) 훈련 설계</strong>: 기본은 커서 없이 메트로놈과 LED만 보고 박자를 세는 순수 초견 모드입니다. 입문 단계에서 위치 가이드가 필요하면 <strong>커서(<kbd>C</kbd>)</strong>를 켤 수 있고, 반대로 <strong>채점: 완료후(<kbd>G</kbd>)</strong>를 켜면 연주 중 채점 표시를 숨기고 끝난 뒤 한꺼번에 공개합니다.</li>
           </ul>
         </div>
@@ -1276,7 +1278,7 @@
             <div><kbd>Enter</kbd> / <kbd>R</kbd></div><div>시작 / 같은 악보 재시도</div>
             <div><kbd>Esc</kbd></div><div>즉시 정지</div>
             <div><kbd>N</kbd> / <kbd>P</kbd></div><div>새 악보 생성 / 정답 베이스 듣기</div>
-            <div><kbd>1</kbd>~<kbd>9</kbd> / <kbd>↑</kbd> <kbd>↓</kbd> / <kbd>T</kbd></div><div>난이도 9단계 선택 · ±1 조절 · 3연음 ON/OFF</div>
+            <div><kbd>1</kbd>~<kbd>0</kbd> / <kbd>↑</kbd> <kbd>↓</kbd> / <kbd>T</kbd></div><div>난이도 10단계 선택 (0=Lv10) · ±1 조절 · 3연음 ON/OFF</div>
             <div><kbd>Q</kbd> / <kbd>X</kbd> / <kbd>F</kbd> <kbd>D</kbd></div><div>스타카토 ON/OFF · 고스트 ON/OFF · 고스트 뮤트 입력</div>
             <div><kbd>S</kbd> / <kbd>L</kbd></div><div>박자표 변경 (4/4·3/4·2/4·5/4·6/8) · 마디 수 변경</div>
             <div><kbd>+</kbd> / <kbd>−</kbd></div><div>BPM ±5 조절</div>
@@ -1302,8 +1304,9 @@
         5: "Lv5 · 8th Syncopation & Staccato (•)",
         6: "Lv6 · 8th Groove & Ghost Notes (×)",
         7: "Lv7 · 16th Basics",
-        8: "Lv8 · 16th Funk & Ghost Notes (×)",
-        9: "Lv9 · 16th Master (• + ×)",
+        8: "Lv8 · 16th Funk",
+        9: "Lv9 · 16th Funk & Ghost Notes (×)",
+        10: "Lv10 · 16th Master (• + ×)",
       },
       tripletsOn: "Triplets ON",
       tripletsOff: "Triplets OFF",
@@ -1376,7 +1379,7 @@
       audioFail: (err, isFile) => `Audio input failed: ${err}${isFile ? " (file:// restriction — try http://localhost via python3 -m http.server)" : " (check browser/OS microphone permissions)"}`,
       calMeasuring: "Keep strings muted — measuring idle noise floor...",
       calDone: (pct) => `Noise calibrated — threshold auto-set to ${pct}%`,
-      tapHintHtml: `Play: <kbd>Space</kbd>/<kbd>J</kbd>/<kbd>K</kbd> (Ghost <kbd>F</kbd>/<kbd>D</kbd>) or Audio · <kbd>Enter</kbd> Start · <kbd>Esc</kbd> Stop · <kbd>N</kbd> New · <kbd>P</kbd> Demo · <kbd>1</kbd>–<kbd>9</kbd>/<kbd>↑</kbd><kbd>↓</kbd> Level · <kbd>T</kbd> Triplets · <kbd>Q</kbd> Staccato · <kbd>X</kbd> Ghost · <kbd>S</kbd> Meter · <kbd>L</kbd> Bars · <kbd>+</kbd><kbd>−</kbd> BPM · <kbd>M</kbd>/<kbd>B</kbd>/<kbd>C</kbd>/<kbd>G</kbd>/<kbd>I</kbd>`,
+      tapHintHtml: `Play: <kbd>Space</kbd>/<kbd>J</kbd>/<kbd>K</kbd> (Ghost <kbd>F</kbd>/<kbd>D</kbd>) or Audio · <kbd>Enter</kbd> Start · <kbd>Esc</kbd> Stop · <kbd>N</kbd> New · <kbd>P</kbd> Demo · <kbd>1</kbd>–<kbd>0</kbd>/<kbd>↑</kbd><kbd>↓</kbd> Level · <kbd>T</kbd> Triplets · <kbd>Q</kbd> Staccato · <kbd>X</kbd> Ghost · <kbd>S</kbd> Meter · <kbd>L</kbd> Bars · <kbd>+</kbd><kbd>−</kbd> BPM · <kbd>M</kbd>/<kbd>B</kbd>/<kbd>C</kbd>/<kbd>G</kbd>/<kbd>I</kbd>`,
       legendHtml: `Grade: <strong style="color:var(--green)">★ ≤35ms/Rest OK</strong> · <strong style="color:var(--amber)">−/+ ≤80ms</strong> · <strong style="color:var(--red)">&lt;/&gt; &gt;80ms · × Miss/Rest Err</strong> · Sustain(AUD): <strong style="color:var(--green)">▬ OK</strong> / <strong style="color:var(--amber)">▬ Short</strong> / <strong style="color:var(--red)">▬ Bleed</strong>`,
       summaryIdle: "Finish a take to see your timing distribution.",
       summaryHits: (hits, total, pct, tight, sign, mean, sd, extra, sus, restErrs) => {
@@ -1403,7 +1406,7 @@
           <ul>
             <li><strong>Start / Stop</strong>: Press <kbd>Enter</kbd> or <strong>▶ Start</strong> for a 1-bar count-in (Beat 1 green LED, other beats amber LED). Press <kbd>Esc</kbd> or <strong>■ Stop</strong> anytime to abort while keeping the same sheet.</li>
             <li><strong>Demo Playback</strong>: Press <kbd>P</kbd> or <strong>♪ Play Demo</strong> to hear the exact rhythm played on bass (D) with the metronome.</li>
-            <li><strong>Customize</strong>: Pick from 9 progressive levels (<kbd>1</kbd>–<kbd>9</kbd>, <kbd>↑</kbd><kbd>↓</kbd>: Quarter Basics → Quarter Staccato → Straight 8ths → 8th Off-beats → 8th Synco+Staccato → 8th Ghost → 16th Basics → 16th Funk Ghost → 16th Master), time signature (<kbd>S</kbd>), length (<kbd>L</kbd>, 2–32 bars), BPM (<kbd>+</kbd>/<kbd>−</kbd>), and beat numbers (<kbd>B</kbd>).</li>
+            <li><strong>Customize</strong>: Pick from 10 progressive levels (<kbd>1</kbd>–<kbd>9</kbd>, <kbd>0</kbd>=Lv10, <kbd>↑</kbd><kbd>↓</kbd>: Quarter Basics → Quarter Staccato → Straight 8ths → 8th Off-beats → 8th Synco+Staccato → 8th Ghost → 16th Basics → 16th Funk → 16th Funk+Ghost → 16th Master), time signature (<kbd>S</kbd>), length (<kbd>L</kbd>, 2–32 bars), BPM (<kbd>+</kbd>/<kbd>−</kbd>), and beat numbers (<kbd>B</kbd>).</li>
             <li><strong>True Sight-Reading</strong>: By default there is no moving cursor—read ahead using only the click and LED. Beginners can toggle the optional <strong>Cursor (<kbd>C</kbd>)</strong> guide, or enable <strong>Grade: End (<kbd>G</kbd>)</strong> to hide all feedback until the take finishes.</li>
           </ul>
         </div>
@@ -1441,7 +1444,7 @@
             <div><kbd>Enter</kbd> / <kbd>R</kbd></div><div>Start / Retry current score</div>
             <div><kbd>Esc</kbd></div><div>Stop immediately</div>
             <div><kbd>N</kbd> / <kbd>P</kbd></div><div>New score / Play demo bass</div>
-            <div><kbd>1</kbd>–<kbd>9</kbd> / <kbd>↑</kbd> <kbd>↓</kbd> / <kbd>T</kbd></div><div>9 difficulty levels (±1) · Triplets ON/OFF</div>
+            <div><kbd>1</kbd>–<kbd>0</kbd> / <kbd>↑</kbd> <kbd>↓</kbd> / <kbd>T</kbd></div><div>10 difficulty levels (0=Lv10, ±1) · Triplets ON/OFF</div>
             <div><kbd>Q</kbd> / <kbd>X</kbd> / <kbd>F</kbd> <kbd>D</kbd></div><div>Staccato ON/OFF · Ghost Notes ON/OFF · Ghost mute hit</div>
             <div><kbd>S</kbd> / <kbd>L</kbd></div><div>Cycle time signature (4/4..6/8) · Cycle bar count</div>
             <div><kbd>+</kbd> / <kbd>−</kbd></div><div>BPM ±5</div>
@@ -1467,8 +1470,9 @@
         5: "Lv5 · 8分シンコペ＆スタッカート (•)",
         6: "Lv6 · 8分グルーヴ＆ゴースト (×)",
         7: "Lv7 · 16分音符基礎",
-        8: "Lv8 · 16分ファンク＆ゴースト (×)",
-        9: "Lv9 · 16分マスター (• + ×)",
+        8: "Lv8 · 16分ファンク",
+        9: "Lv9 · 16分ファンク＆ゴースト (×)",
+        10: "Lv10 · 16分マスター (• + ×)",
       },
       tripletsOn: "3連符 ON",
       tripletsOff: "3連符 OFF",
@@ -1541,7 +1545,7 @@
       audioFail: (err, isFile) => `オーディオ入力接続失敗: ${err}${isFile ? " (file:// の制限の可能性 — python3 -m http.server で http://localhost 接続推奨)" : " (ブラウザ/OSのマイク権限を確認)"}`,
       calMeasuring: "弦に触れずにお待ちください（フロアノイズ測定中）...",
       calDone: (pct) => `ノイズ補正完了 — しきい値を ${pct}% に自動設定しました`,
-      tapHintHtml: `入力: <kbd>Space</kbd>/<kbd>J</kbd>/<kbd>K</kbd>（ゴースト <kbd>F</kbd>/<kbd>D</kbd>）またはオーディオ · <kbd>Enter</kbd> 開始 · <kbd>Esc</kbd> 停止 · <kbd>N</kbd> 新規 · <kbd>P</kbd> お手本 · <kbd>1</kbd>〜<kbd>9</kbd>/<kbd>↑</kbd><kbd>↓</kbd> 難易度 · <kbd>T</kbd> 3連符 · <kbd>Q</kbd> スタッカート · <kbd>X</kbd> ゴースト · <kbd>S</kbd> 拍子 · <kbd>L</kbd> 小節数 · <kbd>+</kbd><kbd>−</kbd> BPM · <kbd>M</kbd>/<kbd>B</kbd>/<kbd>C</kbd>/<kbd>G</kbd>/<kbd>I</kbd>`,
+      tapHintHtml: `入力: <kbd>Space</kbd>/<kbd>J</kbd>/<kbd>K</kbd>（ゴースト <kbd>F</kbd>/<kbd>D</kbd>）またはオーディオ · <kbd>Enter</kbd> 開始 · <kbd>Esc</kbd> 停止 · <kbd>N</kbd> 新規 · <kbd>P</kbd> お手本 · <kbd>1</kbd>〜<kbd>0</kbd>/<kbd>↑</kbd><kbd>↓</kbd> 難易度 · <kbd>T</kbd> 3連符 · <kbd>Q</kbd> スタッカート · <kbd>X</kbd> ゴースト · <kbd>S</kbd> 拍子 · <kbd>L</kbd> 小節数 · <kbd>+</kbd><kbd>−</kbd> BPM · <kbd>M</kbd>/<kbd>B</kbd>/<kbd>C</kbd>/<kbd>G</kbd>/<kbd>I</kbd>`,
       legendHtml: `判定: <strong style="color:var(--green)">★ ≤35ms/休符OK</strong> · <strong style="color:var(--amber)">−/+ ≤80ms</strong> · <strong style="color:var(--red)">&lt;/&gt; &gt;80ms · × ミス/休符エラー</strong> · サステイン(AUD): <strong style="color:var(--green)">▬ 良好</strong> / <strong style="color:var(--amber)">▬ 短い</strong> / <strong style="color:var(--red)">▬ はみ出し</strong>`,
       summaryIdle: "演奏を終えるとタイミング分布が表示されます。",
       summaryHits: (hits, total, pct, tight, sign, mean, sd, extra, sus, restErrs) => {
@@ -1568,7 +1572,7 @@
           <ul>
             <li><strong>開始 / 停止</strong>: <kbd>Enter</kbd> または <strong>▶ 開始</strong> で1小節カウントイン（1拍目 緑LED、その他の拍 黄LED）のあと演奏が始まります。途中で止めるには <kbd>Esc</kbd> または <strong>■ 停止</strong> を押してください。</li>
             <li><strong>お手本再生</strong>: <kbd>P</kbd> または <strong>♪ お手本再生</strong> でメトロノームに合わせたベースガイド音（D）を確認できます。</li>
-            <li><strong>譜面設定</strong>: 9段階の難易度（<kbd>1</kbd>〜<kbd>9</kbd>・<kbd>↑</kbd><kbd>↓</kbd>：4分基礎→4分スタッカート→表拍8分→8分裏拍→8分シンコペ+スタッカート→8分ゴースト→16分基礎→16分ゴースト→16分マスター）、拍子（<kbd>S</kbd>）、小節数（<kbd>L</kbd>、2〜32小節）、BPM（<kbd>+</kbd>/<kbd>−</kbd>）、拍番号表示（<kbd>B</kbd>）を自由に切り替えられます。</li>
+            <li><strong>譜面設定</strong>: 10段階の難易度（<kbd>1</kbd>〜<kbd>9</kbd>・<kbd>0</kbd>=Lv10・<kbd>↑</kbd><kbd>↓</kbd>：4分基礎→4分スタッカート→表拍8分→8分裏拍→8分シンコペ+スタッカート→8分ゴースト→16分基礎→16分ファンク→16分ファンク+ゴースト→16分マスター）、拍子（<kbd>S</kbd>）、小節数（<kbd>L</kbd>、2〜32小節）、BPM（<kbd>+</kbd>/<kbd>−</kbd>）、拍番号表示（<kbd>B</kbd>）を自由に切り替えられます。</li>
             <li><strong>初見（サイトリーディング）特化</strong>: 既定では譜面カーソルを出さず、メトロノームとLEDだけで先読みする設計です。入門用に <strong>カーソル（<kbd>C</kbd>）</strong> をオンにすることも、<strong>採点: 終了後（<kbd>G</kbd>）</strong> で完走後まとめ採点にすることもできます。</li>
           </ul>
         </div>
@@ -1606,7 +1610,7 @@
             <div><kbd>Enter</kbd> / <kbd>R</kbd></div><div>開始 / 同じ譜面で再挑戦</div>
             <div><kbd>Esc</kbd></div><div>即座に停止</div>
             <div><kbd>N</kbd> / <kbd>P</kbd></div><div>新しい譜面 / お手本ベース再生</div>
-            <div><kbd>1</kbd>〜<kbd>9</kbd> / <kbd>↑</kbd> <kbd>↓</kbd> / <kbd>T</kbd></div><div>難易度9段階選択 · ±1調整 · 3連符 ON/OFF</div>
+            <div><kbd>1</kbd>〜<kbd>0</kbd> / <kbd>↑</kbd> <kbd>↓</kbd> / <kbd>T</kbd></div><div>難易度10段階選択（0=Lv10）· ±1調整 · 3連符 ON/OFF</div>
             <div><kbd>Q</kbd> / <kbd>X</kbd> / <kbd>F</kbd> <kbd>D</kbd></div><div>スタッカート ON/OFF · ゴースト ON/OFF · ゴーストミュート入力</div>
             <div><kbd>S</kbd> / <kbd>L</kbd></div><div>拍子切替（4/4·3/4·2/4·5/4·6/8）· 小節数切替</div>
             <div><kbd>+</kbd> / <kbd>−</kbd></div><div>BPM ±5 調整</div>
@@ -1879,42 +1883,45 @@
     5: PATTERNS_LV4,       // 8th Syncopation & Staccato (•)
     6: PATTERNS_LV4,       // 8th Groove & Ghost Notes (×)
     7: PATTERNS_LV5,       // 16th Basics
-    8: PATTERNS_LV5B_FUNK, // 16th Funk & Ghost Notes (×)
-    9: PATTERNS_LV6,       // 16th Master (• + ×)
+    8: PATTERNS_LV5B_FUNK, // 16th Funk
+    9: PATTERNS_LV5B_FUNK, // 16th Funk & Ghost Notes (×)
+    10: PATTERNS_LV6,      // 16th Master (• + ×)
   };
   const TRIPLET_POOLS = {
     1: TRIPLETS_BASIC, 2: TRIPLETS_BASIC, 3: TRIPLETS_SHUFFLE,
     4: TRIPLETS_SHUFFLE, 5: TRIPLETS_SYNC, 6: TRIPLETS_SYNC,
-    7: TRIPLETS_ADV, 8: TRIPLETS_ADV, 9: TRIPLETS_ADV,
+    7: TRIPLETS_ADV, 8: TRIPLETS_ADV, 9: TRIPLETS_ADV, 10: TRIPLETS_ADV,
   };
   const COMPOUND68_POOLS = {
     1: PATTERNS_68_LV1, 2: PATTERNS_68_LV1, 3: PATTERNS_68_LV2,
     4: PATTERNS_68_LV3, 5: PATTERNS_68_LV4, 6: PATTERNS_68_LV4,
-    7: PATTERNS_68_LV5, 8: PATTERNS_68_LV5, 9: PATTERNS_68_LV6,
+    7: PATTERNS_68_LV5, 8: PATTERNS_68_LV5, 9: PATTERNS_68_LV5, 10: PATTERNS_68_LV6,
   };
   const LEVEL_PRESETS = {
-    1: { staccato: false, ghost: false },
-    2: { staccato: true,  ghost: false },
-    3: { staccato: false, ghost: false },
-    4: { staccato: false, ghost: false },
-    5: { staccato: true,  ghost: false },
-    6: { staccato: false, ghost: true  },
-    7: { staccato: false, ghost: false },
-    8: { staccato: false, ghost: true  },
-    9: { staccato: true,  ghost: true  },
+    1:  { staccato: false, ghost: false },
+    2:  { staccato: true,  ghost: false },
+    3:  { staccato: false, ghost: false },
+    4:  { staccato: false, ghost: false },
+    5:  { staccato: true,  ghost: false },
+    6:  { staccato: false, ghost: true  },
+    7:  { staccato: false, ghost: false },
+    8:  { staccato: false, ghost: false },
+    9:  { staccato: false, ghost: true  },
+    10: { staccato: true,  ghost: true  },
   };
   const LEVEL_TITLES = {
-    1: "Lv1 · Quarter & Rest Basics",
-    2: "Lv2 · Quarter Staccato (•)",
-    3: "Lv3 · Straight 8ths",
-    4: "Lv4 · 8th Off-beats & Dotted",
-    5: "Lv5 · 8th Synco & Staccato (•)",
-    6: "Lv6 · 8th Groove & Ghost (×)",
-    7: "Lv7 · 16th Basics",
-    8: "Lv8 · 16th Funk & Ghost (×)",
-    9: "Lv9 · 16th Master (• + ×)",
+    1:  "Lv1 · Quarter & Rest Basics",
+    2:  "Lv2 · Quarter Staccato (•)",
+    3:  "Lv3 · Straight 8ths",
+    4:  "Lv4 · 8th Off-beats & Dotted",
+    5:  "Lv5 · 8th Synco & Staccato (•)",
+    6:  "Lv6 · 8th Groove & Ghost (×)",
+    7:  "Lv7 · 16th Basics",
+    8:  "Lv8 · 16th Funk",
+    9:  "Lv9 · 16th Funk & Ghost (×)",
+    10: "Lv10 · 16th Master (• + ×)",
   };
-  const TIE_PROBS = { 1: 0.0, 2: 0.0, 3: 0.0, 4: 0.0, 5: 0.24, 6: 0.24, 7: 0.12, 8: 0.18, 9: 0.24 };
+  const TIE_PROBS = { 1: 0.0, 2: 0.0, 3: 0.0, 4: 0.0, 5: 0.24, 6: 0.24, 7: 0.12, 8: 0.18, 9: 0.18, 10: 0.24 };
   const PRE_DELAY_SEC = 0.5;
 
   function mulberry32(seed) {
@@ -4219,7 +4226,7 @@
   document.getElementById("bpmSlider").addEventListener("input", e => setBpm(Number(e.target.value)));
 
   function setLevel(lv) {
-    const clamped = Math.max(1, Math.min(9, Number(lv) || 1));
+    const clamped = Math.max(1, Math.min(10, Number(lv) || 1));
     app.level = clamped;
     const preset = LEVEL_PRESETS[clamped] || { staccato: false, ghost: false };
     app.staccatoOn = preset.staccato;
@@ -4524,11 +4531,12 @@
     } else if (code === "Minus" || code === "NumpadSubtract" || e.key === "-" || e.key === "_") {
       e.preventDefault();
       setBpm(app.bpm - 5);
-    } else if (/^(Digit|Numpad)[1-9]$/.test(code)) {
-      setLevel(Number(code.slice(-1)));
+    } else if (/^(Digit|Numpad)[0-9]$/.test(code)) {
+      const d = Number(code.slice(-1));
+      setLevel(d === 0 ? 10 : d);
     } else if (code === "ArrowUp") {
       e.preventDefault();
-      if (app.level < 9) setLevel(app.level + 1);
+      if (app.level < 10) setLevel(app.level + 1);
     } else if (code === "ArrowDown") {
       e.preventDefault();
       if (app.level > 1) setLevel(app.level - 1);
