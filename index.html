@@ -610,6 +610,12 @@
     border-color: #f59e0b !important;
   }
 
+  .daily-plus-btn.active {
+    background: #ffedd5 !important;
+    color: #c2410c !important;
+    border-color: #f97316 !important;
+  }
+
   .result-actions {
     display: flex;
     flex-wrap: wrap;
@@ -1074,7 +1080,8 @@
       <div class="divider"></div>
 
       <div class="group">
-        <button id="btnDaily" class="daily-btn" title="오늘의 데일리 챌린지 (고정 8마디 시드)">🏆 데일리</button>
+        <button id="btnDaily" class="daily-btn" title="오늘의 4/4 데일리 챌린지 (고정 8마디)">🏆 데일리</button>
+        <button id="btnDailyPlus" class="daily-plus-btn" title="오늘의 변박·고급 데일리+ 챌린지 (3/4·2/4·5/4·6/8)">🔥 데일리+</button>
         <button id="btnEditor" title="커스텀 악보 에디터 열기/닫기">✏️ 에디터</button>
         <button id="btnShareUrl" title="현재 악보 공유 링크 복사">🔗 공유</button>
         <button id="btnInputMode" title="i">입력: KEY</button>
@@ -1336,6 +1343,7 @@
       btnSyncCal: "⏱ 보정",
       btnGuide: "❓ 설명",
       btnDaily: "🏆 데일리",
+      btnDailyPlus: "🔥 데일리+",
       btnEditor: "✏️ 에디터",
       btnShareUrl: "🔗 공유",
       btnShareCopied: "✓ 복사됨!",
@@ -1356,7 +1364,7 @@
       edSeedCopied: "현재 악보 공유 링크(시드+설정)가 클립보드에 복사되었습니다!",
       edLoadedOk: "커스텀 악보를 불러왔습니다! Enter로 바로 연주해 보세요.",
       edLoadFail: "유효하지 않은 커스텀 코드/링크입니다. 전체 URL 또는 커스텀 코드를 확인하세요.",
-      dailyLoaded: (date, streak) => `🏆 오늘의 데일리 챌린지 (${date})${streak > 0 ? ` · 연속 ${streak}일` : ""}`,
+      dailyLoaded: (date, streak, isPlus) => `${isPlus ? "🔥 오늘의 데일리+" : "🏆 오늘의 데일리"} (${date})${streak > 0 ? ` · 연속 ${streak}일` : ""}`,
       dailyBest: (acc, tight) => `오늘 최고: ${acc}% (TIGHT ${tight})`,
       resultCopied: "✓ 결과 복사됨!",
       calTitle: "⏱ 싱크 보정",
@@ -1524,6 +1532,7 @@
       btnSyncCal: "⏱ Sync",
       btnGuide: "❓ Guide",
       btnDaily: "🏆 Daily",
+      btnDailyPlus: "🔥 Daily+",
       btnEditor: "✏️ Editor",
       btnShareUrl: "🔗 Share",
       btnShareCopied: "✓ Copied!",
@@ -1544,7 +1553,7 @@
       edSeedCopied: "Shareable score link (seed + settings) copied to clipboard!",
       edLoadedOk: "Custom score loaded! Press Enter to play.",
       edLoadFail: "Invalid custom code or URL. Please check and try again.",
-      dailyLoaded: (date, streak) => `🏆 Daily Challenge (${date})${streak > 0 ? ` · ${streak}-day streak` : ""}`,
+      dailyLoaded: (date, streak, isPlus) => `${isPlus ? "🔥 Daily+" : "🏆 Daily"} Challenge (${date})${streak > 0 ? ` · ${streak}-day streak` : ""}`,
       dailyBest: (acc, tight) => `Today's best: ${acc}% (TIGHT ${tight})`,
       resultCopied: "✓ Copied!",
       calTitle: "⏱ Sync Cal",
@@ -1712,6 +1721,7 @@
       btnSyncCal: "⏱ 補正",
       btnGuide: "❓ 使い方",
       btnDaily: "🏆 デイリー",
+      btnDailyPlus: "🔥 デイリー+",
       btnEditor: "✏️ 編集",
       btnShareUrl: "🔗 共有",
       btnShareCopied: "✓ コピー済!",
@@ -1732,7 +1742,7 @@
       edSeedCopied: "現在の譜面URL（シード＋設定）をコピーしました！",
       edLoadedOk: "カスタム譜面を読み込みました！Enterで演奏できます。",
       edLoadFail: "無効なカスタムコード／URLです。",
-      dailyLoaded: (date, streak) => `🏆 デイリーチャレンジ (${date})${streak > 0 ? ` · ${streak}日連続` : ""}`,
+      dailyLoaded: (date, streak, isPlus) => `${isPlus ? "🔥 デイリー+" : "🏆 デイリー"} (${date})${streak > 0 ? ` · ${streak}日連続` : ""}`,
       dailyBest: (acc, tight) => `本日のベスト: ${acc}% (TIGHT ${tight})`,
       resultCopied: "✓ コピー済!",
       calTitle: "⏱ 遅延補正",
@@ -2295,9 +2305,9 @@
     return `${y}-${m}-${day}`;
   }
 
-  function hashDateSeed(dateStr) {
+  function hashDateSeed(dateStr, isPlus = false) {
     let h = 2166136261 >>> 0;
-    const s = "RSR-DAILY-" + dateStr;
+    const s = (isPlus ? "RSR-DAILY-PLUS-" : "RSR-DAILY-") + dateStr;
     for (let i = 0; i < s.length; i++) {
       h ^= s.charCodeAt(i);
       h = Math.imul(h, 16777619) >>> 0;
@@ -2305,24 +2315,37 @@
     return 0x1000 + (h % 0xEFFF);
   }
 
-  function getDailyChallengeSpec(dateStr = null) {
+  function getDailyChallengeSpec(dateStr = null, isPlus = false) {
     const ds = (dateStr && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) ? dateStr : getTodayDateStr();
     const [y, m, d] = ds.split("-").map(Number);
     const dow = new Date(y, m - 1, d).getDay(); // 0=Sun..6=Sat
-    const schedule = [
-      { timeSig: "5/4", level: 4, bpm: 75, tripletMode: 0, staccatoOn: true,  ghostOn: false }, // Sun
+    // Standard Daily: always 4/4 core sight-reading workout
+    const stdSchedule = [
+      { timeSig: "4/4", level: 5, bpm: 75, tripletMode: 0, staccatoOn: true,  ghostOn: false }, // Sun
       { timeSig: "4/4", level: 3, bpm: 75, tripletMode: 0, staccatoOn: false, ghostOn: false }, // Mon
       { timeSig: "4/4", level: 4, bpm: 80, tripletMode: 0, staccatoOn: true,  ghostOn: false }, // Tue
-      { timeSig: "3/4", level: 4, bpm: 75, tripletMode: 1, staccatoOn: false, ghostOn: false }, // Wed
+      { timeSig: "4/4", level: 4, bpm: 75, tripletMode: 1, staccatoOn: false, ghostOn: false }, // Wed
       { timeSig: "4/4", level: 5, bpm: 70, tripletMode: 0, staccatoOn: false, ghostOn: false }, // Thu
-      { timeSig: "6/8", level: 4, bpm: 65, tripletMode: 0, staccatoOn: false, ghostOn: false }, // Fri
+      { timeSig: "4/4", level: 4, bpm: 80, tripletMode: 0, staccatoOn: false, ghostOn: true  }, // Fri
       { timeSig: "4/4", level: 6, bpm: 75, tripletMode: 0, staccatoOn: false, ghostOn: true  }, // Sat
     ];
+    // Daily+: non-4/4 meters (3/4, 2/4, 5/4, 6/8) + spicy articulations/triplets
+    const plusSchedule = [
+      { timeSig: "5/4", level: 4, bpm: 75, tripletMode: 0, staccatoOn: true,  ghostOn: false }, // Sun
+      { timeSig: "3/4", level: 3, bpm: 80, tripletMode: 0, staccatoOn: true,  ghostOn: false }, // Mon
+      { timeSig: "6/8", level: 4, bpm: 65, tripletMode: 0, staccatoOn: false, ghostOn: false }, // Tue
+      { timeSig: "5/4", level: 5, bpm: 70, tripletMode: 0, staccatoOn: false, ghostOn: true  }, // Wed
+      { timeSig: "2/4", level: 5, bpm: 80, tripletMode: 1, staccatoOn: false, ghostOn: false }, // Thu
+      { timeSig: "6/8", level: 5, bpm: 65, tripletMode: 0, staccatoOn: true,  ghostOn: false }, // Fri
+      { timeSig: "3/4", level: 6, bpm: 75, tripletMode: 2, staccatoOn: false, ghostOn: true  }, // Sat
+    ];
+    const picked = (isPlus ? plusSchedule : stdSchedule)[dow];
     return {
       dateStr: ds,
+      isPlus: Boolean(isPlus),
       numBars: 8,
-      seed: hashDateSeed(ds),
-      ...schedule[dow],
+      seed: hashDateSeed(ds, isPlus),
+      ...picked,
     };
   }
 
@@ -3748,7 +3771,8 @@
     ghostOn: false,
     timeSig: "4/4",
     numBars: 4,
-    dailyDate: null,  // "YYYY-MM-DD" when playing Daily Challenge
+    dailyDate: null,  // "YYYY-MM-DD" when playing Daily / Daily+ Challenge
+    dailyPlus: false, // false = 4/4 Daily, true = non-4/4 Daily+
     customMode: false,
     soundOn: true,
     showBeatNums: false,
@@ -3847,6 +3871,7 @@
     app.takeId += 1;
     if (!keepDaily) {
       app.dailyDate = null;
+      app.dailyPlus = false;
       app.customMode = false;
       clearShareQueryUrl();
     }
@@ -3857,9 +3882,10 @@
     updateMeta();
   }
 
-  function loadDailyChallenge(dateStr = null) {
-    const spec = getDailyChallengeSpec(dateStr);
+  function loadDailyChallenge(dateStr = null, isPlus = false) {
+    const spec = getDailyChallengeSpec(dateStr, isPlus);
     app.dailyDate = spec.dateStr;
+    app.dailyPlus = spec.isPlus;
     app.customMode = false;
     app.timeSig = spec.timeSig;
     app.level = spec.level;
@@ -3870,19 +3896,20 @@
     app.ghostOn = spec.ghostOn;
     toggleEditorBar(false);
     newPhrase(spec.seed, true);
-    const streak = getDailyStreak();
-    setHitBadge(t("dailyLoaded", spec.dateStr, streak), "tight");
+    const streak = getDailyStreak(spec.isPlus);
+    setHitBadge(t("dailyLoaded", spec.dateStr, streak, spec.isPlus), "tight");
   }
 
-  function getDailyStreak() {
+  function getDailyStreak(isPlus = false) {
     try {
+      const prefix = isPlus ? "rhythm_practice_dailyplus_" : "rhythm_practice_daily_";
       let streak = 0;
       const d = new Date();
       for (let i = 0; i < 365; i++) {
         const y = d.getFullYear();
         const m = String(d.getMonth() + 1).padStart(2, "0");
         const day = String(d.getDate()).padStart(2, "0");
-        const key = `rhythm_practice_daily_${y}-${m}-${day}`;
+        const key = `${prefix}${y}-${m}-${day}`;
         if (localStorage.getItem(key)) {
           streak++;
         } else if (i > 0) {
@@ -3896,9 +3923,10 @@
     }
   }
 
-  function saveDailyBest(dateStr, acc, tight) {
+  function saveDailyBest(dateStr, acc, tight, isPlus = false) {
     try {
-      const key = `rhythm_practice_daily_${dateStr}`;
+      const prefix = isPlus ? "rhythm_practice_dailyplus_" : "rhythm_practice_daily_";
+      const key = `${prefix}${dateStr}`;
       const prev = JSON.parse(localStorage.getItem(key) || "null");
       if (!prev || acc > prev.acc || (acc === prev.acc && tight > prev.tight)) {
         localStorage.setItem(key, JSON.stringify({ acc: Math.round(acc), tight }));
@@ -3915,7 +3943,7 @@
       qs.set("custom", app.phrase.customCode);
       qs.set("bpm", String(app.bpm));
     } else if (app.dailyDate) {
-      qs.set("daily", app.dailyDate);
+      qs.set(app.dailyPlus ? "dailyplus" : "daily", app.dailyDate);
     } else {
       qs.set("ts", app.timeSig);
       qs.set("lv", String(app.level));
@@ -3960,7 +3988,7 @@
     const tTag = effTri === 2 ? "T2" : (effTri === 1 ? "T1" : "");
     const lvFlags = `${tTag}${app.staccatoOn ? "S" : ""}${app.ghostOn ? "G" : ""}`;
     const header = app.dailyDate
-      ? `🎸 Rhythm Sight-Reader — 🏆 Daily ${app.dailyDate}`
+      ? `🎸 Rhythm Sight-Reader — ${app.dailyPlus ? "🔥 Daily+" : "🏆 Daily"} ${app.dailyDate}`
       : (app.customMode
         ? `🎸 Rhythm Sight-Reader — ✏️ Custom Score`
         : `🎸 Rhythm Sight-Reader — Seed #${app.phrase.seed.toString(16).toUpperCase().padStart(4, "0")}`);
@@ -4343,6 +4371,7 @@
       staccato: app.staccatoOn,
       ghost: app.ghostOn,
       daily: Boolean(app.dailyDate),
+      dailyPlus: Boolean(app.dailyDate && app.dailyPlus),
       custom: app.customMode,
       ts: app.timeSig,
       mode: app.inputMode,
@@ -4352,7 +4381,7 @@
     if (app.history.length > 6) app.history.pop();
 
     if (app.dailyDate) {
-      saveDailyBest(app.dailyDate, acc, tight);
+      saveDailyBest(app.dailyDate, acc, tight, app.dailyPlus);
     }
 
     app.lastResult = {
@@ -4433,7 +4462,7 @@
       const susStr = h.susTotal ? `${Math.round((h.susOk / h.susTotal) * 100)}%` : "—";
       const tTag = h.tripletMode === 2 ? "T2" : (h.tripletMode === 1 ? "T1" : (h.triplets ? "T" : ""));
       const lvFlags = `${tTag}${h.staccato ? "S" : ""}${h.ghost ? "G" : ""}`;
-      const lvLabel = h.custom ? "✏️" : `${h.daily ? "🏆" : ""}L${h.lv}${lvFlags}`;
+      const lvLabel = h.custom ? "✏️" : `${h.dailyPlus ? "🔥" : (h.daily ? "🏆" : "")}L${h.lv}${lvFlags}`;
       const lvTip = lvFlags ? ` title="T1=8th Triplets · T2=+2-Beat Triplets · S=Staccato · G=Ghost"` : "";
       return `<tr>
         <td>#${h.take}</td>
@@ -4468,13 +4497,15 @@
       document.getElementById("metaLevel").textContent = `✏️ Custom · ${app.timeSig} · ${app.numBars} bars`;
       document.getElementById("metaSeed").textContent = app.phrase.customCode ? app.phrase.customCode.slice(0, 14) + "…" : "Custom";
     } else if (app.dailyDate) {
-      document.getElementById("metaLevel").textContent = `🏆 Daily ${app.dailyDate} · ${app.timeSig} · ${baseTitle}`;
-      document.getElementById("metaSeed").textContent = `Daily #${app.phrase.seed.toString(16).toUpperCase().padStart(4, "0")}`;
+      const dTag = app.dailyPlus ? "🔥 Daily+" : "🏆 Daily";
+      document.getElementById("metaLevel").textContent = `${dTag} ${app.dailyDate} · ${app.timeSig} · ${baseTitle}`;
+      document.getElementById("metaSeed").textContent = `${app.dailyPlus ? "Daily+" : "Daily"} #${app.phrase.seed.toString(16).toUpperCase().padStart(4, "0")}`;
     } else {
       document.getElementById("metaLevel").textContent = `${app.timeSig} · ${baseTitle}`;
       document.getElementById("metaSeed").textContent = `Seed #${app.phrase.seed.toString(16).toUpperCase().padStart(4, "0")}`;
     }
-    document.getElementById("btnDaily").classList.toggle("active", Boolean(app.dailyDate));
+    document.getElementById("btnDaily").classList.toggle("active", Boolean(app.dailyDate && !app.dailyPlus));
+    document.getElementById("btnDailyPlus").classList.toggle("active", Boolean(app.dailyDate && app.dailyPlus));
     document.getElementById("levelSelect").value = String(app.level);
     document.getElementById("timeSigSelect").value = app.timeSig;
     const barsSel = document.getElementById("barsSelect");
@@ -4546,6 +4577,7 @@
     document.getElementById("btnPrint").textContent = t("btnPrint");
     document.getElementById("btnSyncCal").textContent = t("btnSyncCal");
     document.getElementById("btnDaily").textContent = t("btnDaily");
+    document.getElementById("btnDailyPlus").textContent = t("btnDailyPlus");
     document.getElementById("btnEditor").textContent = t("btnEditor");
     document.getElementById("btnShareUrl").textContent = t("btnShareUrl");
     document.getElementById("btnShareResult").textContent = t("btnShareResult");
@@ -5571,7 +5603,12 @@
 
   document.getElementById("btnDaily").addEventListener("click", (e) => {
     e.currentTarget.blur();
-    loadDailyChallenge();
+    loadDailyChallenge(null, false);
+  });
+
+  document.getElementById("btnDailyPlus").addEventListener("click", (e) => {
+    e.currentTarget.blur();
+    loadDailyChallenge(null, true);
   });
 
   document.getElementById("btnEditor").addEventListener("click", (e) => {
@@ -5651,9 +5688,14 @@
       }
       if (loadCustomFromInput(customParam)) return;
     }
+    const dailyPlusParam = params.get("dailyplus");
+    if (dailyPlusParam) {
+      loadDailyChallenge(dailyPlusParam === "1" ? null : dailyPlusParam, true);
+      return;
+    }
     const dailyParam = params.get("daily");
     if (dailyParam) {
-      loadDailyChallenge(dailyParam === "1" ? null : dailyParam);
+      loadDailyChallenge(dailyParam === "1" ? null : dailyParam, false);
       return;
     }
     const seedParam = params.get("seed");
