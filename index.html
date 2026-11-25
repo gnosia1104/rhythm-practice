@@ -5393,17 +5393,27 @@
         rawSustain += info.sustainPtsPerNote * computeSustainQuality(tgt);
       }
     }
-    // Fair penalty: never double-count rest hits as both extraHits & restErrs, and cap so pickup noise never nukes a good run
+    // Two-tier anti-mash penalty:
+    // 1) Normal stray noise (<= max(3, 25% of notes)): gentle & capped at 22% so bass pickup noise never nukes a fair run
+    // 2) Mashing/spam beyond threshold: UNCAPPED heavy penalty + sustain attenuation so button-mashing cannot cheese scores
     const restHitErrs = (phrase.rests || []).filter(r => r.error && r.errorKind === "HIT").length;
     const nonRestExtras = Math.max(0, extraHits - restHitErrs);
     const avgNotePts = info.noteMax / Math.max(1, total);
-    const rawPen = restErrs * avgNotePts * 0.15 + nonRestExtras * avgNotePts * 0.08;
-    const penalty = Math.min(Math.round(rawAttack * 0.22), Math.round(rawPen));
-    const sdBonus = (hits >= Math.ceil(total * 0.8) && sd <= 20)
+    const spamThreshold = Math.max(3, Math.ceil(total * 0.25));
+    const normalExtras = Math.min(nonRestExtras, spamThreshold);
+    const spamExtras = Math.max(0, nonRestExtras - spamThreshold);
+    const baseRawPen = restErrs * avgNotePts * 0.15 + normalExtras * avgNotePts * 0.08;
+    const basePenalty = Math.min(Math.round(rawAttack * 0.22), Math.round(baseRawPen));
+    const spamPenalty = Math.round(spamExtras * avgNotePts * 0.85);
+    const penalty = basePenalty + spamPenalty;
+    const extraRatio = extraHits / Math.max(1, total);
+    const sdBonus = (hits >= Math.ceil(total * 0.8) && sd <= 20 && spamExtras === 0)
       ? Math.round(((20 - sd) / 20) * 0.02 * info.noteMax)
       : 0;
     const noteScore = Math.max(0, Math.min(info.noteMax, Math.round(rawAttack + sdBonus - penalty)));
-    const sustainEarned = Math.max(0, Math.min(info.sustainMax, Math.round(rawSustain)));
+    // Attenuate sustain credit if user is mashing heavily (extraHits >= 45% of note count)
+    const susSpamMult = extraRatio >= 0.45 ? Math.max(0, 1 - (extraRatio - 0.45) * 1.6) : 1.0;
+    const sustainEarned = Math.max(0, Math.min(info.sustainMax, Math.round(rawSustain * susSpamMult)));
     const score = noteScore + sustainEarned;
     const pct = (score / info.maxScore) * 100;
     return { score, maxScore: info.maxScore, noteScore, noteMax: info.noteMax, sustainEarned, sustainMax: info.sustainMax, pct, penalty, sdBonus, info };
@@ -5413,41 +5423,40 @@
     if (!r || !r.total) return { grade: "C", cls: "rank-c", color: "#ef4444" };
     const acc = (r.hits / r.total) * 100;
     const restErrs = r.sustainStats ? (r.sustainStats.restErrs || 0) : 0;
+    const extraRatio = (Number(r.extra) || 0) / Math.max(1, r.total);
+    const TIERS = [
+      { grade: "S+", cls: "rank-sp", color: "#f59e0b" },
+      { grade: "S",  cls: "rank-s",  color: "#22c55e" },
+      { grade: "A",  cls: "rank-a",  color: "#3b82f6" },
+      { grade: "B",  cls: "rank-b",  color: "#94a3b8" },
+      { grade: "C",  cls: "rank-c",  color: "#ef4444" },
+    ];
+    let idx = 4; // C
     // Primary: synced directly with difficulty-weighted Score % (score / maxScore)
     if (r.maxScore > 0 && Number.isFinite(r.score)) {
       const scorePct = (r.score / r.maxScore) * 100;
-      if (scorePct >= 95 && acc >= 99.9 && restErrs === 0) {
-        return { grade: "S+", cls: "rank-sp", color: "#f59e0b" };
-      }
-      if (scorePct >= 88 && acc >= 90) {
-        return { grade: "S", cls: "rank-s", color: "#22c55e" };
-      }
-      if (scorePct >= 78) {
-        return { grade: "A", cls: "rank-a", color: "#3b82f6" };
-      }
-      if (scorePct >= 62) {
-        return { grade: "B", cls: "rank-b", color: "#94a3b8" };
-      }
-      return { grade: "C", cls: "rank-c", color: "#ef4444" };
+      if (scorePct >= 95 && acc >= 99.9 && restErrs === 0) idx = 0;
+      else if (scorePct >= 88 && acc >= 90) idx = 1;
+      else if (scorePct >= 78) idx = 2;
+      else if (scorePct >= 62) idx = 3;
+      else idx = 4;
+    } else {
+      // Fallback for legacy persisted Practice Log rows without maxScore
+      const tightPct = (r.tight / r.total) * 100;
+      const susPct = (r.sustainStats && r.sustainStats.total > 0)
+        ? (r.sustainStats.ok / r.sustainStats.total) * 100
+        : 100;
+      if (acc >= 99.9 && tightPct >= 85 && restErrs === 0 && susPct >= 85) idx = 0;
+      else if (acc >= 95 && tightPct >= 70 && restErrs <= 1) idx = 1;
+      else if (acc >= 85) idx = 2;
+      else if (acc >= 70) idx = 3;
+      else idx = 4;
     }
-    // Fallback for legacy persisted Practice Log rows without maxScore
-    const tightPct = (r.tight / r.total) * 100;
-    const susPct = (r.sustainStats && r.sustainStats.total > 0)
-      ? (r.sustainStats.ok / r.sustainStats.total) * 100
-      : 100;
-    if (acc >= 99.9 && tightPct >= 85 && restErrs === 0 && susPct >= 85) {
-      return { grade: "S+", cls: "rank-sp", color: "#f59e0b" };
-    }
-    if (acc >= 95 && tightPct >= 70 && restErrs <= 1) {
-      return { grade: "S", cls: "rank-s", color: "#22c55e" };
-    }
-    if (acc >= 85) {
-      return { grade: "A", cls: "rank-a", color: "#3b82f6" };
-    }
-    if (acc >= 70) {
-      return { grade: "B", cls: "rank-b", color: "#94a3b8" };
-    }
-    return { grade: "C", cls: "rank-c", color: "#ef4444" };
+    // Anti-mashing rank caps based on excess extra hits
+    if (extraRatio >= 0.50) idx = Math.max(idx, 4);      // >=50% extra hits -> max C
+    else if (extraRatio >= 0.30) idx = Math.max(idx, 3); // >=30% extra hits -> max B
+    else if (extraRatio >= 0.15) idx = Math.max(idx, 2); // >=15% extra hits -> max A
+    return TIERS[idx];
   }
 
   function buildResultCardText() {
@@ -6051,7 +6060,7 @@
     const sustainStats = { total: susTotal, ok: susOk, short: susShort, long: susLong, restErrs };
 
     const scoreDetail = computeDetailedScore(app.phrase, hits, total, sd, app.extraHits, restErrs);
-    const rankNow = computeScoreRank({ hits, total, tight, sustainStats, score: scoreDetail.score, maxScore: scoreDetail.maxScore });
+    const rankNow = computeScoreRank({ hits, total, tight, extra: app.extraHits, sustainStats, score: scoreDetail.score, maxScore: scoreDetail.maxScore });
     app.history.unshift({
       take: app.takeId,
       tsIso: new Date().toISOString(),
@@ -6080,6 +6089,7 @@
       rankCls: rankNow.cls,
       score: scoreDetail.score,
       maxScore: scoreDetail.maxScore,
+      ptsPerBar: Math.round(scoreDetail.score / Math.max(1, app.numBars)),
       hits, total, acc, tight, mean, sd, extra: app.extraHits, restErrs,
       susTotal, susOk,
     });
@@ -6264,7 +6274,7 @@
       const modTip = `Input:${h.mode || "KEY"} | Metro:${metroTxt} | Beats:${h.showBeatNums ? "ON" : "OFF"} | Cursor:${h.showCursor ? "ON" : "OFF"} | Grade:${h.blindGrade ? "End" : "Live"} | Fade:${h.fadeBeats ? `${h.fadeBeats}b` : "OFF"} | Rush:${h.rushOn ? "ON" : "OFF"}`;
       const rk = h.rank
         ? { grade: h.rank, cls: h.rankCls || "rank-b" }
-        : computeScoreRank({ hits: h.hits, total: h.total, tight: h.tight, sustainStats: { total: h.susTotal || 0, ok: h.susOk || 0, restErrs: h.restErrs || 0 } });
+        : computeScoreRank({ hits: h.hits, total: h.total, tight: h.tight, extra: h.extra || 0, sustainStats: { total: h.susTotal || 0, ok: h.susOk || 0, restErrs: h.restErrs || 0 } });
       const extStr = (h.restErrs && h.restErrs > 0) ? `${h.extra}/${h.restErrs}r` : `${h.extra}`;
       const scoreCell = Number.isFinite(h.score)
         ? `<td class="log-score" title="${h.score.toLocaleString()} / ${(h.maxScore || 0).toLocaleString()} pts">${h.score.toLocaleString()}</td>`
