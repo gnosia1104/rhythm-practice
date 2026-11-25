@@ -2652,13 +2652,25 @@
   let audioCtx = null;
   let audioUnlocked = false;
   let scheduledNodes = [];
+  const IS_MOBILE = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || "");
+
+  function setAudioSessionType(mode) {
+    try {
+      if (navigator.audioSession && navigator.audioSession.type !== mode) {
+        navigator.audioSession.type = mode;
+      }
+    } catch (_) {}
+  }
 
   function ensureAudioCtx() {
+    setAudioSessionType(audioIn && audioIn.active ? "play-and-record" : "playback");
     if (!audioCtx) {
       const AC = window.AudioContext || window.webkitAudioContext;
       audioCtx = new AC();
     }
-    if (audioCtx.state === "suspended") audioCtx.resume();
+    if (audioCtx.state !== "running") {
+      try { audioCtx.resume(); } catch (_) {}
+    }
     if (!audioUnlocked) {
       try {
         const buf = audioCtx.createBuffer(1, 1, 22050);
@@ -2698,13 +2710,15 @@
   }
 
   function scheduleClick(ctx, when, freq, amp) {
+    // Compensate for iOS/Android PlayAndRecord volume ducking while mic is open
+    const effAmp = (IS_MOBILE && audioIn && audioIn.active) ? Math.min(0.85, amp * 2.1) : amp;
     // Stable-pitch metronome click (no downward pitch sweep)
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = "sine";
     osc.frequency.setValueAtTime(freq, when);
     gain.gain.setValueAtTime(0.0001, when);
-    gain.gain.linearRampToValueAtTime(amp, when + 0.0015);
+    gain.gain.linearRampToValueAtTime(effAmp, when + 0.0015);
     gain.gain.exponentialRampToValueAtTime(0.0001, when + 0.028);
     osc.connect(gain).connect(ctx.destination);
     osc.start(when);
@@ -2716,7 +2730,7 @@
     hiOsc.type = "sine";
     hiOsc.frequency.setValueAtTime(freq * 2, when);
     hiGain.gain.setValueAtTime(0.0001, when);
-    hiGain.gain.linearRampToValueAtTime(amp * 0.25, when + 0.001);
+    hiGain.gain.linearRampToValueAtTime(effAmp * 0.25, when + 0.001);
     hiGain.gain.exponentialRampToValueAtTime(0.0001, when + 0.008);
     hiOsc.connect(hiGain).connect(ctx.destination);
     hiOsc.start(when);
@@ -2960,10 +2974,15 @@
       return false;
     }
     try {
-      await resetAudioCtxIfIdle();
-      const ctx = ensureAudioCtx();
-      if (ctx.state === "suspended") {
-        await ctx.resume();
+      // Keep AudioContext created & unlocked synchronously inside user gesture on mobile (iOS Safari/Android)
+      setAudioSessionType("play-and-record");
+      let ctx = ensureAudioCtx();
+      if (!IS_MOBILE && forceReconnect) {
+        await resetAudioCtxIfIdle();
+        ctx = ensureAudioCtx();
+      }
+      if (ctx.state !== "running") {
+        try { await ctx.resume(); } catch (_) {}
       }
 
       const baseConstraints = {
@@ -2978,7 +2997,7 @@
       let stream;
       try {
         stream = await navigator.mediaDevices.getUserMedia({
-          audio: { ...baseConstraints, channelCount: { ideal: 8 } }
+          audio: IS_MOBILE ? baseConstraints : { ...baseConstraints, channelCount: { ideal: 8 } }
         });
       } catch (firstErr) {
         // Fallback if deviceId vanished or channelCount constraint was rejected
@@ -2995,10 +3014,15 @@
         stream = await navigator.mediaDevices.getUserMedia({ audio: fallback });
       }
 
+      // iOS Safari & Android Chrome often interrupt/suspend AudioContext when getUserMedia switches audio session
+      if (ctx.state !== "running") {
+        try { await ctx.resume(); } catch (_) {}
+      }
+
       const track = stream.getAudioTracks()[0];
       const settings = track && track.getSettings ? track.getSettings() : {};
       const source = ctx.createMediaStreamSource(stream);
-      const chCount = Math.max(2, Math.min(8, settings.channelCount || source.channelCount || 2));
+      const chCount = Math.max(1, Math.min(8, settings.channelCount || source.channelCount || 1));
 
       // Band-limit detector (35Hz..1200Hz) to strip DC offset, amp-sim hiss, and high-freq fret noise
       const hpFilter = ctx.createBiquadFilter();
@@ -3103,6 +3127,10 @@
     audioIn.active = false;
     audioIn.level = 0;
     audioIn.rawPeak = 0;
+    setAudioSessionType("playback");
+    if (audioCtx && audioCtx.state !== "running") {
+      try { audioCtx.resume(); } catch (_) {}
+    }
   }
 
   function measureAnalyser(an, buf) {
@@ -3461,6 +3489,7 @@
 
   async function startRun(demo = false) {
     const seq = ++app.runSeq;
+    ensureAudioCtx(); // Synchronously unlock/resume inside user tap gesture on mobile
     if (app.state === "CAL") stopCalibration(false);
     stopScheduledAudio();
     // Immediately leave PLAY/COUNTIN before awaiting AudioContext so frame() cannot stamp stale misses
@@ -3519,6 +3548,7 @@
 
   async function startCalibration() {
     const seq = ++app.runSeq;
+    ensureAudioCtx(); // Synchronously unlock/resume inside user tap gesture on mobile
     stopScheduledAudio();
     app.state = "READY";
     resetTargets();
