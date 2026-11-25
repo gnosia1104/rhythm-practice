@@ -1083,6 +1083,195 @@
     .shortcut-grid { grid-template-columns: 1fr; gap: 3px 8px; }
   }
 
+  /* First-Visit Interactive Onboarding Spotlight Tour */
+  .tour-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    pointer-events: auto;
+  }
+
+  .tour-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.64);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+  }
+
+  .tour-spotlight {
+    position: fixed;
+    border-radius: 12px;
+    border: 2px solid #38bdf8;
+    box-shadow: 0 0 0 9999px rgba(15, 23, 42, 0.64), 0 0 0 4px rgba(56, 189, 248, 0.28);
+    pointer-events: none;
+    transition: top 0.22s ease, left 0.22s ease, width 0.22s ease, height 0.22s ease;
+  }
+
+  .tour-card {
+    position: fixed;
+    width: min(410px, calc(100vw - 24px));
+    background: #ffffff;
+    color: var(--ink);
+    border: 1px solid #e4e4e7;
+    border-radius: 16px;
+    padding: 18px 20px 16px;
+    box-shadow: 0 20px 50px rgba(15, 23, 42, 0.28);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: top 0.22s ease, left 0.22s ease;
+    z-index: 10000;
+  }
+
+  .tour-card.centered {
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%);
+    width: min(450px, calc(100vw - 24px));
+  }
+
+  .tour-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .tour-step-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 9px;
+    border-radius: 999px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    font-weight: 800;
+  }
+
+  .tour-head-right {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .tour-lang-btn {
+    padding: 2px 7px;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 6px;
+    border: 1px solid #e4e4e7;
+    background: #fafafa;
+    color: var(--muted);
+  }
+
+  .tour-lang-btn.active {
+    background: #171717;
+    color: #fff;
+    border-color: #171717;
+  }
+
+  .tour-close-btn {
+    padding: 2px 7px;
+    font-size: 13px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--muted);
+  }
+
+  .tour-close-btn:hover {
+    background: #f4f4f5;
+    color: var(--ink);
+  }
+
+  .tour-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 800;
+    line-height: 1.35;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+
+  .tour-body {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #3f3f46;
+  }
+
+  .tour-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 2px;
+  }
+
+  .tour-chip {
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 4px 9px;
+    border-radius: 8px;
+    background: #f4f4f5;
+    color: #27272a;
+    border: 1px solid #e4e4e7;
+  }
+
+  .tour-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 4px;
+    padding-top: 10px;
+    border-top: 1px solid #f4f4f5;
+  }
+
+  .tour-dots {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .tour-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #d4d4d8;
+    transition: width 0.18s ease, background 0.18s ease;
+  }
+
+  .tour-dot.active {
+    width: 18px;
+    border-radius: 999px;
+    background: #171717;
+  }
+
+  .tour-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .tour-actions button {
+    padding: 6px 12px;
+    font-size: 12.5px;
+  }
+
+  .tour-skip-btn {
+    border-color: transparent;
+    background: transparent;
+    color: var(--muted);
+  }
+
+  .tour-skip-btn:hover {
+    background: #f4f4f5;
+    color: var(--ink);
+  }
+
   .hidden { display: none !important; }
 
   @page { margin: 12mm; }
@@ -1090,7 +1279,7 @@
   @media print {
     body { background: #fff; padding: 0; }
     .app { max-width: none; }
-    .toolbar, .status-strip, .audio-bar, .cal-bar, .editor-bar, .meta-share-btn, .results-grid, .guide-card, .sheet-footer, .touch-dock { display: none !important; }
+    .toolbar, .status-strip, .audio-bar, .cal-bar, .editor-bar, .meta-share-btn, .results-grid, .guide-card, .sheet-footer, .touch-dock, .tour-overlay { display: none !important; }
     .sheet-paper { border: none; box-shadow: none; padding: 0; }
   }
 </style>
@@ -1168,6 +1357,7 @@
         <button id="btnTouchPad" title="모바일 투핑거 터치 패드">👆 패드</button>
         <button id="btnSyncCal" title="타이밍 지연 보정 (블루투스 이어폰 / 오디오 인터페이스)">⏱ 보정</button>
         <button id="btnPrint" title="PDF 저장 / 인쇄">🖨 PDF</button>
+        <button id="btnTour" title="처음 사용자를 위한 단계별 튜토리얼">🧭 튜토리얼</button>
         <button id="btnGuide" title="사용 방법 및 판정 기준 설명 열기">❓ 설명</button>
         <select id="langSelect" title="Language / 언어 / 言語">
           <option value="ko">🌐 Language | 한국어</option>
@@ -1375,6 +1565,34 @@
   </div>
 </div>
 
+<!-- Interactive First-Visit Onboarding Spotlight Tour -->
+<div id="tourOverlay" class="tour-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="tourTitle">
+  <div id="tourBackdrop" class="tour-backdrop"></div>
+  <div id="tourSpotlight" class="tour-spotlight hidden"></div>
+  <div id="tourCard" class="tour-card centered">
+    <div class="tour-head">
+      <span id="tourStepBadge" class="tour-step-badge">1 / 6</span>
+      <div class="tour-head-right">
+        <button type="button" class="tour-lang-btn" data-tour-lang="ko">KO</button>
+        <button type="button" class="tour-lang-btn" data-tour-lang="en">EN</button>
+        <button type="button" class="tour-lang-btn" data-tour-lang="ja">JA</button>
+        <button id="btnTourClose" type="button" class="tour-close-btn" aria-label="Close">✕</button>
+      </div>
+    </div>
+    <h2 id="tourTitle" class="tour-title"></h2>
+    <p id="tourBody" class="tour-body"></p>
+    <div id="tourChips" class="tour-chips hidden"></div>
+    <div class="tour-footer">
+      <div id="tourDots" class="tour-dots"></div>
+      <div class="tour-actions">
+        <button id="btnTourSkip" type="button" class="tour-skip-btn">건너뛰기</button>
+        <button id="btnTourPrev" type="button">이전</button>
+        <button id="btnTourNext" type="button" class="primary">다음 →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 (() => {
   "use strict";
@@ -1426,7 +1644,45 @@
       btnPad: "👆 패드",
       btnPrint: "🖨 PDF",
       btnSyncCal: "⏱ 보정",
+      btnTour: "🧭 튜토리얼",
       btnGuide: "❓ 설명",
+      tourPrev: "이전",
+      tourNext: "다음 →",
+      tourSkip: "건너뛰기",
+      tourDone: "🎸 바로 시작!",
+      tourWelcomeChips: ["⌨️ 키보드 (Space/J/K)", "📱 모바일 터치 패드", "🎸 실제 베이스 (오디오 입력)"],
+      tourSteps: [
+        {
+          target: null,
+          title: "🎸 Rhythm Sight-Reader에 오신 걸 환영합니다!",
+          body: "설치 없이 브라우저에서 바로 연습하는 무료 베이스 · 리듬 초견 트레이너입니다. 30초 만에 핵심 기능을 한눈에 둘러볼까요? (언제든 상단 🧭 튜토리얼로 다시 볼 수 있어요.)",
+        },
+        {
+          target: ".sheet-paper",
+          title: "🎼 악보를 읽고 바로 연주해 보세요",
+          body: "▶ 시작(Enter 또는 Space)을 누르면 1마디 카운트인 후 연주가 시작됩니다. 음표에 맞춰 Space / J / K(또는 모바일 터치 패드 · 실제 베이스)를 치고, 쉼표는 조용히 넘기세요. ♪ 정답 듣기(P)로 먼저 리듬을 들어볼 수도 있습니다.",
+        },
+        {
+          target: ".status-strip",
+          title: "🟢 메트로놈 LED & 실시간 타이밍 판정",
+          body: "1박은 초록, 나머지 박은 노랑 LED가 깜빡입니다. ±35ms 이내는 초록(★ TIGHT), ±80ms는 노랑, 그 이상은 빨강으로 채점됩니다. 실전 감각을 키우려면 🔊 메트로놈 OFF나 채점: 완료후도 활용해 보세요!",
+        },
+        {
+          target: "#levelSelect",
+          title: "🎚️ 6단계 난이도 & 3연음 · 스타카토 · 고스트",
+          body: "Lv1 정박 기초부터 Lv6 16분 펑크까지 단계별로 연습하고, 3연음 · • 스타카토(짧게 끊기) · × 고스트 노트(F/D 키)와 4/4·3/4·2/4·5/4·6/8 박자표를 자유롭게 조합할 수 있습니다.",
+        },
+        {
+          target: "#btnInputMode",
+          title: "🎤 키보드 · 터치 패드 · 실제 베이스 연결",
+          body: "입력: KEY / AUDIO / BOTH 전환으로 오디오 인터페이스나 마이크를 연결해 실제 베이스 연주(어택·서스테인·쉼표 뮤트)를 채점할 수 있습니다. 블루투스 이어폰 등 지연이 느껴지면 ⏱ 보정(16박)으로 간편하게 맞추세요.",
+        },
+        {
+          target: "#btnDaily",
+          title: "🏆 데일리 챌린지 · 에디터 · 점수 자랑하기",
+          body: "매일 같은 악보로 도전하는 🏆 데일리(4/4)와 🔥 데일리+(변박), 직접 악보를 찍어 링크로 공유하는 ✏️ 에디터까지! 연주를 마치면 S+~C 랭크와 🖼️ 이미지 자랑 카드로 기록을 공유해 보세요.",
+        },
+      ],
       btnDaily: "🏆 데일리",
       btnDailyPlus: "🔥 데일리+",
       btnEditor: "✏️ 에디터",
@@ -1624,7 +1880,45 @@
       btnPad: "👆 Pads",
       btnPrint: "🖨 PDF",
       btnSyncCal: "⏱ Sync",
+      btnTour: "🧭 Tour",
       btnGuide: "❓ Guide",
+      tourPrev: "Back",
+      tourNext: "Next →",
+      tourSkip: "Skip",
+      tourDone: "🎸 Start Practicing!",
+      tourWelcomeChips: ["⌨️ Keyboard (Space/J/K)", "📱 Mobile Touch Pads", "🎸 Real Bass (Audio Input)"],
+      tourSteps: [
+        {
+          target: null,
+          title: "🎸 Welcome to Rhythm Sight-Reader!",
+          body: "A free browser-based bass & rhythm sight-reading trainer with zero install. Take a quick 30-second tour of the core features! (You can replay it anytime from 🧭 Tour.)",
+        },
+        {
+          target: ".sheet-paper",
+          title: "🎼 Read & Play Right Away",
+          body: "Press ▶ Start (Enter or Space) for a 1-bar count-in, then tap Space / J / K (or mobile pads / real bass) on every note while staying silent on rests. Hit ♪ Demo (P) anytime to hear the exact rhythm first.",
+        },
+        {
+          target: ".status-strip",
+          title: "🟢 Metronome LED & Millisecond Grading",
+          body: "Beat 1 flashes green; other beats flash amber. Within ±35ms scores green (★ TIGHT), ±80ms amber, and beyond red. Try 🔊 Metronome OFF or Grade: End when you're ready for a real sight-reading test!",
+        },
+        {
+          target: "#levelSelect",
+          title: "🎚️ 6 Rhythm Levels + Triplets · Staccato · Ghost",
+          body: "Progress from Lv1 Quarter Basics to Lv6 16th Funk, and mix in Triplets, • Staccato (short 50% release), × Ghost Notes (F/D keys), and 4/4 · 3/4 · 2/4 · 5/4 · 6/8 meters.",
+        },
+        {
+          target: "#btnInputMode",
+          title: "🎤 Keyboard, Touch Pads, or Real Bass",
+          body: "Switch Input: KEY / AUDIO / BOTH to plug in your audio interface or mic and grade real bass attacks, sustain length, and rest mutes. Notice latency on Bluetooth headphones? Use ⏱ Sync (16 beats) to calibrate.",
+        },
+        {
+          target: "#btnDaily",
+          title: "🏆 Daily Challenges, Custom Editor & Score Cards",
+          body: "Tackle today's 🏆 Daily (4/4) or 🔥 Daily+ (odd meters), build & share custom grooves in ✏️ Editor, and brag about your S+–C rank with a downloadable 🖼️ Share Card PNG!",
+        },
+      ],
       btnDaily: "🏆 Daily",
       btnDailyPlus: "🔥 Daily+",
       btnEditor: "✏️ Editor",
@@ -1822,7 +2116,45 @@
       btnPad: "👆 パッド",
       btnPrint: "🖨 PDF",
       btnSyncCal: "⏱ 補正",
+      btnTour: "🧭 ツアー",
       btnGuide: "❓ 使い方",
+      tourPrev: "戻る",
+      tourNext: "次へ →",
+      tourSkip: "スキップ",
+      tourDone: "🎸 練習を始める!",
+      tourWelcomeChips: ["⌨️ キーボード (Space/J/K)", "📱 スマホタッチパッド", "🎸 生ベース (オーディオ入力)"],
+      tourSteps: [
+        {
+          target: null,
+          title: "🎸 Rhythm Sight-Reader へようこそ！",
+          body: "インストール不要で今すぐ練習できるベース・リズム初見トレーナーです。30秒で主な機能をサクッとご案内します。（いつでも上部の 🧭 ツアーから見直せます）",
+        },
+        {
+          target: ".sheet-paper",
+          title: "🎼 譜面を読んでそのまま演奏",
+          body: "▶ スタート（Enter / Space）で1小節カウントイン後に演奏開始。音符に合わせて Space / J / K（またはタッチパッド・生ベース）を弾き、休符はしっかりミュート！♪ 正解を聴く（P）で先にリズムを確認できます。",
+        },
+        {
+          target: ".status-strip",
+          title: "🟢 メトロノームLED＆リアルタイム判定",
+          body: "1拍目は緑、他の拍は黄色LEDが光ります。±35ms以内は緑(★ TIGHT)、±80msは黄、それ以上は赤で判定。実戦練習には 🔊 メトロノームOFF や 採点: 終了後 もおすすめです。",
+        },
+        {
+          target: "#levelSelect",
+          title: "🎚️ 6段階レベル＆3連符・スタッカート・ゴースト",
+          body: "Lv1の基礎からLv6の16分ファンクまで段階的に上達でき、3連符・• スタッカート・× ゴーストノート（F/Dキー）や 4/4・3/4・2/4・5/4・6/8 拍子も自由に組み合わせられます。",
+        },
+        {
+          target: "#btnInputMode",
+          title: "🎤 キーボード・パッド・生ベース接続",
+          body: "入力: KEY / AUDIO / BOTH 切替でオーディオI/Fやマイクから生ベースのアタック・サステイン・休符ミュートまで採点可能。Bluetooth等でズレを感じたら ⏱ 補正（16拍）で簡単に調整できます。",
+        },
+        {
+          target: "#btnDaily",
+          title: "🏆 デイリー挑戦・エディタ・スコアカード共有",
+          body: "毎日共通譜面に挑む 🏆 デイリー(4/4) / 🔥 デイリー+(変拍子) や自作譜面の ✏️ 編集機能を搭載！演奏後は S+〜C ランクと 🖼️ 画像カード で結果をシェアしましょう。",
+        },
+      ],
       btnDaily: "🏆 デイリー",
       btnDailyPlus: "🔥 デイリー+",
       btnEditor: "✏️ 編集",
@@ -5034,7 +5366,9 @@
     if (typeof renderEditorUi === "function" && !document.getElementById("editorBar").classList.contains("hidden")) {
       renderEditorUi();
     }
+    document.getElementById("btnTour").textContent = t("btnTour");
     document.getElementById("btnGuide").textContent = t("btnGuide");
+    if (typeof tourState !== "undefined" && tourState.open) renderTourStep(false);
     document.getElementById("lblCalTitle").textContent = t("calTitle");
     document.getElementById("btnCalRun").textContent = app.state === "CAL" ? t("calStopBtn") : t("calStartBtn");
     document.getElementById("btnCalReset").textContent = t("calResetBtn");
@@ -5572,6 +5906,19 @@
 
   window.addEventListener("keydown", (e) => {
     if (e.repeat) return;
+    if (typeof tourState !== "undefined" && tourState.open) {
+      if (e.code === "Escape") {
+        e.preventDefault();
+        closeTour(true);
+      } else if (e.code === "ArrowRight" || e.code === "Enter" || e.code === "NumpadEnter" || e.code === "Space") {
+        e.preventDefault();
+        nextTourStep();
+      } else if (e.code === "ArrowLeft") {
+        e.preventDefault();
+        prevTourStep();
+      }
+      return;
+    }
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.tagName === "SELECT")) return;
 
@@ -6449,6 +6796,181 @@
     resetTargets();
   }
 
+  // -------------------------------------------------------------------------
+  // First-Visit Interactive Onboarding Spotlight Tour
+  // -------------------------------------------------------------------------
+  const TOUR_STORAGE_KEY = "rhythm_practice_tour_v1";
+  const tourState = { open: false, idx: 0 };
+
+  function markTourSeen() {
+    try { localStorage.setItem(TOUR_STORAGE_KEY, "1"); } catch (_) {}
+  }
+
+  function hasSeenTour() {
+    try { return localStorage.getItem(TOUR_STORAGE_KEY) === "1"; } catch (_) { return false; }
+  }
+
+  function positionTourElements() {
+    if (!tourState.open) return;
+    const steps = t("tourSteps") || [];
+    const step = steps[tourState.idx];
+    const backdrop = document.getElementById("tourBackdrop");
+    const spot = document.getElementById("tourSpotlight");
+    const card = document.getElementById("tourCard");
+    if (!step) return;
+
+    const targetEl = step.target ? document.querySelector(step.target) : null;
+    if (!targetEl) {
+      backdrop.classList.remove("hidden");
+      spot.classList.add("hidden");
+      card.classList.add("centered");
+      card.style.top = "";
+      card.style.left = "";
+      return;
+    }
+
+    backdrop.classList.add("hidden");
+    spot.classList.remove("hidden");
+    card.classList.remove("centered");
+
+    const rect = targetEl.getBoundingClientRect();
+    const pad = 6;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const sx = Math.max(4, rect.left - pad);
+    const sy = Math.max(4, rect.top - pad);
+    const sw = Math.min(vw - sx - 4, rect.width + pad * 2);
+    const sh = Math.min(vh - sy - 4, rect.height + pad * 2);
+    spot.style.left = `${sx}px`;
+    spot.style.top = `${sy}px`;
+    spot.style.width = `${Math.max(24, sw)}px`;
+    spot.style.height = `${Math.max(24, sh)}px`;
+
+    // Measure card and place cleanly below or above spotlight without clipping
+    const cardRect = card.getBoundingClientRect();
+    const cw = cardRect.width || Math.min(410, vw - 24);
+    const ch = cardRect.height || 210;
+    const gap = 14;
+    let cx = sx + sw / 2 - cw / 2;
+    cx = Math.max(12, Math.min(vw - cw - 12, cx));
+
+    let cy;
+    const spaceBelow = vh - (sy + sh) - gap;
+    const spaceAbove = sy - gap;
+    if (spaceBelow >= ch + 12) {
+      cy = sy + sh + gap;
+    } else if (spaceAbove >= ch + 12) {
+      cy = sy - ch - gap;
+    } else {
+      // Narrow screen or tall target (e.g. sheet paper): dock near bottom or top away from spotlight center
+      const spotCenterY = sy + sh / 2;
+      cy = spotCenterY > vh * 0.55 ? 12 : Math.max(12, vh - ch - 12);
+    }
+    cy = Math.max(12, Math.min(vh - ch - 12, cy));
+    card.style.left = `${cx}px`;
+    card.style.top = `${cy}px`;
+  }
+
+  function renderTourStep(shouldScroll = true) {
+    const steps = t("tourSteps") || [];
+    if (!steps.length) return;
+    tourState.idx = Math.max(0, Math.min(steps.length - 1, tourState.idx));
+    const step = steps[tourState.idx];
+
+    document.getElementById("tourStepBadge").textContent = `${tourState.idx + 1} / ${steps.length}`;
+    document.getElementById("tourTitle").textContent = step.title;
+    document.getElementById("tourBody").textContent = step.body;
+
+    const chipsEl = document.getElementById("tourChips");
+    if (tourState.idx === 0) {
+      const chips = t("tourWelcomeChips") || [];
+      chipsEl.innerHTML = chips.map(ch => `<span class="tour-chip">${ch}</span>`).join("");
+      chipsEl.classList.remove("hidden");
+    } else {
+      chipsEl.innerHTML = "";
+      chipsEl.classList.add("hidden");
+    }
+
+    const dotsEl = document.getElementById("tourDots");
+    dotsEl.innerHTML = steps.map((_, i) => `<span class="tour-dot${i === tourState.idx ? " active" : ""}"></span>`).join("");
+
+    document.querySelectorAll(".tour-lang-btn").forEach(btn => {
+      btn.classList.toggle("active", btn.dataset.tourLang === curLang);
+    });
+
+    const btnSkip = document.getElementById("btnTourSkip");
+    const btnPrev = document.getElementById("btnTourPrev");
+    const btnNext = document.getElementById("btnTourNext");
+    btnSkip.textContent = t("tourSkip");
+    btnPrev.textContent = t("tourPrev");
+    btnNext.textContent = tourState.idx === steps.length - 1 ? t("tourDone") : t("tourNext");
+    btnSkip.classList.toggle("hidden", tourState.idx === steps.length - 1);
+    btnPrev.classList.toggle("hidden", tourState.idx === 0);
+
+    if (shouldScroll && step.target) {
+      const targetEl = document.querySelector(step.target);
+      if (targetEl) {
+        const r = targetEl.getBoundingClientRect();
+        if (r.top < 16 || r.bottom > window.innerHeight - 16) {
+          targetEl.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }
+    }
+    requestAnimationFrame(() => {
+      positionTourElements();
+      window.setTimeout(positionTourElements, 260);
+    });
+  }
+
+  function openTour(startIdx = 0) {
+    if (app.state === "COUNTIN" || app.state === "PLAY" || app.state === "DEMO") {
+      stopRun();
+    }
+    tourState.open = true;
+    tourState.idx = startIdx;
+    document.getElementById("tourOverlay").classList.remove("hidden");
+    renderTourStep(true);
+  }
+
+  function closeTour(persist = true) {
+    tourState.open = false;
+    document.getElementById("tourOverlay").classList.add("hidden");
+    if (persist) markTourSeen();
+  }
+
+  function nextTourStep() {
+    const steps = t("tourSteps") || [];
+    if (tourState.idx >= steps.length - 1) {
+      closeTour(true);
+    } else {
+      tourState.idx++;
+      renderTourStep(true);
+    }
+  }
+
+  function prevTourStep() {
+    if (tourState.idx > 0) {
+      tourState.idx--;
+      renderTourStep(true);
+    }
+  }
+
+  document.getElementById("btnTour").addEventListener("click", (e) => {
+    e.currentTarget.blur();
+    openTour(0);
+  });
+  document.getElementById("btnTourClose").addEventListener("click", () => closeTour(true));
+  document.getElementById("btnTourSkip").addEventListener("click", () => closeTour(true));
+  document.getElementById("btnTourPrev").addEventListener("click", () => prevTourStep());
+  document.getElementById("btnTourNext").addEventListener("click", () => nextTourStep());
+  document.querySelectorAll(".tour-lang-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      applyLanguage(btn.dataset.tourLang);
+    });
+  });
+  window.addEventListener("resize", () => { if (tourState.open) positionTourElements(); });
+  window.addEventListener("scroll", () => { if (tourState.open) positionTourElements(); }, { passive: true });
+
   // Boot
   bootInitialScore();
   syncGain(2);
@@ -6466,6 +6988,9 @@
   drawDistribution([], 0, 0, 0, 0, 0);
   applyLanguage(curLang);
   requestAnimationFrame(frame);
+  if (!hasSeenTour()) {
+    window.setTimeout(() => openTour(0), 260);
+  }
 })();
 </script>
 </body>
