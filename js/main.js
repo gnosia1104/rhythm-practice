@@ -2088,7 +2088,8 @@ function triggerPitchPianoKey(keySpec, fromPointer = false) {
     handlePitchFreeStep(effectiveMidi, fromPointer ? "PAD" : "KEY");
   } else {
     const lbl = app.pitchRelative ? DEGREE_NAMES[((keySpec.midi % 12) + 12) % 12] : keySpec.note;
-    setHitBadge(`[KEY] ${lbl} (${keySpec.kbd})`, "tight");
+    const srcTag = fromPointer ? "PAD" : "KEY";
+    setHitBadge(keySpec.kbd ? `[${srcTag}] ${lbl} (${keySpec.kbd})` : `[${srcTag}] ${lbl}`, "tight");
   }
 }
 
@@ -2121,9 +2122,33 @@ function handleMidiNoteOn(midiNote) {
   }
 }
 
+const DOCK_WHITE_KEYS = [
+  { code: "DockC",  midi: 36, note: "C", cAnchor: true },
+  { code: "DockD",  midi: 38, note: "D" },
+  { code: "DockE",  midi: 40, note: "E" },
+  { code: "DockF",  midi: 41, note: "F" },
+  { code: "DockG",  midi: 43, note: "G" },
+  { code: "DockA",  midi: 45, note: "A" },
+  { code: "DockB",  midi: 47, note: "B" },
+  { code: "DockC2", midi: 48, note: "C", cAnchor: true },
+];
+const DOCK_BLACK_KEYS = [
+  { code: "DockDb", midi: 37, note: "D♭", leftPct: 8.2 },
+  { code: "DockEb", midi: 39, note: "E♭", leftPct: 20.7 },
+  { code: "DockGb", midi: 42, note: "G♭", leftPct: 45.7 },
+  { code: "DockAb", midi: 44, note: "A♭", leftPct: 58.2 },
+  { code: "DockBb", midi: 46, note: "B♭", leftPct: 70.7 },
+];
+
 function syncPitchPianoLabels() {
   for (const k of [...PITCH_WHITE_KEYS, ...PITCH_BLACK_KEYS]) {
     const node = document.querySelector(`#pitchPiano [data-code="${k.code}"] .pk-note`);
+    if (node) {
+      node.textContent = app.pitchRelative ? DEGREE_NAMES[((k.midi % 12) + 12) % 12] : k.note;
+    }
+  }
+  for (const k of [...DOCK_WHITE_KEYS, ...DOCK_BLACK_KEYS]) {
+    const node = document.querySelector(`#dockPitchPiano [data-code="${k.code}"] .pk-note`);
     if (node) {
       node.textContent = app.pitchRelative ? DEGREE_NAMES[((k.midi % 12) + 12) % 12] : k.note;
     }
@@ -2132,32 +2157,66 @@ function syncPitchPianoLabels() {
 
 function buildPitchPianoUi() {
   const wrap = document.getElementById("pitchPiano");
-  if (!wrap || wrap.childElementCount > 0) return;
-  for (const k of PITCH_WHITE_KEYS) {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = k.cAnchor ? "pk-white c-anchor" : "pk-white";
-    btn.dataset.code = k.code;
-    btn.innerHTML = `<span class="pk-note">${k.note}</span><span class="pk-kbd">${k.kbd}</span>`;
-    btn.addEventListener("pointerdown", (e) => {
-      e.preventDefault();
-      triggerPitchPianoKey(k, true);
-    });
-    wrap.appendChild(btn);
+  if (wrap && wrap.childElementCount === 0) {
+    for (const k of PITCH_WHITE_KEYS) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = k.cAnchor ? "pk-white c-anchor" : "pk-white";
+      btn.dataset.code = k.code;
+      btn.innerHTML = `<span class="pk-note">${k.note}</span><span class="pk-kbd">${k.kbd}</span>`;
+      btn.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        triggerPitchPianoKey(k, true);
+      });
+      wrap.appendChild(btn);
+    }
+    for (const k of PITCH_BLACK_KEYS) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "pk-black";
+      btn.style.left = `${k.leftPct}%`;
+      btn.dataset.code = k.code;
+      btn.innerHTML = `<span class="pk-note">${k.note}</span><span class="pk-kbd">${k.kbd}</span>`;
+      btn.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        triggerPitchPianoKey(k, true);
+      });
+      wrap.appendChild(btn);
+    }
   }
-  for (const k of PITCH_BLACK_KEYS) {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "pk-black";
-    btn.style.left = `${k.leftPct}%`;
-    btn.dataset.code = k.code;
-    btn.innerHTML = `<span class="pk-note">${k.note}</span><span class="pk-kbd">${k.kbd}</span>`;
-    btn.addEventListener("pointerdown", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      triggerPitchPianoKey(k, true);
-    });
-    wrap.appendChild(btn);
+  const dockWrap = document.getElementById("dockPitchPiano");
+  if (dockWrap && dockWrap.childElementCount === 0) {
+    for (const k of DOCK_WHITE_KEYS) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = k.cAnchor ? "pk-white c-anchor" : "pk-white";
+      btn.dataset.code = k.code;
+      btn.innerHTML = `<span class="pk-note">${k.note}</span>`;
+      btn.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        btn.classList.add("pressed");
+        window.setTimeout(() => btn.classList.remove("pressed"), 140);
+        triggerPitchPianoKey(k, true);
+      });
+      dockWrap.appendChild(btn);
+    }
+    for (const k of DOCK_BLACK_KEYS) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "pk-black";
+      btn.style.left = `${k.leftPct}%`;
+      btn.dataset.code = k.code;
+      btn.innerHTML = `<span class="pk-note">${k.note}</span>`;
+      btn.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        btn.classList.add("pressed");
+        window.setTimeout(() => btn.classList.remove("pressed"), 140);
+        triggerPitchPianoKey(k, true);
+      });
+      dockWrap.appendChild(btn);
+    }
   }
 }
 buildPitchPianoUi();
@@ -2183,6 +2242,10 @@ function syncPitchUi() {
   hintBtn.classList.toggle("active", app.pitchShowHints);
   const pianoEl = document.getElementById("pitchPiano");
   if (pianoEl) pianoEl.classList.toggle("hidden", !app.pitchMode);
+  const dockPadsEl = document.getElementById("dockPads");
+  const dockPianoEl = document.getElementById("dockPitchPiano");
+  if (dockPadsEl) dockPadsEl.classList.toggle("hidden", app.pitchMode);
+  if (dockPianoEl) dockPianoEl.classList.toggle("hidden", !app.pitchMode);
   syncPitchPianoLabels();
   if (typeof syncToolsMenuBadge === "function") syncToolsMenuBadge();
 }

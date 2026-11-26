@@ -1528,6 +1528,39 @@ button.active .beta-tag {
 .pk-white .pk-kbd { color: #475569; }
 .pk-black .pk-kbd { color: #99f6e4; font-size: 9px; }
 
+/* Mobile / Touch Pad Dock 1-Octave Piano (shown in #touchDock when Pitch BETA is ON) */
+.dock-pitch-piano {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+  max-width: 680px;
+  margin: 0 auto;
+  height: 92px;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+.dock-pitch-piano .pk-white {
+  height: 90px;
+  padding-bottom: 8px;
+}
+
+.dock-pitch-piano .pk-white .pk-note {
+  font-size: 13px;
+}
+
+.dock-pitch-piano .pk-black {
+  width: 8.6%;
+  height: 54px;
+  padding-bottom: 6px;
+}
+
+.dock-pitch-piano .pk-black .pk-note {
+  font-size: 11px;
+}
+
 .beat-fade {
   transition: opacity 0.14s ease-out;
 }
