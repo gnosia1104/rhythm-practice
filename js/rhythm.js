@@ -1,5 +1,5 @@
 // Rhythm Patterns, Procedural Phrase Generator, Codecs & Daily Challenge Spec
-export const BAR_OPTIONS = [2, 4, 8, 12, 16, 32];
+export const BAR_OPTIONS = [2, 4, 8, 12, 16, 24, 32];
 
 // -------------------------------------------------------------------------
 // 1. Multi-Beat Rhythm Patterns (12 ticks/beat = 48 ticks/bar, supports 16ths & Triplets)

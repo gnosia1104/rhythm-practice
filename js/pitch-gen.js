@@ -222,53 +222,101 @@ const MINOR_BRIDGE = [
   [[5, "m7"], [5, "m7"], [1, "lyd7"], [7, "dom7b9"]],    // Subdominant tension -> Tritone -> V7b9
 ];
 
-// Build structured Song Form metadata per bar: Verse -> Pre -> Chorus -> Bridge -> Chorus
+// Build authentic 8-bar-section Song Form per bar:
+// - 8B : Verse (8)
+// - 12B: Verse (8) -> Chorus (4)
+// - 16B: Verse (8) -> Chorus (8)
+// - 24B: Verse (8) -> Pre (8) -> Chorus (8)
+// - 32B: Verse (8) -> Pre (8) -> Chorus (8) -> Bridge/Chorus' (8)
 export function buildSongForm(numBars) {
   const plan = [];
-  if (numBars <= 4) {
+  if (numBars <= 8) {
+    // 2, 4, 8 bars: single cohesive Verse section (8 bars = 4+4 period)
     for (let b = 0; b < numBars; b++) {
-      plan.push({ section: "Verse", role: "VERSE", isSectionStart: b === 0, phraseBar: b, phraseLen: numBars, isFinalBar: b === numBars - 1 });
-    }
-    return plan;
-  }
-  if (numBars === 8) {
-    // 8 bars: Verse (1-4) -> Chorus (5-8)
-    for (let b = 0; b < 8; b++) {
-      const isCh = b >= 4;
-      plan.push({ section: isCh ? "Chorus" : "Verse", role: isCh ? "CHORUS" : "VERSE", isSectionStart: b === 0 || b === 4, phraseBar: b % 4, phraseLen: 4, isFinalBar: b === 7 });
+      plan.push({
+        section: "Verse",
+        role: b < 4 ? "VERSE" : "CHORUS_END",
+        isSectionStart: b === 0,
+        phraseBar: b % 4,
+        secBar: b,
+        phraseLen: Math.min(4, numBars),
+        isFinalBar: b === numBars - 1,
+      });
     }
     return plan;
   }
   if (numBars === 12) {
-    // 12 bars: Verse (1-4) -> Pre (5-8) -> Chorus (9-12)
-    const secs = ["Verse", "Pre", "Chorus"];
-    const roles = ["VERSE", "PRE", "CHORUS"];
+    // 12 bars: Verse (1-8) -> Chorus (9-12)
     for (let b = 0; b < 12; b++) {
-      const g = Math.floor(b / 4);
-      plan.push({ section: secs[g], role: roles[g], isSectionStart: (b % 4) === 0, phraseBar: b % 4, phraseLen: 4, isFinalBar: b === 11 });
+      const isCh = b >= 8;
+      plan.push({
+        section: isCh ? "Chorus" : "Verse",
+        role: isCh ? "CHORUS_END" : "VERSE",
+        isSectionStart: b === 0 || b === 8,
+        phraseBar: b % 4,
+        secBar: isCh ? (b - 8) : b,
+        phraseLen: 4,
+        isFinalBar: b === 11,
+      });
     }
     return plan;
   }
   if (numBars === 16) {
-    // 16 bars: Verse (1-4) -> Pre (5-8) -> Chorus (9-12) -> Chorus' (13-16)
-    const secs = ["Verse", "Pre", "Chorus", "Chorus'"];
-    const roles = ["VERSE", "PRE", "CHORUS", "CHORUS_END"];
+    // 16 bars: classic 8+8 -> Verse (1-8) -> Chorus (9-16)
+    const chunkDefs = [
+      { sec: "Verse",  role: "VERSE",      start: true  }, // 1-4
+      { sec: "Verse",  role: "VERSE",      start: false }, // 5-8
+      { sec: "Chorus", role: "CHORUS",     start: true  }, // 9-12
+      { sec: "Chorus", role: "CHORUS_END", start: false }, // 13-16
+    ];
     for (let b = 0; b < 16; b++) {
-      const g = Math.floor(b / 4);
-      plan.push({ section: secs[g], role: roles[g], isSectionStart: (b % 4) === 0, phraseBar: b % 4, phraseLen: 4, isFinalBar: b === 15 });
+      const def = chunkDefs[Math.floor(b / 4)];
+      plan.push({
+        section: def.sec,
+        role: def.role,
+        isSectionStart: (b % 4) === 0 && def.start,
+        phraseBar: b % 4,
+        secBar: b % 8,
+        phraseLen: 4,
+        isFinalBar: b === 15,
+      });
     }
     return plan;
   }
-  // 32 bars: Full Pop-Jazz Song! Verse (1-8) -> Pre (9-12) -> Chorus (13-20) -> Bridge (21-24) -> Chorus (25-32)
+  if (numBars === 24) {
+    // 24 bars: iconic 8+8+8 -> Verse (1-8) -> Pre (9-16) -> Chorus (17-24)
+    const chunkDefs = [
+      { sec: "Verse",  role: "VERSE",      start: true  }, // 1-4
+      { sec: "Verse",  role: "VERSE",      start: false }, // 5-8
+      { sec: "Pre",    role: "PRE",        start: true  }, // 9-12
+      { sec: "Pre",    role: "PRE",        start: false }, // 13-16
+      { sec: "Chorus", role: "CHORUS",     start: true  }, // 17-20
+      { sec: "Chorus", role: "CHORUS_END", start: false }, // 21-24
+    ];
+    for (let b = 0; b < 24; b++) {
+      const def = chunkDefs[Math.floor(b / 4)];
+      plan.push({
+        section: def.sec,
+        role: def.role,
+        isSectionStart: (b % 4) === 0 && def.start,
+        phraseBar: b % 4,
+        secBar: b % 8,
+        phraseLen: 4,
+        isFinalBar: b === 23,
+      });
+    }
+    return plan;
+  }
+  // 32 bars: full 8+8+8+8 Pop-Jazz Song! Verse (1-8) -> Pre (9-16) -> Chorus (17-24) -> Bridge/Chorus' (25-32)
   const chunkDefs = [
     { sec: "Verse",   role: "VERSE",      start: true  }, // 1-4
     { sec: "Verse",   role: "VERSE",      start: false }, // 5-8
     { sec: "Pre",     role: "PRE",        start: true  }, // 9-12
-    { sec: "Chorus",  role: "CHORUS",     start: true  }, // 13-16
-    { sec: "Chorus",  role: "CHORUS_END", start: false }, // 17-20
-    { sec: "Bridge",  role: "BRIDGE",     start: true  }, // 21-24
-    { sec: "Chorus",  role: "CHORUS",     start: true  }, // 25-28
-    { sec: "Chorus",  role: "CHORUS_END", start: false }, // 29-32
+    { sec: "Pre",     role: "PRE",        start: false }, // 13-16
+    { sec: "Chorus",  role: "CHORUS",     start: true  }, // 17-20
+    { sec: "Chorus",  role: "CHORUS_END", start: false }, // 21-24
+    { sec: "Bridge",  role: "BRIDGE",     start: true  }, // 25-28
+    { sec: "Bridge",  role: "CHORUS_END", start: false }, // 29-32
   ];
   for (let b = 0; b < numBars; b++) {
     const c4 = Math.floor(b / 4) % chunkDefs.length;
@@ -278,6 +326,7 @@ export function buildSongForm(numBars) {
       role: def.role,
       isSectionStart: (b % 4) === 0 && def.start,
       phraseBar: b % 4,
+      secBar: b % 8,
       phraseLen: 4,
       isFinalBar: b === numBars - 1,
     });
@@ -508,17 +557,18 @@ export function assignPitchesToPhrase(phrase, keySetting = "Bb", progType = "aut
     const notesLeftInBar = barIds.length - 1 - posInBar;
     const isVeryLastNote = (i === targets.length - 1);
 
-    // Section-Driven Register Arc (Verse low/calm -> Pre rising ramp -> Chorus high/bright hook -> Bridge contrast!):
+    // Section-Driven Register Arc across full 8-bar sections (Verse low -> Pre 8-bar rising ramp -> Chorus high hook -> Bridge):
     let sectionOffset = 0;
+    const sb = (formBar.secBar ?? formBar.phraseBar) % 8;
     if (formBar.role === "VERSE") {
-      sectionOffset = [-3, -2, -1, -2][formBar.phraseBar % 4];
+      sectionOffset = [-3, -2, -1, -2, -2, -1, 0, -1][sb];
     } else if (formBar.role === "PRE") {
-      // Unmistakable rising ramp across the 4 bars of Pre-Chorus!
-      sectionOffset = [-1, +1, +3, +5][formBar.phraseBar % 4];
+      // Gradual 8-bar Pre-Chorus climb building straight into Chorus!
+      sectionOffset = [-2, -1, 0, +1, +1, +2, +4, +5][sb];
     } else if (formBar.role === "CHORUS" || formBar.role === "CHORUS_END") {
-      sectionOffset = [+4, +5, +4, formBar.isFinalBar ? 0 : +2][formBar.phraseBar % 4];
+      sectionOffset = [+4, +5, +4, +3, +4, +5, +3, formBar.isFinalBar ? 0 : +2][sb];
     } else if (formBar.role === "BRIDGE") {
-      sectionOffset = [+2, +3, +1, +3][formBar.phraseBar % 4];
+      sectionOffset = [+2, +3, +1, +2, +3, +4, +2, +1][sb];
     }
     const barCenterMidi = Math.max(sweetLo, Math.min(sweetHi, centerMidi + sectionOffset));
     const isReturningChorus = (formBar.role === "CHORUS" || formBar.role === "CHORUS_END") && firstChorusStart >= 0 && b >= firstChorusStart + 4;
