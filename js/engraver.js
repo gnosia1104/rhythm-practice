@@ -349,21 +349,26 @@ export function renderScore(svg, phrase) {
         }));
       }
 
-      // Jazz chord symbol + Real Book Rehearsal Section box ([A], [A'], [B], [A'']) when Pitch BETA is active
+      // Jazz-Pop Song Form Rehearsal Badge (Verse / Pre / Chorus / Bridge) when Pitch BETA is active
       const secLbl = (hasPitch && phrase.pitchMeta.sections) ? phrase.pitchMeta.sections[bIdx] : null;
       let secBoxW = 0;
       if (secLbl) {
-        secBoxW = secLbl.length >= 3 ? 25 : (secLbl.length === 2 ? 20 : 16);
+        const isChorus = secLbl.startsWith("Chorus");
+        const isPre = secLbl === "Pre";
+        const isBridge = secLbl === "Bridge";
+        const bgCol = isChorus ? "#ffe4e6" : (isPre ? "#fef3c7" : (isBridge ? "#f3e8ff" : "#f0fdfa"));
+        const bdCol = isChorus ? "#e11d48" : (isPre ? "#d97706" : (isBridge ? "#7c3aed" : "#0d9488"));
+        const txCol = isChorus ? "#be123c" : (isPre ? "#b45309" : (isBridge ? "#6d28d9" : "#0f766e"));
+        secBoxW = Math.max(24, secLbl.length * 6.5 + 10);
         g.appendChild(el("rect", {
-          x: barX0 + 1, y: staffTop - 61, width: secBoxW, height: 15, rx: 3,
-          fill: secLbl === "B" ? "#fef3c7" : "#f0fdfa",
-          stroke: secLbl === "B" ? "#d97706" : "#0d9488", "stroke-width": 1.15
+          x: barX0 + 1, y: staffTop - 61, width: secBoxW, height: 15, rx: 3.5,
+          fill: bgCol, stroke: bdCol, "stroke-width": 1.15
         }));
         g.appendChild(el("text", {
           x: barX0 + 1 + secBoxW / 2, y: staffTop - 50,
           "font-family": "ui-sans-serif, system-ui, sans-serif",
-          "font-size": 10, "font-weight": 800,
-          fill: secLbl === "B" ? "#b45309" : "#0f766e", "text-anchor": "middle"
+          "font-size": 9.8, "font-weight": 800,
+          fill: txCol, "text-anchor": "middle"
         }, secLbl));
       }
       // Subtle measure number (shifts cleanly right of Rehearsal Section box when present)
