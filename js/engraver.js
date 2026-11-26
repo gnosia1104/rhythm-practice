@@ -257,7 +257,9 @@ export function renderScore(svg, phrase) {
 
   // Map target & rest feedback by (bar, beat, slot)
   const fbMap = new Map();
-  for (const tgt of phrase.targets) {
+  for (let ti = 0; ti < phrase.targets.length; ti++) {
+    const tgt = phrase.targets[ti];
+    tgt._idx = ti;
     fbMap.set(`${tgt.bar}:${tgt.beat}:${tgt.slotInBeat}`, tgt);
   }
   const restFbMap = new Map();
@@ -395,11 +397,20 @@ export function renderScore(svg, phrase) {
             const ny = p ? (midY - p.staffPos * 5) : midY;
             if (ny < beatMinY) beatMinY = ny;
 
-            // Check if pitch was played wrong (AUDIO Pitch BETA) to highlight notehead subtly
+            // Check if pitch was played wrong (AUDIO/KEY/MIDI Pitch BETA) or active in Free-Tempo mode
             const tgtMatch = fbMap.get(`${bIdx}:${bt}:${ev.slot}`);
-            const noteColor = (hasPitch && !hideFeedback && tgtMatch && tgtMatch.hit && tgtMatch.pitchOk === false)
+            const isFreeActive = hasPitch && app.pitchFreeMode && !ev.tiedIn && tgtMatch && (tgtMatch._idx === app.pitchFreeIdx);
+            if (isFreeActive) {
+              // Crisp teal spotlight halo around the active note waiting for user input in Free-Tempo mode
+              beatG.appendChild(el("circle", {
+                cx: nx, cy: ny, r: 11.5,
+                fill: "rgba(20, 184, 166, 0.16)",
+                stroke: "#0d9488", "stroke-width": 1.8
+              }));
+            }
+            const noteColor = (hasPitch && !hideFeedback && tgtMatch && tgtMatch.pitchOk === false)
               ? "#dc2626"
-              : "#111";
+              : (hasPitch && app.pitchFreeMode && tgtMatch && tgtMatch.pitchOk === true ? "#16a34a" : "#111");
 
             if (p) {
               drawLedgerLines(beatG, nx, midY, p.staffPos);
@@ -624,13 +635,21 @@ export function renderScore(svg, phrase) {
           const nx = slotX(bt, ev.slot);
           const fbY = fbBaseY;
           let sym = "", color = "";
-          if (tgt.hit && tgt.errMs !== null) {
+          if (hasPitch && app.pitchFreeMode && tgt.pitchOk !== null) {
+            if (tgt.pitchOk === true) {
+              sym = tgt.hadWrongTry ? "✓" : "★";
+              color = tgt.hadWrongTry ? "#d97706" : "#16a34a";
+            } else {
+              sym = "×";
+              color = "#dc2626";
+            }
+          } else if (tgt.hit && tgt.errMs !== null) {
             const tw = getTimingThresholds(app.bpm);
             const ae = Math.abs(tgt.errMs);
             if (ae <= tw.tight) { sym = "★"; color = "#16a34a"; }
             else if (ae <= tw.ok) { sym = tgt.errMs > 0 ? "+" : "−"; color = "#d97706"; }
             else { sym = tgt.errMs > 0 ? ">" : "<"; color = "#dc2626"; }
-            // In Pitch BETA (AUDIO), if pitch was wrong, override color to crimson and show played note tag
+            // In Pitch BETA (AUDIO/KEY/MIDI), if pitch was wrong, override color to crimson and show played note tag
             if (hasPitch && tgt.pitchOk === false) {
               color = "#dc2626";
             }
@@ -656,7 +675,7 @@ export function renderScore(svg, phrase) {
             }
             g.appendChild(tNode);
           }
-          if (hasPitch && tgt.hit && tgt.pitchOk === false && tgt.detectedPitch) {
+          if (hasPitch && tgt.pitchOk === false && tgt.detectedPitch) {
             g.appendChild(el("text", {
               x: nx, y: fbY + 11, fill: "#dc2626",
               "font-size": 9, "font-weight": 800, "text-anchor": "middle",

@@ -22,9 +22,12 @@ import {
   closeSustainTarget, schedulePitchCheck,
 } from "./audio-in.js";
 import {
-  JAZZ_KEYS, midiToFreq, assignPitchesToPhrase, clearPitchesFromPhrase,
+  JAZZ_KEYS, FLAT_PC_NAMES, midiToFreq, assignPitchesToPhrase, clearPitchesFromPhrase,
 } from "./pitch-gen.js";
 import { comparePitchClass } from "./pitch-detect.js";
+import {
+  midiIn, registerMidiCallbacks, startMidiInput, stopMidiInput,
+} from "./midi-in.js";
 import {
   clearShareQueryUrl, buildShareUrl, copyToClipboard, flashBtnText,
   buildResultCardText, renderScoreCardPngBlob,
@@ -77,8 +80,11 @@ function resetTargets() {
     tgt.pitchOk = null;
     tgt.detectedPitch = null;
     tgt.pitchCents = null;
+    tgt.hadWrongTry = false;
   }
   audioIn.pendingPitchChecks = [];
+  app.pitchFreeIdx = findNextPitchFreeIdx(0);
+  app.pitchFreeMistakes = 0;
   for (const rst of (app.phrase.rests || [])) {
     rst.timeSec = countIn + rst.globalSlot * tickSec;
     rst.endSec = rst.timeSec + rst.durSlots * tickSec;
@@ -415,7 +421,7 @@ function handleHit(hitAudioT, source, hitKind = "NORMAL", keyCode = null, played
     }
   }
 
-  const src = source === "AUDIO" ? "AUD" : (source === "PAD" ? "PAD" : "KEY");
+  const src = source === "AUDIO" ? "AUD" : (source === "MIDI" ? "MIDI" : (source === "PAD" ? "PAD" : "KEY"));
   if (best) {
     // Close any previously sustaining audio or keyboard staccato note at this new attack
     if (app.activeSustainTgt && !app.activeSustainTgt.sustainDone) {
@@ -913,6 +919,7 @@ function updateMeta() {
 
   document.getElementById("btnInKey").classList.toggle("active", app.keyOn);
   document.getElementById("btnInAudio").classList.toggle("active", app.audioOn);
+  document.getElementById("btnInMidi").classList.toggle("active", app.midiOn);
   document.getElementById("btnTouchPad").classList.toggle("active", app.showTouchDock);
   document.getElementById("audioBar").classList.toggle("hidden", !app.audioOn);
 
@@ -944,6 +951,7 @@ function applyLanguage(lang) {
   });
   document.getElementById("btnInKey").textContent = t("btnInKey");
   document.getElementById("btnInAudio").textContent = t("btnInAudio");
+  document.getElementById("btnInMidi").textContent = t("btnInMidi");
   document.getElementById("btnTouchPad").textContent = t("btnPad");
   document.getElementById("lblClickVol").textContent = t("lblClickVol");
   document.getElementById("btnPrint").textContent = t("btnPrint");
@@ -1393,6 +1401,23 @@ document.getElementById("btnInKey").addEventListener("click", (e) => {
 document.getElementById("btnInAudio").addEventListener("click", (e) => {
   e.currentTarget.blur();
   applyInputToggles(app.keyOn, !app.audioOn, app.showTouchDock);
+});
+document.getElementById("btnInMidi").addEventListener("click", async (e) => {
+  e.currentTarget.blur();
+  if (app.midiOn) {
+    stopMidiInput();
+    updateMeta();
+    return;
+  }
+  const res = await startMidiInput();
+  if (!res.ok) {
+    setHitBadge(res.reason === "unsupported" ? t("midiUnsupported") : `MIDI: ${res.reason}`, "err");
+  } else if (res.devices.length) {
+    setHitBadge(t("midiConnected", res.devices[0]), "tight");
+  } else {
+    setHitBadge(t("midiNoDevice"), "warn");
+  }
+  updateMeta();
 });
 document.getElementById("btnPrint").addEventListener("click", () => window.print());
 
@@ -1910,32 +1935,93 @@ document.getElementById("btnDrillReset").addEventListener("click", (e) => {
 
 
 // -------------------------------------------------------------------------
-// Pitch Sight-Reading BETA Controls (Flat-Key Jazz Harmony + QWERTY Piano + Audio)
+// Pitch Sight-Reading BETA Controls (Flat-Key Jazz Harmony + e4r5ty7u8i9op Piano + Free-Tempo + MIDI + Audio)
 // -------------------------------------------------------------------------
+// Shifted ergonomic DAW layout starting from E = C (e 4 r 5 t y 7 u 8 i 9 o p),
+// plus low A-Bb-B (q 2 w) on the left for natural leading tones!
 const PITCH_WHITE_KEYS = [
-  { code: "KeyQ", kbd: "Q", midi: 36, note: "C" },
-  { code: "KeyW", kbd: "W", midi: 38, note: "D" },
-  { code: "KeyE", kbd: "E", midi: 40, note: "E" },
-  { code: "KeyR", kbd: "R", midi: 41, note: "F" },
-  { code: "KeyT", kbd: "T", midi: 43, note: "G" },
-  { code: "KeyY", kbd: "Y", midi: 45, note: "A" },
-  { code: "KeyU", kbd: "U", midi: 47, note: "B" },
-  { code: "KeyI", kbd: "I", midi: 48, note: "C" },
-  { code: "KeyO", kbd: "O", midi: 50, note: "D" },
-  { code: "KeyP", kbd: "P", midi: 52, note: "E" },
+  { code: "KeyQ", kbd: "Q", midi: 33, note: "A" },
+  { code: "KeyW", kbd: "W", midi: 35, note: "B" },
+  { code: "KeyE", kbd: "E", midi: 36, note: "C", cAnchor: true },
+  { code: "KeyR", kbd: "R", midi: 38, note: "D" },
+  { code: "KeyT", kbd: "T", midi: 40, note: "E" },
+  { code: "KeyY", kbd: "Y", midi: 41, note: "F" },
+  { code: "KeyU", kbd: "U", midi: 43, note: "G" },
+  { code: "KeyI", kbd: "I", midi: 45, note: "A" },
+  { code: "KeyO", kbd: "O", midi: 47, note: "B" },
+  { code: "KeyP", kbd: "P", midi: 48, note: "C", cAnchor: true },
 ];
 const PITCH_BLACK_KEYS = [
-  { code: "Digit2", kbd: "2", midi: 37, note: "D♭", leftPct: 6.6 },
-  { code: "Digit3", kbd: "3", midi: 39, note: "E♭", leftPct: 16.6 },
-  { code: "Digit5", kbd: "5", midi: 42, note: "G♭", leftPct: 36.6 },
-  { code: "Digit6", kbd: "6", midi: 44, note: "A♭", leftPct: 46.6 },
-  { code: "Digit7", kbd: "7", midi: 46, note: "B♭", leftPct: 56.6 },
-  { code: "Digit9", kbd: "9", midi: 49, note: "D♭", leftPct: 76.6 },
-  { code: "Digit0", kbd: "0", midi: 51, note: "E♭", leftPct: 86.6 },
+  { code: "Digit2", kbd: "2", midi: 34, note: "B♭", leftPct: 6.6 },
+  { code: "Digit4", kbd: "4", midi: 37, note: "D♭", leftPct: 26.6 },
+  { code: "Digit5", kbd: "5", midi: 39, note: "E♭", leftPct: 36.6 },
+  { code: "Digit7", kbd: "7", midi: 42, note: "G♭", leftPct: 56.6 },
+  { code: "Digit8", kbd: "8", midi: 44, note: "A♭", leftPct: 66.6 },
+  { code: "Digit9", kbd: "9", midi: 46, note: "B♭", leftPct: 76.6 },
 ];
 const PITCH_KEY_MAP = new Map([...PITCH_WHITE_KEYS, ...PITCH_BLACK_KEYS].map(k => [k.code, k]));
-// Unused top-row digits (gaps between black keys) swallowed while Pitch BETA is ON so level shortcuts never misfire
-const PITCH_TOP_ROW_SWALLOW = new Set(["Digit1", "Digit4", "Digit8"]);
+// Unused top-row digits (gaps between black keys: 1, 3, 6, 0) swallowed while Pitch BETA is ON so level shortcuts never misfire
+const PITCH_TOP_ROW_SWALLOW = new Set(["Digit1", "Digit3", "Digit6", "Digit0"]);
+
+function findNextPitchFreeIdx(startIdx) {
+  const tgts = (app.phrase && app.phrase.targets) || [];
+  let idx = startIdx;
+  while (idx < tgts.length && tgts[idx].art === "ghost") idx++;
+  return idx;
+}
+
+function handlePitchFreeStep(playedMidiFloat, sourceTag = "KEY") {
+  if (!app.pitchMode || !app.pitchFreeMode || !app.phrase) return;
+  const tgts = app.phrase.targets || [];
+  if (!tgts.length) return;
+  if (app.pitchFreeIdx >= tgts.length) {
+    // Already completed phrase: reset cleanly on next press to replay!
+    resetTargets();
+  }
+  const curIdx = findNextPitchFreeIdx(app.pitchFreeIdx);
+  if (curIdx >= tgts.length) return;
+  const tgt = tgts[curIdx];
+  if (!tgt.pitch) return;
+
+  const cmp = comparePitchClass(playedMidiFloat, tgt.pitch.midi, 45);
+  if (cmp.ok) {
+    tgt.hit = true;
+    tgt.pitchOk = true;
+    tgt.detectedPitch = cmp.detectedName;
+    app.pitchFreeIdx = findNextPitchFreeIdx(curIdx + 1);
+    app.dirtyScore = true;
+
+    if (app.pitchFreeIdx >= tgts.length) {
+      const gradable = tgts.filter(tg => tg.art !== "ghost" && tg.pitch);
+      const firstTryOk = gradable.filter(tg => tg.pitchOk === true && !tg.hadWrongTry).length;
+      const pct = gradable.length ? (firstTryOk / gradable.length) * 100 : 100;
+      const msgEl = document.getElementById("pitchMsg");
+      msgEl.style.color = pct >= 85 ? "var(--green)" : (pct >= 65 ? "var(--amber)" : "var(--red)");
+      msgEl.textContent = t("pitchFreeDone", firstTryOk, gradable.length, pct, app.pitchFreeMistakes);
+      setHitBadge(`[${sourceTag}] 🎯 ${firstTryOk}/${gradable.length} (${pct.toFixed(0)}%)`, "tight");
+    } else {
+      setHitBadge(`[${sourceTag}] ✓ ${tgt.pitch.name}`, "tight");
+    }
+  } else {
+    tgt.pitchOk = false;
+    tgt.hadWrongTry = true;
+    tgt.detectedPitch = cmp.detectedName;
+    app.pitchFreeMistakes += 1;
+    app.dirtyScore = true;
+    setHitBadge(`[${sourceTag}] ${tgt.pitch.name} ≠ ${cmp.detectedName}`, "err");
+  }
+}
+
+function flashPianoKeyByMidi(midi) {
+  const pc = ((midi % 12) + 12) % 12;
+  const match = [...PITCH_WHITE_KEYS, ...PITCH_BLACK_KEYS].find(k => (k.midi % 12) === pc);
+  if (!match) return;
+  const kEl = document.querySelector(`#pitchPiano [data-code="${match.code}"]`);
+  if (kEl) {
+    kEl.classList.add("pressed");
+    window.setTimeout(() => kEl.classList.remove("pressed"), 150);
+  }
+}
 
 function triggerPitchPianoKey(keySpec, fromPointer = false) {
   if (!keySpec) return;
@@ -1957,8 +2043,33 @@ function triggerPitchPianoKey(keySpec, fromPointer = false) {
     if (app.keyOn || fromPointer) {
       handleHit(ctx.currentTime - app.keyLatencyMs / 1000, fromPointer ? "PAD" : "KEY", "NORMAL", keySpec.code, keySpec.midi);
     }
+  } else if (app.pitchFreeMode) {
+    handlePitchFreeStep(keySpec.midi, fromPointer ? "PAD" : "KEY");
   } else {
     setHitBadge(`[KEY] ${keySpec.note} (${keySpec.kbd})`, "tight");
+  }
+}
+
+function handleMidiNoteOn(midiNote) {
+  const ctx = ensureAudioCtx();
+  const pc = ((midiNote % 12) + 12) % 12;
+  const noteName = FLAT_PC_NAMES[pc];
+  if (app.pitchMode) {
+    flashPianoKeyByMidi(midiNote);
+    if (ctx) {
+      // Clamp MIDI playback into warm bass/baritone synth register
+      const playMidi = midiNote < 28 ? midiNote + 12 : (midiNote > 60 ? midiNote - 12 : midiNote);
+      scheduleBassNote(ctx, ctx.currentTime, 0.26, midiToFreq(playMidi));
+    }
+  }
+  if (app.state === "CAL" && ctx) {
+    recordCalibrationTap(ctx.currentTime, "MIDI");
+  } else if ((app.state === "COUNTIN" || app.state === "PLAY") && ctx) {
+    handleHit(ctx.currentTime, "MIDI", "NORMAL", null, app.pitchMode ? midiNote : null);
+  } else if (app.pitchMode && app.pitchFreeMode) {
+    handlePitchFreeStep(midiNote, "MIDI");
+  } else {
+    setHitBadge(`[MIDI] ${noteName}`, "tight");
   }
 }
 
@@ -1968,7 +2079,7 @@ function buildPitchPianoUi() {
   for (const k of PITCH_WHITE_KEYS) {
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = "pk-white";
+    btn.className = k.cAnchor ? "pk-white c-anchor" : "pk-white";
     btn.dataset.code = k.code;
     btn.innerHTML = `<span class="pk-note">${k.note}</span><span class="pk-kbd">${k.kbd}</span>`;
     btn.addEventListener("pointerdown", (e) => {
@@ -2001,6 +2112,9 @@ function syncPitchUi() {
   const toggleBtn = document.getElementById("btnPitchToggle");
   toggleBtn.textContent = app.pitchMode ? t("pitchOn") : t("pitchOff");
   toggleBtn.classList.toggle("active", app.pitchMode);
+  const freeBtn = document.getElementById("btnPitchFreeMode");
+  freeBtn.textContent = app.pitchFreeMode ? t("pitchFree") : t("pitchTimed");
+  freeBtn.classList.toggle("active", app.pitchFreeMode);
   document.getElementById("pitchKeySelect").value = app.pitchKey;
   document.getElementById("pitchProgSelect").value = app.pitchProg;
   const hintBtn = document.getElementById("btnPitchHints");
@@ -2032,6 +2146,22 @@ document.getElementById("btnPitchToggle").addEventListener("click", (e) => {
   e.currentTarget.blur();
   app.pitchMode = !app.pitchMode;
   applyPitchToCurrentPhrase();
+  resetTargets();
+  const msgEl = document.getElementById("pitchMsg");
+  msgEl.style.color = "var(--muted)";
+  msgEl.textContent = t("pitchIdleMsg");
+  updateMeta();
+  syncPitchUi();
+});
+document.getElementById("btnPitchFreeMode").addEventListener("click", (e) => {
+  e.currentTarget.blur();
+  app.pitchFreeMode = !app.pitchFreeMode;
+  if (app.pitchFreeMode && !app.pitchMode) {
+    app.pitchMode = true;
+    applyPitchToCurrentPhrase();
+  }
+  stopRun();
+  resetTargets();
   const msgEl = document.getElementById("pitchMsg");
   msgEl.style.color = "var(--muted)";
   msgEl.textContent = t("pitchIdleMsg");
@@ -2043,6 +2173,7 @@ document.getElementById("pitchKeySelect").addEventListener("change", (e) => {
   e.target.blur();
   if (!app.pitchMode) app.pitchMode = true;
   applyPitchToCurrentPhrase();
+  resetTargets();
   updateMeta();
   syncPitchUi();
 });
@@ -2051,6 +2182,7 @@ document.getElementById("pitchProgSelect").addEventListener("change", (e) => {
   e.target.blur();
   if (!app.pitchMode) app.pitchMode = true;
   applyPitchToCurrentPhrase();
+  resetTargets();
   updateMeta();
   syncPitchUi();
 });
@@ -2200,7 +2332,18 @@ document.getElementById("clickVolSlider").addEventListener("change", (e) => {
 });
 
 // Wire cross-module callbacks cleanly before Boot
-registerAudioInCallbacks({ handleHit, recordCalibrationTap, setHitBadge });
+registerAudioInCallbacks({ handleHit, handlePitchFreeStep, recordCalibrationTap, setHitBadge });
+registerMidiCallbacks({
+  onNoteOn: handleMidiNoteOn,
+  onStatusChange: (devices) => {
+    const btn = document.getElementById("btnInMidi");
+    if (btn) {
+      btn.title = devices.length
+        ? `MIDI: ${devices.join(", ")}`
+        : (midiIn.supported ? "USB MIDI (Web MIDI)" : t("midiUnsupported"));
+    }
+  },
+});
 initEditor({ stopRun, resetTargets, updateMeta, setHitBadge, loadDailyChallenge, newPhrase });
 initTour({ stopRun, applyLanguage });
 

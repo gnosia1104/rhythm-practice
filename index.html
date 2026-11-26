@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="google-site-verification" content="xEk6qUh5Gqa-MZwSuYThDKT_GtdN7JEgimP4F_JKVB4" />
 <title>Rhythm Sight-Reader — Free Online Bass &amp; Rhythm Sight-Reading Trainer</title>
-<meta name="description" content="Free online rhythm sight-reading &amp; bass practice trainer (no install, no login). Practice 6 rhythm levels, 5 meters (4/4, 3/4, 2/4, 5/4, 6/8), triplets, staccato, ghost notes, gap click metronome, custom score editor &amp; daily challenges via keyboard, touch pads, or real bass audio interface. 무료 리듬 초견·베이스 박자 연습 사이트 (EN/KO/JA)." />
-<meta name="keywords" content="rhythm sight reading, rhythm sight reading trainer, free rhythm practice online, bass sight reading, bass guitar rhythm practice, rhythm reading generator, bass clef rhythm generator, syncopation practice, 16th note rhythm exercises, triplet rhythm trainer, staccato ghost note practice, gap click metronome, internal clock trainer, custom rhythm sheet music editor, daily rhythm challenge, audio interface bass practice, online metronome trainer, 리듬 초견, 베이스 초견, 리듬 연습 사이트, 박자 연습, 박자감 테스트, 리듬 시창, 베이스 리듬 연습, 싱코페이션 연습, 16분음표 리듬, 셋잇단음표 3연음, 스타카토 고스트노트, 갭 클릭 메트로놈, 오디오 인터페이스 베이스 연습, 데일리 리듬 챌린지, リズム初見, ベース初見練習, リズムトレーニング 無料, リズム譜面 生成, シンコペーション練習, 16分音符 リズム練習, ギャップクリック" />
+<meta name="description" content="Free online rhythm &amp; bass clef sight-reading trainer (no install, no login). Practice 6 rhythm levels, 5 meters (4/4, 3/4, 2/4, 5/4, 6/8), flat-key jazz bass pitch sight-reading (ii-V-I, tritone sub, backdoor), triplets, staccato, ghost notes, gap click &amp; custom editor via keyboard, MIDI, touch pads, or real bass audio interface. 무료 리듬·낮은음자리표 재즈 베이스 초견 연습 사이트 (EN/KO/JA)." />
+<meta name="keywords" content="rhythm sight reading, rhythm sight reading trainer, free rhythm practice online, bass sight reading, bass clef sight reading, jazz bass sight reading, bass guitar rhythm practice, rhythm reading generator, bass clef rhythm generator, midi rhythm trainer, midi sight reading, syncopation practice, 16th note rhythm exercises, triplet rhythm trainer, staccato ghost note practice, gap click metronome, custom rhythm sheet music editor, daily rhythm challenge, audio interface bass practice, 리듬 초견, 베이스 초견, 낮은음자리표 악보 읽기, 재즈 베이스 초견, 베이스 음정 초견, 리듬 연습 사이트, 박자 연습, 박자감 테스트, 리듬 시창, 미디 리듬 연습, 싱코페이션 연습, 16분음표 리듬, 3연음, 스타카토 고스트노트, 갭 클릭 메트로놈, 오디오 인터페이스 베이스 연습, リズム初見, ベース初見練習, ヘ音記号 譜読み, ジャズベース 譜読み, MIDI リズム練習" />
 <meta name="robots" content="index, follow, max-image-preview:large" />
 <link rel="canonical" href="https://gnosia1104.github.io/rhythm-practice/" />
 <meta property="og:type" content="website" />
@@ -152,6 +152,7 @@
         <div id="inputGroup" class="input-toggles" role="group" aria-label="Input methods">
           <button id="btnInKey" type="button" class="active" title="키보드 입력 ON/OFF (Space/J/K · 단축키 i)">⌨️ 키</button>
           <button id="btnInAudio" type="button" title="오디오 인터페이스 / 마이크 입력 ON/OFF (단축키 i)">🎤 오디오</button>
+          <button id="btnInMidi" type="button" title="USB MIDI 건반 / 패드 입력 ON/OFF (Web MIDI)">🎹 MIDI</button>
           <button id="btnTouchPad" type="button" title="모바일 / 화면 터치 패드 ON/OFF">👆 패드</button>
         </div>
         <label class="group click-vol-group" title="메트로놈 클릭 볼륨 (0~200%)">
@@ -336,6 +337,7 @@
     <div class="pitch-row">
       <strong><span id="lblPitchTitle">🎼 음정 초견</span> <span class="beta-tag">BETA</span></strong>
       <button id="btnPitchToggle" type="button">🎼 음정 OFF</button>
+      <button id="btnPitchFreeMode" type="button" title="박자 없이 한 음씩 천천히 누르며 음정 초견 연습 (자유 템포 ↔ 박자 연동)">⏱ 박자 연동</button>
       <label class="group">
         <span id="lblPitchKey" class="label">조표(♭)</span>
         <select id="pitchKeySelect" title="재즈 플랫 키 선택 (0♭ ~ 5♭)">

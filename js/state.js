@@ -27,9 +27,13 @@ export const app = {
   rushTimerId: null,
   pitchMode: false,     // Pitch Sight-Reading BETA (flat-key jazz 5-line bass clef)
   pitchKey: "Bb",       // C | F | Bb | Eb | Ab | Db | Dm | Gm | Cm
-  pitchProg: "auto",    // auto | ii-V-I | I-vi-ii-V | blues | modal
+  pitchProg: "auto",    // auto | ii-V-I | tritone | backdoor | I-vi-ii-V | blues | modal
   pitchShowHints: false,// optional note-name labels (C, Bb, F...) for learning bass clef
+  pitchFreeMode: false, // Free-Tempo wait-for-note sight-reading (no metronome pressure)
+  pitchFreeIdx: 0,      // current target index in Free-Tempo mode
+  pitchFreeMistakes: 0, // total wrong-note attempts in current Free-Tempo run
   keyOn: true,
+  midiOn: false,
   showTouchDock: false,
   audioOn: false,
   inputMode: "KEY", // derived: KEY | PAD | AUDIO | BOTH
@@ -158,9 +162,10 @@ export function currentFullSeedCode() {
 
 
 export function deriveInputMode() {
-  const tap = app.keyOn || app.showTouchDock;
+  const tap = app.keyOn || app.showTouchDock || app.midiOn;
   if (app.audioOn && tap) return "BOTH";
   if (app.audioOn) return "AUDIO";
-  if (app.showTouchDock && !app.keyOn) return "PAD";
+  if (app.midiOn && !app.keyOn && !app.showTouchDock) return "MIDI";
+  if (app.showTouchDock && !app.keyOn && !app.midiOn) return "PAD";
   return "KEY";
 }

@@ -6,6 +6,7 @@ import { detectBassPitch, comparePitchClass } from "./pitch-detect.js";
 
 const audioInCbs = {
   handleHit: () => {},
+  handlePitchFreeStep: () => {},
   recordCalibrationTap: () => {},
   setHitBadge: () => {},
 };
@@ -472,7 +473,11 @@ function processPendingPitchChecks(ctx, now) {
 
     if (item.isReadyPreview) {
       if (det) {
-        audioInCbs.setHitBadge(`[AUD] Ch${item.ch + 1} · ${det.noteName} (${Math.round(det.freq)}Hz)`, "tight");
+        if (app.pitchMode && app.pitchFreeMode) {
+          audioInCbs.handlePitchFreeStep(det.midiFloat, "AUD");
+        } else {
+          audioInCbs.setHitBadge(`[AUD] Ch${item.ch + 1} · ${det.noteName} (${Math.round(det.freq)}Hz)`, "tight");
+        }
       } else {
         audioInCbs.setHitBadge(t("badgeDetected", item.ch + 1), "tight");
       }
