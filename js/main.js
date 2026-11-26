@@ -139,7 +139,7 @@ function clearFadeOutClasses() {
 function applyPitchToCurrentPhrase() {
   if (!app.phrase) return;
   if (app.pitchMode) {
-    assignPitchesToPhrase(app.phrase, app.pitchKey, app.pitchProg);
+    assignPitchesToPhrase(app.phrase, app.pitchKey, app.pitchProg, app.pitchClef);
   } else {
     clearPitchesFromPhrase(app.phrase);
   }
@@ -854,7 +854,8 @@ function updateMeta() {
   const lvFlags = `${tTag}${app.staccatoOn ? "S" : ""}${app.ghostOn ? "G" : ""}`;
   const playMods = formatPlayMods(app.soundOn, app.showBeatNums, app.showCursor, app.blindGrade, app.inputMode);
   const baseTitle = LEVEL_TITLES[app.level].replace(/^Lv\d+/, `Lv${app.level}${lvFlags}`);
-  const pitchTag = app.pitchMode ? ` · 🎼 ${(JAZZ_KEYS[app.pitchKey] || JAZZ_KEYS.Bb).label}` : "";
+  const clefIcon = app.pitchClef === "treble" ? "𝄞" : "𝄢";
+  const pitchTag = app.pitchMode ? ` · ${clefIcon} ${(JAZZ_KEYS[app.pitchKey] || JAZZ_KEYS.Bb).label}` : "";
   if (app.customMode) {
     document.getElementById("metaLevel").textContent = `✏️ Custom · ${app.timeSig} · ${app.numBars} bars${pitchTag} · [${playMods}]`;
     document.getElementById("metaSeed").textContent = app.phrase.customCode ? app.phrase.customCode.slice(0, 14) + "…" : "Custom";
@@ -991,6 +992,11 @@ function applyLanguage(lang) {
   document.getElementById("lblPitchTitle").textContent = t("pitchTitle");
   document.getElementById("lblPitchKey").textContent = t("pitchKeyLbl");
   document.getElementById("lblPitchProg").textContent = t("pitchProgLbl");
+  const clefOpts = t("pitchClefOpts") || [];
+  const clefSel = document.getElementById("pitchClefSelect");
+  for (let i = 0; i < clefSel.options.length && i < clefOpts.length; i++) {
+    clefSel.options[i].textContent = clefOpts[i];
+  }
   const progOpts = t("pitchProgOpts") || [];
   const progSel = document.getElementById("pitchProgSelect");
   for (let i = 0; i < progSel.options.length && i < progOpts.length; i++) {
@@ -2035,9 +2041,10 @@ function triggerPitchPianoKey(keySpec, fromPointer = false) {
       window.setTimeout(() => kEl.classList.remove("pressed"), 140);
     }
   }
-  // Live bass synth feedback so keyboard players hear the note they struck
+  // Live synth feedback (shifted +2 octaves in Treble Clef so it sounds in treble register)
   if (ctx) {
-    scheduleBassNote(ctx, ctx.currentTime, 0.26, midiToFreq(keySpec.midi));
+    const soundMidi = app.pitchClef === "treble" ? (keySpec.midi + 24) : keySpec.midi;
+    scheduleBassNote(ctx, ctx.currentTime, 0.26, midiToFreq(soundMidi));
   }
   if (app.state === "CAL" && ctx) {
     recordCalibrationTap(ctx.currentTime, "KEY");
@@ -2059,8 +2066,10 @@ function handleMidiNoteOn(midiNote) {
   if (app.pitchMode) {
     flashPianoKeyByMidi(midiNote);
     if (ctx) {
-      // Clamp MIDI playback into warm bass/baritone synth register
-      const playMidi = midiNote < 28 ? midiNote + 12 : (midiNote > 60 ? midiNote - 12 : midiNote);
+      // Keep MIDI playback in natural register for Bass or Treble clef
+      const playMidi = app.pitchClef === "treble"
+        ? (midiNote < 48 ? midiNote + 24 : (midiNote > 84 ? midiNote - 12 : midiNote))
+        : (midiNote < 28 ? midiNote + 12 : (midiNote > 60 ? midiNote - 12 : midiNote));
       scheduleBassNote(ctx, ctx.currentTime, 0.26, midiToFreq(playMidi));
     }
   }
@@ -2117,6 +2126,7 @@ function syncPitchUi() {
   const freeBtn = document.getElementById("btnPitchFreeMode");
   freeBtn.textContent = app.pitchFreeMode ? t("pitchFree") : t("pitchTimed");
   freeBtn.classList.toggle("active", app.pitchFreeMode);
+  document.getElementById("pitchClefSelect").value = app.pitchClef;
   document.getElementById("pitchKeySelect").value = app.pitchKey;
   document.getElementById("pitchProgSelect").value = app.pitchProg;
   const hintBtn = document.getElementById("btnPitchHints");
@@ -2167,6 +2177,15 @@ document.getElementById("btnPitchFreeMode").addEventListener("click", (e) => {
   const msgEl = document.getElementById("pitchMsg");
   msgEl.style.color = "var(--muted)";
   msgEl.textContent = t("pitchIdleMsg");
+  updateMeta();
+  syncPitchUi();
+});
+document.getElementById("pitchClefSelect").addEventListener("change", (e) => {
+  app.pitchClef = e.target.value === "treble" ? "treble" : "bass";
+  e.target.blur();
+  if (!app.pitchMode) app.pitchMode = true;
+  applyPitchToCurrentPhrase();
+  resetTargets();
   updateMeta();
   syncPitchUi();
 });

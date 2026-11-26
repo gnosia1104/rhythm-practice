@@ -115,17 +115,25 @@ export function scheduleBassNote(ctx, when, durSec, freq) {
   osc2.type = "sawtooth";
   osc2.frequency.setValueAtTime(freq, when);
 
+  const isTreble = freq > 190;
   filter.type = "lowpass";
-  filter.frequency.setValueAtTime(900, when);
-  filter.frequency.exponentialRampToValueAtTime(240, when + Math.min(0.28, playDur));
+  if (isTreble) {
+    filter.frequency.setValueAtTime(Math.min(4800, freq * 5.2), when);
+    filter.frequency.exponentialRampToValueAtTime(Math.min(2200, freq * 2.0), when + Math.min(0.28, playDur));
+  } else {
+    filter.frequency.setValueAtTime(900, when);
+    filter.frequency.exponentialRampToValueAtTime(240, when + Math.min(0.28, playDur));
+  }
 
   const g2 = ctx.createGain();
-  g2.gain.value = 0.32;
+  g2.gain.value = isTreble ? 0.16 : 0.32;
 
+  const peakGain = isTreble ? 0.30 : 0.45;
+  const susGain = isTreble ? 0.16 : 0.24;
   gain.gain.setValueAtTime(0.0001, when);
-  gain.gain.linearRampToValueAtTime(0.45, when + 0.007);
-  gain.gain.exponentialRampToValueAtTime(0.24, when + Math.min(0.18, playDur * 0.7));
-  gain.gain.setValueAtTime(0.24, Math.max(when + 0.02, when + playDur - 0.025));
+  gain.gain.linearRampToValueAtTime(peakGain, when + 0.007);
+  gain.gain.exponentialRampToValueAtTime(susGain, when + Math.min(0.18, playDur * 0.7));
+  gain.gain.setValueAtTime(susGain, Math.max(when + 0.02, when + playDur - 0.025));
   gain.gain.exponentialRampToValueAtTime(0.0001, when + playDur);
 
   osc1.connect(filter);

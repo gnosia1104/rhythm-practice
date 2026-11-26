@@ -3,7 +3,7 @@ import { TIME_SIGS } from "./rhythm.js";
 import { app, edState, getTimeSig, isGapBar } from "./state.js";
 import { t } from "./i18n.js";
 import { getTimingThresholds } from "./scoring.js";
-import { BASS_FLAT_SIG_POS, getKeySignatureAcc } from "./pitch-gen.js";
+import { BASS_FLAT_SIG_POS, TREBLE_FLAT_SIG_POS, getKeySignatureAcc } from "./pitch-gen.js";
 
 // -------------------------------------------------------------------------
 // 2. Print-Quality SVG Vector Sheet Music Engraver
@@ -17,7 +17,7 @@ export function el(tag, attrs = {}, text = null) {
 }
 
 export function drawBassClef(g, x, staffTop) {
-  // Crisp vector F-clef centered around line 2 (staffTop + 10)
+  // Crisp vector F-clef centered around line 4 from bottom (staffTop + 10)
   const y2 = staffTop + 10;
   g.appendChild(el("circle", { cx: x + 6, cy: y2, r: 3.4, fill: "#111" }));
   g.appendChild(el("path", {
@@ -27,6 +27,23 @@ export function drawBassClef(g, x, staffTop) {
   }));
   g.appendChild(el("circle", { cx: x + 26, cy: staffTop + 5.5, r: 2.0, fill: "#111" }));
   g.appendChild(el("circle", { cx: x + 26, cy: staffTop + 14.5, r: 2.0, fill: "#111" }));
+}
+
+export function drawTrebleClef(g, x, staffTop) {
+  // Crisp vector G-clef spiraling around line 2 from bottom (G4 = staffTop + 30)
+  const gY = staffTop + 30;
+  g.appendChild(el("path", {
+    d: `M ${x + 14} ${gY + 5}
+        C ${x + 9} ${gY + 4}, ${x + 9} ${gY - 5}, ${x + 15} ${gY - 6}
+        C ${x + 22} ${gY - 7}, ${x + 25} ${gY + 2}, ${x + 19} ${gY + 8}
+        C ${x + 12} ${gY + 13}, ${x + 3} ${gY + 7}, ${x + 4} ${gY - 4}
+        C ${x + 5} ${gY - 16}, ${x + 20} ${staffTop - 2}, ${x + 18} ${staffTop - 13}
+        C ${x + 17} ${staffTop - 20}, ${x + 11} ${staffTop - 18}, ${x + 12} ${staffTop - 8}
+        L ${x + 15} ${staffTop + 47}
+        C ${x + 15} ${staffTop + 53}, ${x + 9} ${staffTop + 54}, ${x + 7} ${staffTop + 50}`,
+    fill: "none", stroke: "#111", "stroke-width": 2.35, "stroke-linecap": "round", "stroke-linejoin": "round"
+  }));
+  g.appendChild(el("circle", { cx: x + 7.5, cy: staffTop + 49.5, r: 2.3, fill: "#111" }));
 }
 
 export function drawTimeSig(g, x, staffTop, num = 4, den = 4) {
@@ -129,9 +146,10 @@ export function drawNotehead(g, dur, x, y, art = null, color = "#111", stemDown 
   }
 }
 
-function drawKeySigFlats(g, x0, midY, flats) {
-  for (let i = 0; i < flats && i < BASS_FLAT_SIG_POS.length; i++) {
-    const fy = midY - BASS_FLAT_SIG_POS[i] * 5 + 5.5;
+function drawKeySigFlats(g, x0, midY, flats, clef = "bass") {
+  const posList = clef === "treble" ? TREBLE_FLAT_SIG_POS : BASS_FLAT_SIG_POS;
+  for (let i = 0; i < flats && i < posList.length; i++) {
+    const fy = midY - posList[i] * 5 + 5.5;
     g.appendChild(el("text", {
       x: x0 + i * 9.5, y: fy, fill: "#111",
       "font-family": 'Georgia, "Times New Roman", serif',
@@ -289,10 +307,15 @@ export function renderScore(svg, phrase) {
       stroke: "#111", "stroke-width": 1.4
     }));
 
-    // Bass clef (+ flat key signature on every system + time signature on first system)
-    drawBassClef(g, leftPad + 6, staffTop);
+    // Bass or Treble clef (+ flat key signature on every system + time signature on first system)
+    const activeClef = hasPitch ? (phrase.pitchMeta.clef || "bass") : "bass";
+    if (activeClef === "treble") {
+      drawTrebleClef(g, leftPad + 6, staffTop);
+    } else {
+      drawBassClef(g, leftPad + 6, staffTop);
+    }
     if (pitchFlats > 0) {
-      drawKeySigFlats(g, leftPad + 37, midY, pitchFlats);
+      drawKeySigFlats(g, leftPad + 37, midY, pitchFlats, activeClef);
     }
     const headerW = sys === 0 ? clefArea : (42 + flatsW);
     if (sys === 0) drawTimeSig(g, leftPad + 54 + flatsW, staffTop, ts.num, ts.den);

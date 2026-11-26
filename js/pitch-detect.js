@@ -49,7 +49,7 @@ export function detectBassPitch(rawBuf, sampleRate) {
   if (yinDiff.length < halfN) yinDiff = new Float32Array(halfN);
 
   const minFreq = 34;  // Covers low D1 (36.7Hz) & E1 (41.2Hz) cleanly
-  const maxFreq = 390; // Covers up to G4 on bass / open strings on guitar
+  const maxFreq = 920; // Covers Bass E1..G4 AND Treble C4..A5 (880Hz) cleanly!
   const tauMin = Math.max(2, Math.floor(fs / maxFreq));
   const tauMax = Math.min(halfN - 2, Math.ceil(fs / minFreq));
   if (tauMax <= tauMin + 2) return null;
@@ -91,7 +91,7 @@ export function detectBassPitch(rawBuf, sampleRate) {
   if (bestTau === -1) return null;
 
   // Sub-harmonic Octave Rescue: electric bass pickups often have a stronger 2nd harmonic on E1..A1
-  if (bestTau * 2 <= tauMax && fs / bestTau > 70) {
+  if (bestTau * 2 <= tauMax && fs / bestTau > 70 && fs / bestTau < 240) {
     const subCenter = bestTau * 2;
     let subTau = subCenter;
     let subMin = yinDiff[subCenter];

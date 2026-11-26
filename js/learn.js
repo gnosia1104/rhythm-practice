@@ -1,7 +1,7 @@
 // Interactive Bass Clef, 4-String Fretboard, Rhythm Duration & Warm-up Quiz Module (learn.html)
 import { ensureAudioCtx, scheduleBassNote, scheduleGhostNote, scheduleClick, stopScheduledAudio } from "./audio-out.js";
-import { el, drawBassClef, drawNotehead, drawRest, drawFlag } from "./engraver.js";
-import { JAZZ_KEYS, BASS_FLAT_SIG_POS, FLAT_PC_NAMES, getKeySignatureAcc, spellBassMidi, midiToFreq } from "./pitch-gen.js";
+import { el, drawBassClef, drawTrebleClef, drawNotehead, drawRest, drawFlag } from "./engraver.js";
+import { JAZZ_KEYS, BASS_FLAT_SIG_POS, TREBLE_FLAT_SIG_POS, FLAT_PC_NAMES, getKeySignatureAcc, spellBassMidi, midiToFreq } from "./pitch-gen.js";
 import { comparePitchClass } from "./pitch-detect.js";
 import { registerMidiCallbacks, startMidiInput, stopMidiInput, midiIn } from "./midi-in.js";
 
@@ -40,6 +40,14 @@ const LEARN_I18N = {
     mnem2Desc: "<strong>솔 - 시 - 레 - 파 - 라</strong> (영어 암기법: <em>Good Boys Do Fine Always</em>). 줄 위에 걸친 음표 5개만 외워도 초견 속도가 2배 빨라집니다.",
     mnem3Title: "⬜ 칸(Spaces) 아래→위: A · C · E · G",
     mnem3Desc: "<strong>라 - 도 - 미 - 솔</strong> (영어 암기법: <em>All Cows Eat Grass</em>). 줄과 줄 사이 빈칸 4개의 음입니다.",
+    tMnem1Title: "📍 기준점: 2째 줄 = G (솔)",
+    tMnem1Desc: "높은음자리표(𝄞) 소용돌이 중심이 감싸는 <strong>아래에서 두 번째 줄</strong>이 <strong>G(솔)</strong>입니다. 아래 덧줄 1개가 <strong>가온다(C4)</strong>예요.",
+    tMnem2Title: "📏 줄(Lines) 아래→위: E · G · B · D · F",
+    tMnem2Desc: "<strong>미 - 솔 - 시 - 레 - 파</strong> (영어 암기법: <em>Every Good Boy Does Fine</em>). 줄 위 5음만 외우면 멜로디 초견이 확 쉬워집니다.",
+    tMnem3Title: "⬜ 칸(Spaces) 아래→위: F · A · C · E",
+    tMnem3Desc: "<strong>파 - 라 - 도 - 미</strong> (영어 단어 그대로 <em>FACE</em>!). 빈칸 4개는 FACE 한 단어로 끝납니다.",
+    clefOpts: ["𝄢 낮은음자리표", "𝄞 높은음자리표"],
+    treblePianoSub: (sp, solf) => `피아노 건반 위치: ${sp.name}${sp.soundingOct} (${solf}) · 건반을 직접 눌러보세요`,
     readoutInit: "음표를 클릭하거나 키보드(e4r5ty7u8i9op)를 눌러보세요!",
     readoutSubInit: "소리 + 계이름 + 4현 베이스 지판 위치가 표시됩니다",
     readoutFmt: (sp, solf, frets) => `${sp.name} (${solf}) · ${Math.round(sp.freq)}Hz`,
@@ -85,6 +93,14 @@ const LEARN_I18N = {
     mnem2Desc: "<em>Good Boys Do Fine Always</em>. Memorizing these 5 line notes doubles your bass clef sight-reading speed.",
     mnem3Title: "⬜ Spaces (Bottom→Top): A · C · E · G",
     mnem3Desc: "<em>All Cows Eat Grass</em>. The 4 spaces sitting cleanly between the staff lines.",
+    tMnem1Title: "📍 Anchor: 2nd Line = G",
+    tMnem1Desc: "The Treble Clef (𝄞) spiral curls around the <strong>2nd line from the bottom = G4</strong>. One ledger line below is <strong>Middle C (C4)</strong>.",
+    tMnem2Title: "📏 Lines (Bottom→Top): E · G · B · D · F",
+    tMnem2Desc: "<em>Every Good Boy Does Fine</em>. The 5 line notes of treble clef.",
+    tMnem3Title: "⬜ Spaces (Bottom→Top): F · A · C · E",
+    tMnem3Desc: "Spells <em>FACE</em> from bottom to top — the easiest mnemonic in music!",
+    clefOpts: ["𝄢 Bass Clef", "𝄞 Treble Clef"],
+    treblePianoSub: (sp) => `Piano Key: ${sp.name}${sp.soundingOct} · Click any piano key below to hear & locate`,
     readoutInit: "Click any note above or press e4r5ty7u8i9op on your keyboard!",
     readoutSubInit: "Plays real bass tone + highlights 4-string fretboard positions",
     readoutFmt: (sp) => `${sp.name}${sp.soundingOct} · ${Math.round(sp.freq)}Hz`,
@@ -130,6 +146,14 @@ const LEARN_I18N = {
     mnem2Desc: "<strong>ソ - シ - レ - ファ - ラ</strong>。線の上にある5音を覚えるだけで初見スピードが倍増します。",
     mnem3Title: "⬜ 間(Spaces) 下→上: A · C · E · G",
     mnem3Desc: "<strong>ラ - ド - ミ - ソ</strong>。線と線の間にある4音です。",
+    tMnem1Title: "📍 基準: 第2線 = G (ソ)",
+    tMnem1Desc: "ト音記号(𝄞)の渦巻き中心が囲む<strong>下から2番目の線</strong>が<strong>G(ソ)</strong>。下第1加線が<strong>中央ド(C4)</strong>です。",
+    tMnem2Title: "📏 線(Lines) 下→上: E · G · B · D · F",
+    tMnem2Desc: "<strong>ミ - ソ - シ - レ - ファ</strong>。線の上の5音を覚えるとメロディ譜読みが速くなります。",
+    tMnem3Title: "⬜ 間(Spaces) 下→上: F · A · C · E",
+    tMnem3Desc: "<strong>ファ - ラ - ド - ミ</strong> (英単語の <em>FACE</em> そのまま！)。",
+    clefOpts: ["𝄢 ヘ音記号", "𝄞 ト音記号"],
+    treblePianoSub: (sp, solf) => `ピアノ鍵盤: ${sp.name}${sp.soundingOct} (${solf}) · 鍵盤をクリックして確認できます`,
     readoutInit: "音符をクリックするかキーボード(e4r5ty7u8i9op)を押してください！",
     readoutSubInit: "音 + ドレミ + 4弦ベース指板位置を表示します",
     readoutFmt: (sp, solf) => `${sp.name} (${solf}) · ${Math.round(sp.freq)}Hz`,
@@ -169,8 +193,9 @@ try {
   if (saved && LEARN_I18N[saved]) lang = saved;
 } catch (_) {}
 
+let activeClef = "bass"; // "bass" | "treble"
 let activeKey = "C";
-let selectedMidi = 41; // F2 (written F3 — the bass clef anchor!)
+let selectedMidi = 41; // F2 (bass clef anchor) or G4 (67, treble clef anchor)
 let scaleNotes = [];
 
 // Quiz state
@@ -186,16 +211,20 @@ function lt(k) {
   return LEARN_I18N[lang][k] ?? LEARN_I18N.ko[k];
 }
 
-function getDiatonicBassNotes(keyId) {
+function getDiatonicNotes(keyId, clef = activeClef) {
   const keyAcc = getKeySignatureAcc(keyId);
   const letterPc = [0, 2, 4, 5, 7, 9, 11];
+  const isTreble = clef === "treble";
+  const minM = isTreble ? 60 : 28; // Treble: C4(60)..A5(81) | Bass: E1(28)..C3(48)
+  const maxM = isTreble ? 81 : 48;
+  const minOct = isTreble ? 4 : 1;
+  const maxOct = isTreble ? 5 : 3;
   const notes = [];
-  // Build diatonic scale from E1(28) up to C3(48)
-  for (let oct = 1; oct <= 3; oct++) {
+  for (let oct = minOct; oct <= maxOct; oct++) {
     for (let l = 0; l < 7; l++) {
       const midi = (oct + 1) * 12 + letterPc[l] + keyAcc[l];
-      if (midi >= 28 && midi <= 48) {
-        notes.push(spellBassMidi(midi, keyId));
+      if (midi >= minM && midi <= maxM) {
+        notes.push(spellBassMidi(midi, keyId, clef));
       }
     }
   }
@@ -231,29 +260,32 @@ function renderExplorer() {
   const svg = document.getElementById("explorerSvg");
   while (svg.firstChild) svg.removeChild(svg.firstChild);
 
-  scaleNotes = getDiatonicBassNotes(activeKey);
+  const isTreble = activeClef === "treble";
+  scaleNotes = getDiatonicNotes(activeKey, activeClef);
   const flats = (JAZZ_KEYS[activeKey] || JAZZ_KEYS.C).flats;
+  const sigPos = isTreble ? TREBLE_FLAT_SIG_POS : BASS_FLAT_SIG_POS;
   const staffTop = 44;
   const midY = staffTop + 20;
 
-  // 5 staff lines
+  // 5 staff lines (highlight anchor line: 4th line F in Bass Clef, 2nd line G in Treble Clef)
   for (let i = 0; i < 5; i++) {
     const ly = staffTop + i * 10;
-    const isFLine = i === 1; // 4th line from bottom = F!
+    const isAnchorLine = isTreble ? (i === 3) : (i === 1);
     svg.appendChild(el("line", {
       x1: 14, y1: ly, x2: 906, y2: ly,
-      stroke: isFLine ? "#0d9488" : "#3f3f46",
-      "stroke-width": isFLine ? 1.35 : 1.0,
-      opacity: isFLine ? 0.75 : 1,
+      stroke: isAnchorLine ? "#0d9488" : "#3f3f46",
+      "stroke-width": isAnchorLine ? 1.35 : 1.0,
+      opacity: isAnchorLine ? 0.75 : 1,
     }));
   }
   svg.appendChild(el("line", { x1: 14, y1: staffTop, x2: 14, y2: staffTop + 40, stroke: "#111", "stroke-width": 1.5 }));
   svg.appendChild(el("line", { x1: 906, y1: staffTop, x2: 906, y2: staffTop + 40, stroke: "#111", "stroke-width": 1.5 }));
-  drawBassClef(svg, 20, staffTop);
+  if (isTreble) drawTrebleClef(svg, 20, staffTop);
+  else drawBassClef(svg, 20, staffTop);
 
   // Flat key signature
-  for (let i = 0; i < flats && i < BASS_FLAT_SIG_POS.length; i++) {
-    const fy = midY - BASS_FLAT_SIG_POS[i] * 5 + 5.5;
+  for (let i = 0; i < flats && i < sigPos.length; i++) {
+    const fy = midY - sigPos[i] * 5 + 5.5;
     svg.appendChild(el("text", {
       x: 54 + i * 10, y: fy, fill: "#111",
       "font-family": 'Georgia, "Times New Roman", serif', "font-size": 19
@@ -267,8 +299,10 @@ function renderExplorer() {
   scaleNotes.forEach((sp, idx) => {
     const nx = startX + stepX * (idx + 0.5);
     const ny = midY - sp.staffPos * 5;
-    const isSel = (sp.midi % 12) === (selectedMidi % 12) && sp.midi === selectedMidi;
-    const isAnchorF = sp.letter === 3 && sp.writtenOct === 3;
+    const isSel = sp.midi === selectedMidi;
+    const isAnchor = isTreble
+      ? (sp.letter === 4 && sp.writtenOct === 4) // G4
+      : (sp.letter === 3 && sp.writtenOct === 3); // F3
 
     const g = el("g", { class: "note-hit-node" });
     g.appendChild(el("rect", { x: nx - 18, y: staffTop - 24, width: 36, height: 112, fill: "transparent" }));
@@ -279,7 +313,7 @@ function renderExplorer() {
       opacity: isSel ? 1 : 0,
     }));
     drawLedger(g, nx, midY, sp.staffPos);
-    drawNotehead(g, 12, nx, ny, null, isSel ? "#0f766e" : (isAnchorF ? "#0d9488" : "#111"));
+    drawNotehead(g, 12, nx, ny, null, isSel ? "#0f766e" : (isAnchor ? "#0d9488" : "#111"));
 
     // Note name label below staff
     g.appendChild(el("text", {
@@ -369,19 +403,83 @@ function renderFretboard(midi) {
   });
 }
 
+function renderTreblePiano(midi) {
+  const svg = document.getElementById("fretboardSvg");
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+  // 2-octave interactive piano (C4=60 .. B5=83 = 14 white keys)
+  const whiteMidis = [60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 77, 79, 81, 83];
+  const blackSpecs = [
+    { midi: 61, afterWhite: 0 }, { midi: 63, afterWhite: 1 },
+    { midi: 66, afterWhite: 3 }, { midi: 68, afterWhite: 4 }, { midi: 70, afterWhite: 5 },
+    { midi: 73, afterWhite: 7 }, { midi: 75, afterWhite: 8 },
+    { midi: 78, afterWhite: 10 }, { midi: 80, afterWhite: 11 }, { midi: 82, afterWhite: 12 },
+  ];
+  const padX = 24;
+  const kw = (920 - padX * 2) / whiteMidis.length;
+
+  whiteMidis.forEach((m, i) => {
+    const x = padX + i * kw;
+    const isExact = m === midi;
+    const isSamePc = (m % 12) === (midi % 12);
+    const fill = isExact ? "#14b8a6" : (isSamePc ? "#ccfbf1" : "#ffffff");
+    const g = el("g", { style: "cursor:pointer" });
+    g.appendChild(el("rect", {
+      x: x + 1, y: 6, width: kw - 2, height: 102, rx: 4,
+      fill, stroke: "#334155", "stroke-width": 1.2
+    }));
+    const lbl = FLAT_PC_NAMES[m % 12] + (m === 60 ? "4" : (m === 72 ? "5" : ""));
+    g.appendChild(el("text", {
+      x: x + kw / 2, y: 97,
+      fill: isExact ? "#fff" : "#334155",
+      "font-size": 11.5, "font-weight": 800, "text-anchor": "middle",
+      "font-family": "ui-sans-serif, system-ui, sans-serif"
+    }, lbl));
+    g.addEventListener("click", () => selectExplorerNote(m, true));
+    svg.appendChild(g);
+  });
+
+  blackSpecs.forEach(({ midi: m, afterWhite }) => {
+    const bw = kw * 0.62;
+    const x = padX + (afterWhite + 1) * kw - bw / 2;
+    const isExact = m === midi;
+    const isSamePc = (m % 12) === (midi % 12);
+    const fill = isExact ? "#0d9488" : (isSamePc ? "#115e59" : "#0f172a");
+    const g = el("g", { style: "cursor:pointer" });
+    g.appendChild(el("rect", {
+      x, y: 6, width: bw, height: 64, rx: 3,
+      fill, stroke: "#020617", "stroke-width": 1.2
+    }));
+    g.appendChild(el("text", {
+      x: x + bw / 2, y: 58,
+      fill: "#f8fafc",
+      "font-size": 9.5, "font-weight": 700, "text-anchor": "middle",
+      "font-family": "ui-sans-serif, system-ui, sans-serif"
+    }, FLAT_PC_NAMES[m % 12]));
+    g.addEventListener("click", () => selectExplorerNote(m, true));
+    svg.appendChild(g);
+  });
+}
+
 function selectExplorerNote(midi, playSound = true) {
   selectedMidi = midi;
-  const sp = spellBassMidi(midi, activeKey);
+  const sp = spellBassMidi(midi, activeKey, activeClef);
   if (playSound) {
     const ctx = ensureAudioCtx();
     scheduleBassNote(ctx, ctx.currentTime, 0.65, sp.freq);
   }
   const solf = (lang === "ja" ? SOLFEGE_JA : SOLFEGE_KO)[sp.pc];
   document.getElementById("noteReadoutMain").textContent = lt("readoutFmt")(sp, solf);
-  const frets = findFretPositions(midi).map(f => `${f.str.short} / ${f.fret}F`);
-  document.getElementById("noteReadoutSub").textContent = lt("readoutFrets")(frets);
-  renderExplorer();
-  renderFretboard(midi);
+  if (activeClef === "treble") {
+    document.getElementById("noteReadoutSub").textContent = lt("treblePianoSub")(sp, solf);
+    renderExplorer();
+    renderTreblePiano(midi);
+  } else {
+    const frets = findFretPositions(midi).map(f => `${f.str.short} / ${f.fret}F`);
+    document.getElementById("noteReadoutSub").textContent = lt("readoutFrets")(frets);
+    renderExplorer();
+    renderFretboard(midi);
+  }
 }
 
 // Section 2: Interactive Note & Rest Rhythm Tiles
@@ -448,7 +546,7 @@ function renderRhythmTiles() {
 
 // Section 3: 10-Note Untimed Warm-up Quiz
 function startQuiz() {
-  const pool = getDiatonicBassNotes(activeKey);
+  const pool = getDiatonicNotes(activeKey, activeClef);
   quiz.items = [];
   let prev = null;
   for (let i = 0; i < 10; i++) {
@@ -478,13 +576,16 @@ function renderQuiz() {
   const midY = staffTop + 20;
   const flats = (JAZZ_KEYS[activeKey] || JAZZ_KEYS.C).flats;
 
+  const isTreble = activeClef === "treble";
+  const sigPos = isTreble ? TREBLE_FLAT_SIG_POS : BASS_FLAT_SIG_POS;
   for (let i = 0; i < 5; i++) {
     svg.appendChild(el("line", { x1: 12, y1: staffTop + i * 10, x2: 248, y2: staffTop + i * 10, stroke: "#3f3f46", "stroke-width": 1.1 }));
   }
-  drawBassClef(svg, 16, staffTop);
-  for (let i = 0; i < flats && i < BASS_FLAT_SIG_POS.length; i++) {
+  if (isTreble) drawTrebleClef(svg, 16, staffTop);
+  else drawBassClef(svg, 16, staffTop);
+  for (let i = 0; i < flats && i < sigPos.length; i++) {
     svg.appendChild(el("text", {
-      x: 50 + i * 10, y: midY - BASS_FLAT_SIG_POS[i] * 5 + 5.5, fill: "#111",
+      x: 50 + i * 10, y: midY - sigPos[i] * 5 + 5.5, fill: "#111",
       "font-family": 'Georgia, "Times New Roman", serif', "font-size": 19
     }, "♭"));
   }
@@ -502,7 +603,7 @@ function buildQuizButtons() {
   const wrap = document.getElementById("quizBtns");
   wrap.innerHTML = "";
   const seenPc = new Set();
-  const pool = getDiatonicBassNotes(activeKey);
+  const pool = getDiatonicNotes(activeKey, activeClef);
   const uniqueNotes = [];
   for (const sp of pool) {
     if (!seenPc.has(sp.pc)) {
@@ -561,6 +662,16 @@ function checkQuizAnswer(midi, btnEl = null) {
   }
 }
 
+function syncMnemonicsForClef() {
+  const isT = activeClef === "treble";
+  document.getElementById("mnem1Title").textContent = lt(isT ? "tMnem1Title" : "mnem1Title");
+  document.getElementById("mnem1Desc").innerHTML = lt(isT ? "tMnem1Desc" : "mnem1Desc");
+  document.getElementById("mnem2Title").textContent = lt(isT ? "tMnem2Title" : "mnem2Title");
+  document.getElementById("mnem2Desc").innerHTML = lt(isT ? "tMnem2Desc" : "mnem2Desc");
+  document.getElementById("mnem3Title").textContent = lt(isT ? "tMnem3Title" : "mnem3Title");
+  document.getElementById("mnem3Desc").innerHTML = lt(isT ? "tMnem3Desc" : "mnem3Desc");
+}
+
 function applyLearnLang(nextLang) {
   if (!LEARN_I18N[nextLang]) return;
   lang = nextLang;
@@ -573,14 +684,12 @@ function applyLearnLang(nextLang) {
   document.getElementById("heroTitle").textContent = lt("heroTitle");
   document.getElementById("heroDesc").textContent = lt("heroDesc");
   document.getElementById("sec1Title").textContent = lt("sec1Title");
+  const cOpts = lt("clefOpts") || [];
+  const cSel = document.getElementById("learnClefSelect");
+  for (let i = 0; i < cSel.options.length && i < cOpts.length; i++) cSel.options[i].textContent = cOpts[i];
   document.getElementById("lblLearnKey").textContent = lt("lblKey");
   document.getElementById("btnLearnPlayScale").textContent = lt("playScale");
-  document.getElementById("mnem1Title").textContent = lt("mnem1Title");
-  document.getElementById("mnem1Desc").innerHTML = lt("mnem1Desc");
-  document.getElementById("mnem2Title").textContent = lt("mnem2Title");
-  document.getElementById("mnem2Desc").innerHTML = lt("mnem2Desc");
-  document.getElementById("mnem3Title").textContent = lt("mnem3Title");
-  document.getElementById("mnem3Desc").innerHTML = lt("mnem3Desc");
+  syncMnemonicsForClef();
   document.getElementById("sec2Title").textContent = lt("sec2Title");
   document.getElementById("sec2Sub").innerHTML = lt("sec2Sub");
   document.getElementById("sec3Title").textContent = lt("sec3Title");
@@ -592,7 +701,8 @@ function applyLearnLang(nextLang) {
   document.getElementById("ctaLink").textContent = lt("ctaLink");
 
   renderExplorer();
-  renderFretboard(selectedMidi);
+  if (activeClef === "treble") renderTreblePiano(selectedMidi);
+  else renderFretboard(selectedMidi);
   renderRhythmTiles();
   buildQuizButtons();
   renderQuiz();
@@ -600,6 +710,14 @@ function applyLearnLang(nextLang) {
 
 // Events
 document.getElementById("learnLangSelect").addEventListener("change", (e) => applyLearnLang(e.target.value));
+document.getElementById("learnClefSelect").addEventListener("change", (e) => {
+  activeClef = e.target.value === "treble" ? "treble" : "bass";
+  selectedMidi = activeClef === "treble" ? 67 : 41; // G4 (treble anchor) vs F2 (bass anchor)
+  syncMnemonicsForClef();
+  selectExplorerNote(selectedMidi, false);
+  buildQuizButtons();
+  startQuiz();
+});
 document.getElementById("learnKeySelect").addEventListener("change", (e) => {
   activeKey = e.target.value;
   renderExplorer();
@@ -629,17 +747,20 @@ document.getElementById("btnQuizMidi").addEventListener("click", async () => {
 window.addEventListener("keydown", (e) => {
   if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
   if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "SELECT")) return;
-  const midi = LEARN_KEY_TO_MIDI[e.code];
-  if (Number.isFinite(midi)) {
+  const rawMidi = LEARN_KEY_TO_MIDI[e.code];
+  if (Number.isFinite(rawMidi)) {
     e.preventDefault();
-    selectExplorerNote(midi, false);
-    checkQuizAnswer(midi);
+    const playMidi = activeClef === "treble" ? (rawMidi + 24) : rawMidi;
+    selectExplorerNote(playMidi, false);
+    checkQuizAnswer(playMidi);
   }
 });
 
 registerMidiCallbacks({
   onNoteOn: (midiNote) => {
-    const playMidi = midiNote < 28 ? midiNote + 12 : (midiNote > 48 ? midiNote - 12 : midiNote);
+    const playMidi = activeClef === "treble"
+      ? (midiNote < 60 ? midiNote + 24 : (midiNote > 81 ? midiNote - 12 : midiNote))
+      : (midiNote < 28 ? midiNote + 12 : (midiNote > 48 ? midiNote - 12 : midiNote));
     selectExplorerNote(playMidi, false);
     checkQuizAnswer(midiNote);
   },

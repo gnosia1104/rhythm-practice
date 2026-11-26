@@ -10,6 +10,8 @@ const LETTER_PC = [0, 2, 4, 5, 7, 9, 11];
 const LETTER_NAMES = ["C", "D", "E", "F", "G", "A", "B"];
 // Bass clef flat key signature order: Bb(B2:-2), Eb(E3:+1), Ab(A2:-3), Db(D3:0), Gb(G2:-4)
 export const BASS_FLAT_SIG_POS = [-2, 1, -3, 0, -4];
+// Treble clef flat key signature order: Bb(B4:0), Eb(E5:+3), Ab(A4:-1), Db(D5:+2), Gb(G4:-2)
+export const TREBLE_FLAT_SIG_POS = [0, 3, -1, 2, -2];
 export const FLAT_ORDER_LETTERS = [6, 2, 5, 1, 4]; // B, E, A, D, G
 
 // Flat-side jazz keys (Major & Minor — 0 to 5 flats)
@@ -59,8 +61,9 @@ export function getKeySignatureAcc(keyId) {
   return acc;
 }
 
-// Spell a sounding bass MIDI note (E1=28..D3=50) into bass clef written position & flat/natural accidental
-export function spellBassMidi(midi, keyId = "C") {
+// Spell a sounding MIDI note for either Bass Clef (E1..D3, written 1 oct up, mid=D3)
+// or Treble Clef (C4..A5, concert pitch, mid=B4) using strict flat/natural spelling (zero sharps!)
+export function spellBassMidi(midi, keyId = "C", clef = "bass") {
   const pc = ((midi % 12) + 12) % 12;
   const keyAcc = getKeySignatureAcc(keyId);
 
@@ -80,8 +83,12 @@ export function spellBassMidi(midi, keyId = "C") {
 
   const basePc = LETTER_PC[chosenLetter];
   const soundingOct = Math.round((midi - (basePc + chosenAcc)) / 12) - 1;
-  const writtenOct = soundingOct + 1;
-  const staffPos = (writtenOct - 3) * 7 + (chosenLetter - 1);
+  const isTreble = clef === "treble";
+  const writtenOct = isTreble ? soundingOct : (soundingOct + 1);
+  // Bass clef middle line = D3 (oct 3, letter 1); Treble clef middle line = B4 (oct 4, letter 6)
+  const staffPos = isTreble
+    ? ((writtenOct - 4) * 7 + (chosenLetter - 6))
+    : ((writtenOct - 3) * 7 + (chosenLetter - 1));
   const accStr = chosenAcc === -1 ? "♭" : "";
   const name = `${LETTER_NAMES[chosenLetter]}${accStr}`;
   return {
@@ -92,6 +99,7 @@ export function spellBassMidi(midi, keyId = "C") {
     soundingOct,
     writtenOct,
     staffPos,
+    clef: isTreble ? "treble" : "bass",
     name,
     fullName: `${name}${soundingOct}`,
     freq: midiToFreq(midi),
@@ -312,18 +320,25 @@ function weightedPick(scored, rand, temp = 1.05) {
   return top[0].midi;
 }
 
-// 2. Contour-Guided Jazz Bassline Assignment (Walking · Enclosures · Pocket · Anti-Mechanical-Arpeggio)
-export function assignPitchesToPhrase(phrase, keyId = "Bb", progType = "auto") {
+// 2. Contour-Guided Jazz Line Assignment (supports Bass E1..D3 & Treble C4..A5)
+export function assignPitchesToPhrase(phrase, keyId = "Bb", progType = "auto", clef = "bass") {
   if (!phrase || !phrase.bars || !phrase.bars.length) return phrase;
   const ts = TIME_SIGS[phrase.timeSig || "4/4"] || TIME_SIGS["4/4"];
   const numBars = phrase.bars.length;
-  const seedBase = ((phrase.seed || 1) ^ strHash(`${keyId}:${progType}`)) >>> 0;
+  const isTreble = clef === "treble";
+  const minMidi = isTreble ? 60 : MIN_BASS_MIDI; // Treble: C4 (middle C, 1 ledger below) .. A5 (1 ledger above)
+  const maxMidi = isTreble ? 81 : MAX_BASS_MIDI;
+  const sweetLo = isTreble ? 64 : 31;            // E4..F5 (inside treble staff) or G1..A2 (inside bass staff)
+  const sweetHi = isTreble ? 77 : 45;
+  const centerMidi = isTreble ? 70 : 38;
+  const seedBase = ((phrase.seed || 1) ^ strHash(`${keyId}:${progType}:${clef}`)) >>> 0;
   const rand = mulberry32(seedBase);
 
   const barChords = generateChordProgression(numBars, keyId, progType, rand);
   phrase.pitchMeta = {
     key: keyId,
     prog: progType,
+    clef: isTreble ? "treble" : "bass",
     flats: (JAZZ_KEYS[keyId] || JAZZ_KEYS.C).flats,
     chords: barChords,
   };
@@ -376,12 +391,12 @@ export function assignPitchesToPhrase(phrase, keyId = "Bb", progType = "auto") {
 
     // Ghost notes keep the previous fret/pitch (percussive muted thump)
     if (tgt.art === "ghost" && prevMidi !== null) {
-      tgt.pitch = spellBassMidi(prevMidi, keyId);
+      tgt.pitch = spellBassMidi(prevMidi, keyId, clef);
       continue;
     }
 
     const candidates = [];
-    for (let m = MIN_BASS_MIDI; m <= MAX_BASS_MIDI; m++) {
+    for (let m = minMidi; m <= maxMidi; m++) {
       const pc = m % 12;
       let score = 0;
 
@@ -463,7 +478,7 @@ export function assignPitchesToPhrase(phrase, keyId = "Bb", progType = "auto") {
 
       // C. Voice-Leading, Interval & Anti-Arpeggio Monotony Rules
       if (prevMidi === null) {
-        score -= Math.abs(m - 36) * 0.22;
+        score -= Math.abs(m - centerMidi) * 0.22;
       } else {
         const diff = m - prevMidi;
         const absD = Math.abs(diff);
@@ -504,16 +519,16 @@ export function assignPitchesToPhrase(phrase, keyId = "Bb", progType = "auto") {
         }
       }
 
-      // D. Gentle Register Gravity toward bass clef sweet spot (G1=31 .. A2=45)
-      if (m < 31) score -= (31 - m) * 0.45;
-      else if (m > 45) score -= (m - 45) * 0.55;
-      else score -= Math.abs(m - 38) * 0.04;
+      // D. Gentle Register Gravity toward staff sweet spot
+      if (m < sweetLo) score -= (sweetLo - m) * 0.45;
+      else if (m > sweetHi) score -= (m - sweetHi) * 0.55;
+      else score -= Math.abs(m - centerMidi) * 0.04;
 
       candidates.push({ midi: m, score });
     }
 
     const chosenMidi = weightedPick(candidates, rand, isDownbeat ? 0.65 : 1.10);
-    tgt.pitch = spellBassMidi(chosenMidi, keyId);
+    tgt.pitch = spellBassMidi(chosenMidi, keyId, clef);
 
     // Track enclosure direction if we just picked the penultimate note before a chord change
     if (isPreApproachEnclosure && nextChord) {
@@ -550,7 +565,7 @@ export function assignPitchesToPhrase(phrase, keyId = "Bb", progType = "auto") {
         if (ev.tiedIn && lastBarEvPitch) {
           ev.pitch = lastBarEvPitch;
         } else {
-          const p = tgtMap.get(`${b}:${bt}:${ev.slot}`) || lastBarEvPitch || spellBassMidi(38, keyId);
+          const p = tgtMap.get(`${b}:${bt}:${ev.slot}`) || lastBarEvPitch || spellBassMidi(centerMidi, keyId, clef);
           ev.pitch = p;
           lastBarEvPitch = p;
         }
