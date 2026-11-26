@@ -1427,6 +1427,103 @@ button.active .beta-tag {
   line-height: 1.45;
 }
 
+.pitch-piano {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  height: 76px;
+  max-width: 520px;
+  width: 100%;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  margin-top: 2px;
+}
+
+.pk-white {
+  position: relative;
+  flex: 1;
+  height: 74px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 0 0 6px 6px;
+  margin-right: -1px;
+  padding: 0 0 5px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 1px;
+  cursor: pointer;
+  z-index: 1;
+  box-shadow: 0 2px 0 #e2e8f0;
+  transition: background 0.06s ease, transform 0.05s ease;
+}
+
+.pk-white:hover {
+  background: #f8fafc;
+}
+
+.pk-white.pressed {
+  background: #ccfbf1;
+  border-color: #14b8a6;
+  transform: translateY(1px);
+  box-shadow: none;
+}
+
+.pk-black {
+  position: absolute;
+  top: 0;
+  width: 6.8%;
+  height: 45px;
+  background: #1e293b;
+  color: #f8fafc;
+  border: 1px solid #0f172a;
+  border-radius: 0 0 5px 5px;
+  padding: 0 0 4px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 1px;
+  cursor: pointer;
+  z-index: 3;
+  box-shadow: 0 2px 3px rgba(15, 23, 42, 0.25);
+  transition: background 0.06s ease, transform 0.05s ease;
+}
+
+.pk-black:hover {
+  background: #334155;
+}
+
+.pk-black.pressed {
+  background: #0d9488;
+  border-color: #14b8a6;
+  transform: translateY(1px);
+}
+
+.pk-note {
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.pk-white .pk-note { color: #0f172a; }
+.pk-black .pk-note { color: #f8fafc; font-size: 9.5px; }
+
+.pk-kbd {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 1;
+  opacity: 0.65;
+  pointer-events: none;
+}
+
+.pk-white .pk-kbd { color: #475569; }
+.pk-black .pk-kbd { color: #99f6e4; font-size: 9px; }
+
 .beat-fade {
   transition: opacity 0.14s ease-out;
 }

@@ -15,15 +15,16 @@ import {
 import { el, renderScore } from "./engraver.js";
 import {
   getAudioCtx, setClickMasterGainVol, ensureAudioCtx, ensureAudioCtxReady,
-  stopScheduledAudio, scheduleClick, scheduleRunAudio,
+  stopScheduledAudio, scheduleClick, scheduleBassNote, scheduleRunAudio,
 } from "./audio-out.js";
 import {
   registerAudioInCallbacks, populateAudioDevices, populateChannelSelect, startAudioInput, stopAudioInput,
   closeSustainTarget, schedulePitchCheck,
 } from "./audio-in.js";
 import {
-  JAZZ_KEYS, assignPitchesToPhrase, clearPitchesFromPhrase,
+  JAZZ_KEYS, midiToFreq, assignPitchesToPhrase, clearPitchesFromPhrase,
 } from "./pitch-gen.js";
+import { comparePitchClass } from "./pitch-detect.js";
 import {
   clearShareQueryUrl, buildShareUrl, copyToClipboard, flashBtnText,
   buildResultCardText, renderScoreCardPngBlob,
@@ -395,7 +396,7 @@ function closeKeyStaccato(releaseElapsed) {
   app.dirtyScore = true;
 }
 
-function handleHit(hitAudioT, source, hitKind = "NORMAL", keyCode = null) {
+function handleHit(hitAudioT, source, hitKind = "NORMAL", keyCode = null, playedMidi = null) {
   if (app.state !== "COUNTIN" && app.state !== "PLAY") return;
   const ts = getTimeSig();
   const countIn = ts.countInClicks * ts.clickSec(app.bpm);
@@ -467,6 +468,20 @@ function handleHit(hitAudioT, source, hitKind = "NORMAL", keyCode = null) {
           best.sustainDone = true;
         }
       }
+      // Pitch BETA: QWERTY piano keyboard input grades pitch class immediately (octave-agnostic!)
+      if (app.pitchMode && best.pitch && Number.isFinite(playedMidi) && best.art !== "ghost") {
+        const cmp = comparePitchClass(playedMidi, best.pitch.midi, 45);
+        best.pitchOk = cmp.ok;
+        best.detectedPitch = cmp.detectedName;
+        best.pitchCents = 0;
+        if (!cmp.ok && !artBadgeOverride) {
+          const signP = best.errMs >= 0 ? "+" : "";
+          artBadgeOverride = {
+            text: `[${src}] ${best.pitch.name} ≠ ${cmp.detectedName} · ${signP}${best.errMs.toFixed(1)}ms`,
+            cls: "err",
+          };
+        }
+      }
     }
 
     if (!app.blindGrade) {
@@ -479,7 +494,8 @@ function handleHit(hitAudioT, source, hitKind = "NORMAL", keyCode = null) {
         const tag = ae <= tw.tight ? "TIGHT" : (best.errMs > 0 ? "LATE" : "EARLY");
         const cls = ae <= tw.tight ? "tight" : (ae <= tw.ok ? "warn" : "err");
         const gPrefix = (best.art === "ghost" && hitKind === "GHOST") ? "× " : "";
-        setHitBadge(`[${src}] ${gPrefix}${sign}${best.errMs.toFixed(1)}ms ${tag}`, cls);
+        const pPrefix = (app.pitchMode && best.pitch && best.pitchOk === true) ? `${best.pitch.name} · ` : "";
+        setHitBadge(`[${src}] ${gPrefix}${pPrefix}${sign}${best.errMs.toFixed(1)}ms ${tag}`, cls);
       }
       app.dirtyScore = true;
     }
@@ -1603,6 +1619,20 @@ window.addEventListener("keydown", (e) => {
 
   // Use physical key code (e.code) so all shortcuts work even when Korean IME is active
   const code = e.code;
+
+  // In Pitch Sight-Reading BETA, free the entire top 2 rows (1..0 & Q..P) for playable piano/bass input!
+  if (app.pitchMode) {
+    if (PITCH_KEY_MAP.has(code)) {
+      e.preventDefault();
+      triggerPitchPianoKey(PITCH_KEY_MAP.get(code));
+      return;
+    }
+    if (PITCH_TOP_ROW_SWALLOW.has(code)) {
+      e.preventDefault();
+      return;
+    }
+  }
+
   if (code === "Space" || code === "KeyJ" || code === "KeyK" || code === "KeyF" || code === "KeyD") {
     e.preventDefault();
     const hitKind = (code === "KeyF" || code === "KeyD") ? "GHOST" : "NORMAL";
@@ -1700,6 +1730,10 @@ window.addEventListener("keydown", (e) => {
 });
 
 window.addEventListener("keyup", (e) => {
+  if (PITCH_KEY_MAP.has(e.code)) {
+    const kEl = document.querySelector(`#pitchPiano [data-code="${e.code}"]`);
+    if (kEl) kEl.classList.remove("pressed");
+  }
   if (app.activeKeyStac && app.activeKeyStac.code === e.code && getAudioCtx()) {
     closeKeyStaccato((getAudioCtx().currentTime - app.keyLatencyMs / 1000) - app.startAudioT);
   }
@@ -1876,8 +1910,90 @@ document.getElementById("btnDrillReset").addEventListener("click", (e) => {
 
 
 // -------------------------------------------------------------------------
-// Pitch Sight-Reading BETA Controls (Flat-Key Jazz Harmony + Octave-Agnostic Audio)
+// Pitch Sight-Reading BETA Controls (Flat-Key Jazz Harmony + QWERTY Piano + Audio)
 // -------------------------------------------------------------------------
+const PITCH_WHITE_KEYS = [
+  { code: "KeyQ", kbd: "Q", midi: 36, note: "C" },
+  { code: "KeyW", kbd: "W", midi: 38, note: "D" },
+  { code: "KeyE", kbd: "E", midi: 40, note: "E" },
+  { code: "KeyR", kbd: "R", midi: 41, note: "F" },
+  { code: "KeyT", kbd: "T", midi: 43, note: "G" },
+  { code: "KeyY", kbd: "Y", midi: 45, note: "A" },
+  { code: "KeyU", kbd: "U", midi: 47, note: "B" },
+  { code: "KeyI", kbd: "I", midi: 48, note: "C" },
+  { code: "KeyO", kbd: "O", midi: 50, note: "D" },
+  { code: "KeyP", kbd: "P", midi: 52, note: "E" },
+];
+const PITCH_BLACK_KEYS = [
+  { code: "Digit2", kbd: "2", midi: 37, note: "D♭", leftPct: 6.6 },
+  { code: "Digit3", kbd: "3", midi: 39, note: "E♭", leftPct: 16.6 },
+  { code: "Digit5", kbd: "5", midi: 42, note: "G♭", leftPct: 36.6 },
+  { code: "Digit6", kbd: "6", midi: 44, note: "A♭", leftPct: 46.6 },
+  { code: "Digit7", kbd: "7", midi: 46, note: "B♭", leftPct: 56.6 },
+  { code: "Digit9", kbd: "9", midi: 49, note: "D♭", leftPct: 76.6 },
+  { code: "Digit0", kbd: "0", midi: 51, note: "E♭", leftPct: 86.6 },
+];
+const PITCH_KEY_MAP = new Map([...PITCH_WHITE_KEYS, ...PITCH_BLACK_KEYS].map(k => [k.code, k]));
+// Unused top-row digits (gaps between black keys) swallowed while Pitch BETA is ON so level shortcuts never misfire
+const PITCH_TOP_ROW_SWALLOW = new Set(["Digit1", "Digit4", "Digit8"]);
+
+function triggerPitchPianoKey(keySpec, fromPointer = false) {
+  if (!keySpec) return;
+  const ctx = ensureAudioCtx();
+  const kEl = document.querySelector(`#pitchPiano [data-code="${keySpec.code}"]`);
+  if (kEl) {
+    kEl.classList.add("pressed");
+    if (fromPointer) {
+      window.setTimeout(() => kEl.classList.remove("pressed"), 140);
+    }
+  }
+  // Live bass synth feedback so keyboard players hear the note they struck
+  if (ctx) {
+    scheduleBassNote(ctx, ctx.currentTime, 0.26, midiToFreq(keySpec.midi));
+  }
+  if (app.state === "CAL" && ctx) {
+    recordCalibrationTap(ctx.currentTime, "KEY");
+  } else if ((app.state === "COUNTIN" || app.state === "PLAY") && ctx) {
+    if (app.keyOn || fromPointer) {
+      handleHit(ctx.currentTime - app.keyLatencyMs / 1000, fromPointer ? "PAD" : "KEY", "NORMAL", keySpec.code, keySpec.midi);
+    }
+  } else {
+    setHitBadge(`[KEY] ${keySpec.note} (${keySpec.kbd})`, "tight");
+  }
+}
+
+function buildPitchPianoUi() {
+  const wrap = document.getElementById("pitchPiano");
+  if (!wrap || wrap.childElementCount > 0) return;
+  for (const k of PITCH_WHITE_KEYS) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "pk-white";
+    btn.dataset.code = k.code;
+    btn.innerHTML = `<span class="pk-note">${k.note}</span><span class="pk-kbd">${k.kbd}</span>`;
+    btn.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      triggerPitchPianoKey(k, true);
+    });
+    wrap.appendChild(btn);
+  }
+  for (const k of PITCH_BLACK_KEYS) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "pk-black";
+    btn.style.left = `${k.leftPct}%`;
+    btn.dataset.code = k.code;
+    btn.innerHTML = `<span class="pk-note">${k.note}</span><span class="pk-kbd">${k.kbd}</span>`;
+    btn.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      triggerPitchPianoKey(k, true);
+    });
+    wrap.appendChild(btn);
+  }
+}
+buildPitchPianoUi();
+
 function syncPitchUi() {
   const bar = document.getElementById("pitchBar");
   const barOpen = !bar.classList.contains("hidden");
@@ -1890,6 +2006,8 @@ function syncPitchUi() {
   const hintBtn = document.getElementById("btnPitchHints");
   hintBtn.textContent = app.pitchShowHints ? t("pitchHintsOn") : t("pitchHintsOff");
   hintBtn.classList.toggle("active", app.pitchShowHints);
+  const pianoEl = document.getElementById("pitchPiano");
+  if (pianoEl) pianoEl.classList.toggle("hidden", !app.pitchMode);
   if (typeof syncToolsMenuBadge === "function") syncToolsMenuBadge();
 }
 

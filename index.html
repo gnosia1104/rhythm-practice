@@ -353,8 +353,10 @@
       <label class="group">
         <span id="lblPitchProg" class="label">코드 진행</span>
         <select id="pitchProgSelect" title="재즈 화성 진행 스타일 선택">
-          <option value="auto">Auto (기능화성)</option>
+          <option value="auto">Auto (재즈 화성 블록)</option>
           <option value="ii-V-I">ii - V - I</option>
+          <option value="tritone">ii - ♭II7 - I (트라이톤 대리)</option>
+          <option value="backdoor">IV - iv - ♭VII7 - I (백도어)</option>
           <option value="I-vi-ii-V">I - vi - ii - V</option>
           <option value="blues">Jazz Blues</option>
           <option value="modal">1-Chord (Modal)</option>
@@ -363,7 +365,8 @@
       <button id="btnPitchHints" type="button" title="음표 위/아래 음이름(B♭, D, F...) 힌트 표시">음이름 OFF</button>
       <button id="btnPitchClose" type="button" class="cal-close" title="닫기">✕</button>
     </div>
-    <span id="pitchMsg" class="pitch-msg">재즈 플랫 키(0♭~5♭) 기능화성 기반 5선보 베이스라인(베타): 강박 코드톤·약박 경과음·마디 끝 어프로치 자동 배치 · 오디오 입력 시 옥타브 무관 음정 판정(높은 B·낮은 B 모두 정답).</span>
+    <div id="pitchPiano" class="pitch-piano" role="group" aria-label="QWERTY Pitch Keyboard"></div>
+    <span id="pitchMsg" class="pitch-msg">재즈 플랫 키(0♭~5♭) · 1~0 / Q~P 키보드로 음 타건 가능 (옥타브 무관 정답 · 오디오 입력도 지원).</span>
   </div>
 
   <!-- PDF-Style Vector Sheet Music -->
