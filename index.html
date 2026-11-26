@@ -4617,6 +4617,7 @@
       audioIn.fluxBase = 0;
       audioIn.wasAbove = false;
       audioIn.lastOnset = 0;
+      audioIn.lastOnsetLevel = 0;
 
       audioIn.deviceLabel = track ? (track.label || "Default Input") : "Default Input";
       const actualId = settings.deviceId || audioIn.deviceId || "";
@@ -4686,7 +4687,7 @@
   function measureAnalyser(an, buf) {
     an.getFloatTimeDomainData(buf);
     const n = buf.length;
-    const split = Math.floor(n * 0.68); // older ~14.5ms vs newest ~6.8ms attack slice
+    const split = Math.floor(n * 0.50); // balanced 10.7ms vs 10.7ms halves (avoids 41Hz E1 half-cycle ripple)
     let sqAll = 0, sqHead = 0, sqTail = 0;
     let peak = 0;
     let tailFlux = 0;
@@ -4751,9 +4752,9 @@
       return;
     }
 
-    // Track trailing ~30ms minimum level so legato/consecutive plucks trigger reliably even while sustaining
+    // Track trailing ~36ms minimum level so legato/consecutive plucks trigger reliably without bass-wave ripple false-triggers
     audioIn.recentLevels.push(level);
-    if (audioIn.recentLevels.length > 5) audioIn.recentLevels.shift();
+    if (audioIn.recentLevels.length > 6) audioIn.recentLevels.shift();
     let minRecent = level;
     for (let i = 0; i < audioIn.recentLevels.length - 1; i++) {
       if (audioIn.recentLevels[i] < minRecent) minRecent = audioIn.recentLevels[i];
@@ -4762,12 +4763,17 @@
     const now = audioCtx.currentTime;
     const thr = audioIn.threshold;
     const freshAttack = !audioIn.wasAbove;
-    const legatoJump = (tailLevel >= headLevel * 1.28) || (level >= minRecent * 1.32);
-    const pluckTransient = (audioIn.fluxBase > 0) && (fluxScaled >= audioIn.fluxBase * 2.05) && (tailLevel >= thr * 0.65);
-    const rising = (level >= thr) && (freshAttack || legatoJump || pluckTransient);
+    // While already sustaining a bass note, require a genuine macro envelope jump or true pluck transient
+    // (prevents 41-110Hz harmonic wave beating during long half/dotted-half notes from firing fake extra hits)
+    const legatoJump = (level >= minRecent * 1.60) && (level >= audioIn.prevLevel * 1.15) && (tailLevel >= headLevel * 1.30);
+    const pluckTransient = (audioIn.fluxBase > 0) && (fluxScaled >= audioIn.fluxBase * 2.75) && (level >= thr * 1.15) && (level >= minRecent * 1.25);
+    const sinceLast = now - audioIn.lastOnset;
+    const settleGuardOk = freshAttack || sinceLast >= 0.14 || level >= (audioIn.lastOnsetLevel || 0) * 1.25;
+    const rising = (level >= thr) && (freshAttack || (settleGuardOk && (legatoJump || pluckTransient)));
 
-    if (rising && (now - audioIn.lastOnset >= audioIn.cooldownSec)) {
+    if (rising && (sinceLast >= audioIn.cooldownSec)) {
       audioIn.lastOnset = now;
+      audioIn.lastOnsetLevel = level;
       audioIn.lastTriggerMs = performance.now();
       if (app.state === "CAL") {
         recordCalibrationTap(now, "AUDIO");
@@ -4974,6 +4980,8 @@
     activeSustainTgt: null,
     activeKeyStac: null,
     extraHits: 0,
+    keyExtraHits: 0,
+    audioExtraHits: 0,
     history: [],
     lastResult: null,
     runSeq: 0,
@@ -5039,6 +5047,8 @@
     app.activeSustainTgt = null;
     app.activeKeyStac = null;
     app.extraHits = 0;
+    app.keyExtraHits = 0;
+    app.audioExtraHits = 0;
     app.dirtyScore = true;
   }
 
@@ -5372,7 +5382,7 @@
     return Math.max(0.25, 0.56 - ((ae - tw.ok) / Math.max(1, 150 - tw.ok)) * 0.31);
   }
 
-  function computeDetailedScore(phrase, hits, total, sd, extraHits, restErrs) {
+  function computeDetailedScore(phrase, hits, total, sd, extraHits, restErrs, keyExtraHits = null, audioExtraHits = null) {
     const info = computeChartMaxInfo(phrase);
     if (!total || !info.maxScore) {
       return { score: 0, maxScore: info.maxScore, noteScore: 0, noteMax: info.noteMax, sustainEarned: 0, sustainMax: info.sustainMax, pct: 0, penalty: 0, sdBonus: 0, info };
@@ -5393,26 +5403,38 @@
         rawSustain += info.sustainPtsPerNote * computeSustainQuality(tgt);
       }
     }
-    // Two-tier anti-mash penalty:
-    // 1) Normal stray noise (<= max(3, 25% of notes)): gentle & capped at 22% so bass pickup noise never nukes a fair run
-    // 2) Mashing/spam beyond threshold: UNCAPPED heavy penalty + sustain attenuation so button-mashing cannot cheese scores
+    // Split KEY/PAD extra hits (strict anti-mashing) vs AUDIO extra hits (real-bass string/pickup tolerance)
+    const kExt = keyExtraHits !== null ? keyExtraHits : (info.isAudio ? 0 : extraHits);
+    const aExt = audioExtraHits !== null ? audioExtraHits : (info.isAudio ? extraHits : 0);
     const restHitErrs = (phrase.rests || []).filter(r => r.error && r.errorKind === "HIT").length;
-    const nonRestExtras = Math.max(0, extraHits - restHitErrs);
+    const kNonRest = Math.max(0, kExt - Math.min(kExt, restHitErrs));
+    const remRestHits = Math.max(0, restHitErrs - Math.min(kExt, restHitErrs));
+    const aNonRest = Math.max(0, aExt - remRestHits);
     const avgNotePts = info.noteMax / Math.max(1, total);
-    const spamThreshold = Math.max(3, Math.ceil(total * 0.25));
-    const normalExtras = Math.min(nonRestExtras, spamThreshold);
-    const spamExtras = Math.max(0, nonRestExtras - spamThreshold);
-    const baseRawPen = restErrs * avgNotePts * 0.15 + normalExtras * avgNotePts * 0.08;
-    const basePenalty = Math.min(Math.round(rawAttack * 0.22), Math.round(baseRawPen));
-    const spamPenalty = Math.round(spamExtras * avgNotePts * 0.85);
+
+    // 1) KEY/PAD strict two-tier anti-mashing penalty
+    const kSpamThr = Math.max(3, Math.ceil(total * 0.25));
+    const kNormal = Math.min(kNonRest, kSpamThr);
+    const kSpam = Math.max(0, kNonRest - kSpamThr);
+
+    // 2) AUDIO gentle real-instrument noise handling (never zeroes out clean 0-rest-error bass playing)
+    const aSpamThr = Math.max(6, Math.ceil(total * 0.65));
+    const aNormal = Math.min(aNonRest, aSpamThr);
+    const aSpam = (restErrs >= 2) ? Math.max(0, aNonRest - aSpamThr) : 0;
+
+    const baseRawPen = restErrs * avgNotePts * 0.15 + kNormal * avgNotePts * 0.08 + aNormal * avgNotePts * 0.05;
+    const basePenalty = Math.min(Math.round(rawAttack * 0.20), Math.round(baseRawPen));
+    const spamPenalty = Math.round(kSpam * avgNotePts * 0.85 + aSpam * avgNotePts * 0.30);
     const penalty = basePenalty + spamPenalty;
-    const extraRatio = extraHits / Math.max(1, total);
-    const sdBonus = (hits >= Math.ceil(total * 0.8) && sd <= 20 && spamExtras === 0)
+    const kExtraRatio = kExt / Math.max(1, total);
+    const sdBonus = (hits >= Math.ceil(total * 0.8) && sd <= 20 && kSpam === 0)
       ? Math.round(((20 - sd) / 20) * 0.02 * info.noteMax)
       : 0;
     const noteScore = Math.max(0, Math.min(info.noteMax, Math.round(rawAttack + sdBonus - penalty)));
-    // Attenuate sustain credit if user is mashing heavily (extraHits >= 45% of note count)
-    const susSpamMult = extraRatio >= 0.45 ? Math.max(0, 1 - (extraRatio - 0.45) * 1.6) : 1.0;
+    // Only attenuate sustain on clear keyboard mashing or noisy audio with rest errors
+    const susSpamMult = (kExtraRatio >= 0.45)
+      ? Math.max(0, 1 - (kExtraRatio - 0.45) * 1.6)
+      : ((aSpam > 0 && restErrs >= 2) ? Math.max(0.25, 1 - (aSpam / Math.max(1, total)) * 0.6) : 1.0);
     const sustainEarned = Math.max(0, Math.min(info.sustainMax, Math.round(rawSustain * susSpamMult)));
     const score = noteScore + sustainEarned;
     const pct = (score / info.maxScore) * 100;
@@ -5423,7 +5445,10 @@
     if (!r || !r.total) return { grade: "C", cls: "rank-c", color: "#ef4444" };
     const acc = (r.hits / r.total) * 100;
     const restErrs = r.sustainStats ? (r.sustainStats.restErrs || 0) : 0;
-    const extraRatio = (Number(r.extra) || 0) / Math.max(1, r.total);
+    const kExt = Number.isFinite(r.keyExtra) ? r.keyExtra : (r.inputMode === "AUDIO" ? 0 : (Number(r.extra) || 0));
+    const aExt = Number.isFinite(r.audioExtra) ? r.audioExtra : (r.inputMode === "AUDIO" ? (Number(r.extra) || 0) : 0);
+    const kExtraRatio = kExt / Math.max(1, r.total);
+    const aExtraRatio = aExt / Math.max(1, r.total);
     const TIERS = [
       { grade: "S+", cls: "rank-sp", color: "#f59e0b" },
       { grade: "S",  cls: "rank-s",  color: "#22c55e" },
@@ -5452,10 +5477,11 @@
       else if (acc >= 70) idx = 3;
       else idx = 4;
     }
-    // Anti-mashing rank caps based on excess extra hits
-    if (extraRatio >= 0.50) idx = Math.max(idx, 4);      // >=50% extra hits -> max C
-    else if (extraRatio >= 0.30) idx = Math.max(idx, 3); // >=30% extra hits -> max B
-    else if (extraRatio >= 0.15) idx = Math.max(idx, 2); // >=15% extra hits -> max A
+    // Strict anti-mashing rank caps for KEY/PAD spam; fair audio-only cap only when rest errors also occur
+    if (kExtraRatio >= 0.50) idx = Math.max(idx, 4);
+    else if (kExtraRatio >= 0.30) idx = Math.max(idx, 3);
+    else if (kExtraRatio >= 0.15) idx = Math.max(idx, 2);
+    if (aExtraRatio >= 0.85 && restErrs >= 2) idx = Math.max(idx, 3);
     return TIERS[idx];
   }
 
@@ -6006,6 +6032,8 @@
       }
     } else {
       app.extraHits += 1;
+      if (source === "AUDIO") app.audioExtraHits += 1;
+      else app.keyExtraHits += 1;
       // Forward-only rest check: only flag hits inside [rst.timeSec, rst.endSec]
       let hitRest = null;
       for (const rst of (app.phrase.rests || [])) {
@@ -6059,8 +6087,12 @@
     const restErrs = (app.phrase.rests || []).filter(r => r.error).length;
     const sustainStats = { total: susTotal, ok: susOk, short: susShort, long: susLong, restErrs };
 
-    const scoreDetail = computeDetailedScore(app.phrase, hits, total, sd, app.extraHits, restErrs);
-    const rankNow = computeScoreRank({ hits, total, tight, extra: app.extraHits, sustainStats, score: scoreDetail.score, maxScore: scoreDetail.maxScore });
+    const scoreDetail = computeDetailedScore(app.phrase, hits, total, sd, app.extraHits, restErrs, app.keyExtraHits, app.audioExtraHits);
+    const rankNow = computeScoreRank({
+      hits, total, tight, extra: app.extraHits,
+      keyExtra: app.keyExtraHits, audioExtra: app.audioExtraHits, inputMode: app.inputMode,
+      sustainStats, score: scoreDetail.score, maxScore: scoreDetail.maxScore
+    });
     app.history.unshift({
       take: app.takeId,
       tsIso: new Date().toISOString(),
@@ -6106,6 +6138,9 @@
     app.lastResult = {
       errs, hits, total, mean, sd, tight,
       extra: app.extraHits,
+      keyExtra: app.keyExtraHits,
+      audioExtra: app.audioExtraHits,
+      inputMode: app.inputMode,
       sustainStats,
       score: scoreDetail.score,
       maxScore: scoreDetail.maxScore,
