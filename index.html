@@ -339,13 +339,15 @@
       <strong><span id="lblPitchTitle">🎼 음정 초견</span> <span class="beta-tag">BETA</span></strong>
       <button id="btnPitchToggle" type="button">🎼 음정 OFF</button>
       <button id="btnPitchFreeMode" type="button" title="박자 없이 한 음씩 천천히 누르며 음정 초견 연습 (자유 템포 ↔ 박자 연동)">⏱ 박자 연동</button>
+      <button id="btnPitchRelMode" type="button" title="키보드·MIDI 입력 기준 전환: 절대음(C=도) ↔ 상대음/이동도(E=으뜸음 1도). 오디오 입력은 항상 절대음으로 판정됩니다.">🎹 절대음</button>
       <select id="pitchClefSelect" title="음자리표 선택 (낮은음자리표 / 높은음자리표)">
         <option value="bass" selected>𝄢 낮은음자리표</option>
         <option value="treble">𝄞 높은음자리표</option>
       </select>
       <label class="group">
         <span id="lblPitchKey" class="label">조표(♭)</span>
-        <select id="pitchKeySelect" title="재즈 플랫 키 선택 (0♭ ~ 5♭)">
+        <select id="pitchKeySelect" title="재즈 플랫 키 선택 (랜덤 또는 0♭ ~ 5♭)">
+          <option value="RND">🎲 랜덤 (0♭~5♭)</option>
           <option value="C">C Maj (0♭)</option>
           <option value="F">F Maj (1♭)</option>
           <option value="Bb" selected>B♭ Maj (2♭)</option>

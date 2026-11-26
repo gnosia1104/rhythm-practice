@@ -3,7 +3,7 @@ import { TIME_SIGS } from "./rhythm.js";
 import { app, edState, getTimeSig, isGapBar } from "./state.js";
 import { t } from "./i18n.js";
 import { getTimingThresholds } from "./scoring.js";
-import { BASS_FLAT_SIG_POS, TREBLE_FLAT_SIG_POS, getKeySignatureAcc } from "./pitch-gen.js";
+import { BASS_FLAT_SIG_POS, TREBLE_FLAT_SIG_POS, getKeySignatureAcc, getRelativeDegreeName } from "./pitch-gen.js";
 
 // -------------------------------------------------------------------------
 // 2. Print-Quality SVG Vector Sheet Music Engraver
@@ -483,14 +483,17 @@ export function renderScore(svg, phrase) {
                 }
                 beatSingleNotes.push({ ev, nx, ny, sDown, p });
               }
-              // Optional note-name learning hint (C, Bb, F...)
+              // Optional note-name (Fixed) or scale-degree (Relative/Movable-Do) learning hint
               if (app.pitchShowHints && p && !ev.tiedIn) {
                 const hintY = p.staffPos >= 0 ? (ny - 11) : (ny + 16);
+                const hintLabel = app.pitchRelative
+                  ? getRelativeDegreeName(p.midi, phrase.pitchMeta.key)
+                  : p.name;
                 beatG.appendChild(el("text", {
-                  x: nx, y: hintY, fill: "#64748b",
+                  x: nx, y: hintY, fill: app.pitchRelative ? "#0f766e" : "#64748b",
                   "font-family": "ui-sans-serif, system-ui, sans-serif",
                   "font-size": 9.2, "font-weight": 700, "text-anchor": "middle"
-                }, p.name));
+                }, hintLabel));
               }
             }
           }

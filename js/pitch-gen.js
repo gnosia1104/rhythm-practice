@@ -31,8 +31,21 @@ export const JAZZ_KEY_OPTIONS = ["C", "F", "Bb", "Eb", "Ab", "Db", "Dm", "Gm", "
 
 export const JAZZ_PROG_OPTIONS = ["auto", "ii-V-I", "tritone", "backdoor", "I-vi-ii-V", "blues", "modal"];
 
-// Flat-priority pitch-class names (zero sharps!)
+// Flat-priority pitch-class names (zero sharps!) & Movable-Do relative degree names
 export const FLAT_PC_NAMES = ["C", "D♭", "D", "E♭", "E", "F", "G♭", "G", "A♭", "A", "B♭", "B"];
+export const DEGREE_NAMES = ["1", "♭2", "2", "♭3", "3", "4", "♭5", "5", "♭6", "6", "♭7", "7"];
+
+export function resolvePitchKey(keySetting, seed = 1) {
+  if (keySetting && keySetting !== "RND" && JAZZ_KEYS[keySetting]) return keySetting;
+  const r = mulberry32(((seed || 1) ^ 0x51F15EED) >>> 0);
+  return JAZZ_KEY_OPTIONS[Math.floor(r() * JAZZ_KEY_OPTIONS.length)];
+}
+
+export function getRelativeDegreeName(midi, keyId) {
+  const k = JAZZ_KEYS[keyId] || JAZZ_KEYS.C;
+  const deg = ((((midi % 12) - k.rootPc) % 12) + 12) % 12;
+  return DEGREE_NAMES[deg];
+}
 const FLAT_PC_SPELL = [
   [0, 0],  // C
   [1, -1], // Db
@@ -320,9 +333,10 @@ function weightedPick(scored, rand, temp = 1.05) {
   return top[0].midi;
 }
 
-// 2. Contour-Guided Jazz Line Assignment (supports Bass E1..D3 & Treble C4..A5)
-export function assignPitchesToPhrase(phrase, keyId = "Bb", progType = "auto", clef = "bass") {
+// 2. Contour-Guided Jazz Line Assignment (supports Bass E1..D3 & Treble C4..A5, plus "RND" key)
+export function assignPitchesToPhrase(phrase, keySetting = "Bb", progType = "auto", clef = "bass") {
   if (!phrase || !phrase.bars || !phrase.bars.length) return phrase;
+  const keyId = resolvePitchKey(keySetting, phrase.seed);
   const ts = TIME_SIGS[phrase.timeSig || "4/4"] || TIME_SIGS["4/4"];
   const numBars = phrase.bars.length;
   const isTreble = clef === "treble";
@@ -337,6 +351,7 @@ export function assignPitchesToPhrase(phrase, keyId = "Bb", progType = "auto", c
   const barChords = generateChordProgression(numBars, keyId, progType, rand);
   phrase.pitchMeta = {
     key: keyId,
+    randomKey: keySetting === "RND",
     prog: progType,
     clef: isTreble ? "treble" : "bass",
     flats: (JAZZ_KEYS[keyId] || JAZZ_KEYS.C).flats,

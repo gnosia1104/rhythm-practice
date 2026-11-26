@@ -27,9 +27,10 @@ export const app = {
   rushTimerId: null,
   pitchMode: false,     // Pitch Sight-Reading BETA (flat-key jazz 5-line bass/treble clef)
   pitchClef: "bass",    // "bass" (F-clef) | "treble" (G-clef)
-  pitchKey: "Bb",       // C | F | Bb | Eb | Ab | Db | Dm | Gm | Cm
+  pitchKey: "Bb",       // "RND" | C | F | Bb | Eb | Ab | Db | Dm | Gm | Cm
   pitchProg: "auto",    // auto | ii-V-I | tritone | backdoor | I-vi-ii-V | blues | modal
-  pitchShowHints: false,// optional note-name labels (C, Bb, F...) for learning bass clef
+  pitchRelative: false, // false = Fixed/Absolute pitch | true = Relative/Movable-Do (Keyboard/MIDI only; Audio stays Absolute)
+  pitchShowHints: false,// optional note-name or degree labels for learning clef reading
   pitchFreeMode: false, // Free-Tempo wait-for-note sight-reading (no metronome pressure)
   pitchFreeIdx: 0,      // current target index in Free-Tempo mode
   pitchFreeMistakes: 0, // total wrong-note attempts in current Free-Tempo run
@@ -149,6 +150,9 @@ export function hitWindowSec() {
 
 
 export function currentFullSeedCode() {
+  const resolvedKey = (app.phrase && app.phrase.pitchMeta && app.phrase.pitchMeta.key)
+    ? app.phrase.pitchMeta.key
+    : (app.pitchKey === "RND" ? "Bb" : app.pitchKey);
   return encodeFullSeedCode({
     timeSig: app.timeSig,
     level: app.level,
@@ -158,6 +162,10 @@ export function currentFullSeedCode() {
     numBars: app.numBars,
     bpm: app.bpm,
     seed: app.phrase ? app.phrase.seed : 0x1000,
+    pitchMode: app.pitchMode,
+    pitchClef: app.pitchClef,
+    pitchKey: resolvedKey,
+    pitchProg: app.pitchProg,
   });
 }
 

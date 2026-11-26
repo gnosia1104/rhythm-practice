@@ -22,7 +22,8 @@ import {
   closeSustainTarget, schedulePitchCheck,
 } from "./audio-in.js";
 import {
-  JAZZ_KEYS, FLAT_PC_NAMES, midiToFreq, assignPitchesToPhrase, clearPitchesFromPhrase,
+  JAZZ_KEYS, FLAT_PC_NAMES, DEGREE_NAMES, getRelativeDegreeName, midiToFreq,
+  assignPitchesToPhrase, clearPitchesFromPhrase,
 } from "./pitch-gen.js";
 import { comparePitchClass } from "./pitch-detect.js";
 import {
@@ -474,16 +475,19 @@ function handleHit(hitAudioT, source, hitKind = "NORMAL", keyCode = null, played
           best.sustainDone = true;
         }
       }
-      // Pitch BETA: QWERTY piano keyboard input grades pitch class immediately (octave-agnostic!)
+      // Pitch BETA: QWERTY piano / MIDI keyboard input grades pitch class immediately (octave-agnostic!)
       if (app.pitchMode && best.pitch && Number.isFinite(playedMidi) && best.art !== "ghost") {
+        const useRel = Boolean(app.pitchRelative && source !== "AUDIO");
         const cmp = comparePitchClass(playedMidi, best.pitch.midi, 45);
+        const tgtLbl = useRel ? getRelativeDegreeName(best.pitch.midi, getActivePitchKeyId()) : best.pitch.name;
+        const detLbl = useRel ? getRelativeDegreeName(Math.round(playedMidi), getActivePitchKeyId()) : cmp.detectedName;
         best.pitchOk = cmp.ok;
-        best.detectedPitch = cmp.detectedName;
+        best.detectedPitch = detLbl;
         best.pitchCents = 0;
         if (!cmp.ok && !artBadgeOverride) {
           const signP = best.errMs >= 0 ? "+" : "";
           artBadgeOverride = {
-            text: `[${src}] ${best.pitch.name} ≠ ${cmp.detectedName} · ${signP}${best.errMs.toFixed(1)}ms`,
+            text: `[${src}] ${tgtLbl} ≠ ${detLbl} · ${signP}${best.errMs.toFixed(1)}ms`,
             cls: "err",
           };
         }
@@ -500,7 +504,9 @@ function handleHit(hitAudioT, source, hitKind = "NORMAL", keyCode = null, played
         const tag = ae <= tw.tight ? "TIGHT" : (best.errMs > 0 ? "LATE" : "EARLY");
         const cls = ae <= tw.tight ? "tight" : (ae <= tw.ok ? "warn" : "err");
         const gPrefix = (best.art === "ghost" && hitKind === "GHOST") ? "× " : "";
-        const pPrefix = (app.pitchMode && best.pitch && best.pitchOk === true) ? `${best.pitch.name} · ` : "";
+        const useRelBadge = Boolean(app.pitchRelative && source !== "AUDIO");
+        const okLbl = best.pitch ? (useRelBadge ? getRelativeDegreeName(best.pitch.midi, getActivePitchKeyId()) : best.pitch.name) : "";
+        const pPrefix = (app.pitchMode && best.pitch && best.pitchOk === true) ? `${okLbl} · ` : "";
         setHitBadge(`[${src}] ${gPrefix}${pPrefix}${sign}${best.errMs.toFixed(1)}ms ${tag}`, cls);
       }
       app.dirtyScore = true;
@@ -855,7 +861,10 @@ function updateMeta() {
   const playMods = formatPlayMods(app.soundOn, app.showBeatNums, app.showCursor, app.blindGrade, app.inputMode);
   const baseTitle = LEVEL_TITLES[app.level].replace(/^Lv\d+/, `Lv${app.level}${lvFlags}`);
   const clefIcon = app.pitchClef === "treble" ? "𝄞" : "𝄢";
-  const pitchTag = app.pitchMode ? ` · ${clefIcon} ${(JAZZ_KEYS[app.pitchKey] || JAZZ_KEYS.Bb).label}` : "";
+  const resolvedPitchKey = getActivePitchKeyId();
+  const rndPrefix = app.pitchKey === "RND" ? "🎲 " : "";
+  const relSuffix = app.pitchRelative ? " · 123" : "";
+  const pitchTag = app.pitchMode ? ` · ${clefIcon} ${rndPrefix}${(JAZZ_KEYS[resolvedPitchKey] || JAZZ_KEYS.Bb).label}${relSuffix}` : "";
   if (app.customMode) {
     document.getElementById("metaLevel").textContent = `✏️ Custom · ${app.timeSig} · ${app.numBars} bars${pitchTag} · [${playMods}]`;
     document.getElementById("metaSeed").textContent = app.phrase.customCode ? app.phrase.customCode.slice(0, 14) + "…" : "Custom";
@@ -997,6 +1006,8 @@ function applyLanguage(lang) {
   for (let i = 0; i < clefSel.options.length && i < clefOpts.length; i++) {
     clefSel.options[i].textContent = clefOpts[i];
   }
+  const keyRndOpt = document.querySelector('#pitchKeySelect option[value="RND"]');
+  if (keyRndOpt) keyRndOpt.textContent = t("pitchKeyRnd");
   const progOpts = t("pitchProgOpts") || [];
   const progSel = document.getElementById("pitchProgSelect");
   for (let i = 0; i < progSel.options.length && i < progOpts.length; i++) {
@@ -1971,6 +1982,17 @@ const PITCH_KEY_MAP = new Map([...PITCH_WHITE_KEYS, ...PITCH_BLACK_KEYS].map(k =
 // Unused top-row digits (gaps between black keys: 1, 3, 6, 0) swallowed while Pitch BETA is ON so level shortcuts never misfire
 const PITCH_TOP_ROW_SWALLOW = new Set(["Digit1", "Digit3", "Digit6", "Digit0"]);
 
+function getActivePitchKeyId() {
+  if (app.phrase && app.phrase.pitchMeta && app.phrase.pitchMeta.key) {
+    return app.phrase.pitchMeta.key;
+  }
+  return app.pitchKey === "RND" ? "Bb" : app.pitchKey;
+}
+
+function getActiveKeyRootPc() {
+  return (JAZZ_KEYS[getActivePitchKeyId()] || JAZZ_KEYS.C).rootPc;
+}
+
 function findNextPitchFreeIdx(startIdx) {
   const tgts = (app.phrase && app.phrase.targets) || [];
   let idx = startIdx;
@@ -1991,11 +2013,16 @@ function handlePitchFreeStep(playedMidiFloat, sourceTag = "KEY") {
   const tgt = tgts[curIdx];
   if (!tgt.pitch) return;
 
+  const useRel = Boolean(app.pitchRelative && sourceTag !== "AUD");
+  const keyId = getActivePitchKeyId();
   const cmp = comparePitchClass(playedMidiFloat, tgt.pitch.midi, 45);
+  const tgtLbl = useRel ? getRelativeDegreeName(tgt.pitch.midi, keyId) : tgt.pitch.name;
+  const detLbl = useRel ? getRelativeDegreeName(Math.round(playedMidiFloat), keyId) : cmp.detectedName;
+
   if (cmp.ok) {
     tgt.hit = true;
     tgt.pitchOk = true;
-    tgt.detectedPitch = cmp.detectedName;
+    tgt.detectedPitch = detLbl;
     app.pitchFreeIdx = findNextPitchFreeIdx(curIdx + 1);
     app.dirtyScore = true;
 
@@ -2008,15 +2035,15 @@ function handlePitchFreeStep(playedMidiFloat, sourceTag = "KEY") {
       msgEl.textContent = t("pitchFreeDone", firstTryOk, gradable.length, pct, app.pitchFreeMistakes);
       setHitBadge(`[${sourceTag}] 🎯 ${firstTryOk}/${gradable.length} (${pct.toFixed(0)}%)`, "tight");
     } else {
-      setHitBadge(`[${sourceTag}] ✓ ${tgt.pitch.name}`, "tight");
+      setHitBadge(`[${sourceTag}] ✓ ${tgtLbl}`, "tight");
     }
   } else {
     tgt.pitchOk = false;
     tgt.hadWrongTry = true;
-    tgt.detectedPitch = cmp.detectedName;
+    tgt.detectedPitch = detLbl;
     app.pitchFreeMistakes += 1;
     app.dirtyScore = true;
-    setHitBadge(`[${sourceTag}] ${tgt.pitch.name} ≠ ${cmp.detectedName}`, "err");
+    setHitBadge(`[${sourceTag}] ${tgtLbl} ≠ ${detLbl}`, "err");
   }
 }
 
@@ -2041,46 +2068,65 @@ function triggerPitchPianoKey(keySpec, fromPointer = false) {
       window.setTimeout(() => kEl.classList.remove("pressed"), 140);
     }
   }
+  // In Relative/Movable-Do mode, E(C) acts as Tonic 1 of the current key!
+  const rootShift = app.pitchRelative ? getActiveKeyRootPc() : 0;
+  const effectiveMidi = keySpec.midi + rootShift;
   // Live synth feedback (shifted +2 octaves in Treble Clef so it sounds in treble register)
   if (ctx) {
-    const soundMidi = app.pitchClef === "treble" ? (keySpec.midi + 24) : keySpec.midi;
+    let soundMidi = app.pitchClef === "treble" ? (effectiveMidi + 24) : effectiveMidi;
+    if (app.pitchClef === "bass" && soundMidi > 55) soundMidi -= 12;
+    if (app.pitchClef === "treble" && soundMidi > 84) soundMidi -= 12;
     scheduleBassNote(ctx, ctx.currentTime, 0.26, midiToFreq(soundMidi));
   }
   if (app.state === "CAL" && ctx) {
     recordCalibrationTap(ctx.currentTime, "KEY");
   } else if ((app.state === "COUNTIN" || app.state === "PLAY") && ctx) {
     if (app.keyOn || fromPointer) {
-      handleHit(ctx.currentTime - app.keyLatencyMs / 1000, fromPointer ? "PAD" : "KEY", "NORMAL", keySpec.code, keySpec.midi);
+      handleHit(ctx.currentTime - app.keyLatencyMs / 1000, fromPointer ? "PAD" : "KEY", "NORMAL", keySpec.code, effectiveMidi);
     }
   } else if (app.pitchFreeMode) {
-    handlePitchFreeStep(keySpec.midi, fromPointer ? "PAD" : "KEY");
+    handlePitchFreeStep(effectiveMidi, fromPointer ? "PAD" : "KEY");
   } else {
-    setHitBadge(`[KEY] ${keySpec.note} (${keySpec.kbd})`, "tight");
+    const lbl = app.pitchRelative ? DEGREE_NAMES[((keySpec.midi % 12) + 12) % 12] : keySpec.note;
+    setHitBadge(`[KEY] ${lbl} (${keySpec.kbd})`, "tight");
   }
 }
 
 function handleMidiNoteOn(midiNote) {
   const ctx = ensureAudioCtx();
-  const pc = ((midiNote % 12) + 12) % 12;
-  const noteName = FLAT_PC_NAMES[pc];
+  const rootShift = (app.pitchMode && app.pitchRelative) ? getActiveKeyRootPc() : 0;
+  const effectiveMidi = midiNote + rootShift;
+  const pc = ((effectiveMidi % 12) + 12) % 12;
+  const noteName = (app.pitchMode && app.pitchRelative)
+    ? DEGREE_NAMES[((midiNote % 12) + 12) % 12]
+    : FLAT_PC_NAMES[pc];
   if (app.pitchMode) {
     flashPianoKeyByMidi(midiNote);
     if (ctx) {
       // Keep MIDI playback in natural register for Bass or Treble clef
       const playMidi = app.pitchClef === "treble"
-        ? (midiNote < 48 ? midiNote + 24 : (midiNote > 84 ? midiNote - 12 : midiNote))
-        : (midiNote < 28 ? midiNote + 12 : (midiNote > 60 ? midiNote - 12 : midiNote));
+        ? (effectiveMidi < 48 ? effectiveMidi + 24 : (effectiveMidi > 84 ? effectiveMidi - 12 : effectiveMidi))
+        : (effectiveMidi < 28 ? effectiveMidi + 12 : (effectiveMidi > 60 ? effectiveMidi - 12 : effectiveMidi));
       scheduleBassNote(ctx, ctx.currentTime, 0.26, midiToFreq(playMidi));
     }
   }
   if (app.state === "CAL" && ctx) {
     recordCalibrationTap(ctx.currentTime, "MIDI");
   } else if ((app.state === "COUNTIN" || app.state === "PLAY") && ctx) {
-    handleHit(ctx.currentTime, "MIDI", "NORMAL", null, app.pitchMode ? midiNote : null);
+    handleHit(ctx.currentTime, "MIDI", "NORMAL", null, app.pitchMode ? effectiveMidi : null);
   } else if (app.pitchMode && app.pitchFreeMode) {
-    handlePitchFreeStep(midiNote, "MIDI");
+    handlePitchFreeStep(effectiveMidi, "MIDI");
   } else {
     setHitBadge(`[MIDI] ${noteName}`, "tight");
+  }
+}
+
+function syncPitchPianoLabels() {
+  for (const k of [...PITCH_WHITE_KEYS, ...PITCH_BLACK_KEYS]) {
+    const node = document.querySelector(`#pitchPiano [data-code="${k.code}"] .pk-note`);
+    if (node) {
+      node.textContent = app.pitchRelative ? DEGREE_NAMES[((k.midi % 12) + 12) % 12] : k.note;
+    }
   }
 }
 
@@ -2126,6 +2172,9 @@ function syncPitchUi() {
   const freeBtn = document.getElementById("btnPitchFreeMode");
   freeBtn.textContent = app.pitchFreeMode ? t("pitchFree") : t("pitchTimed");
   freeBtn.classList.toggle("active", app.pitchFreeMode);
+  const relBtn = document.getElementById("btnPitchRelMode");
+  relBtn.textContent = app.pitchRelative ? t("pitchRel") : t("pitchAbs");
+  relBtn.classList.toggle("active", app.pitchRelative);
   document.getElementById("pitchClefSelect").value = app.pitchClef;
   document.getElementById("pitchKeySelect").value = app.pitchKey;
   document.getElementById("pitchProgSelect").value = app.pitchProg;
@@ -2134,6 +2183,7 @@ function syncPitchUi() {
   hintBtn.classList.toggle("active", app.pitchShowHints);
   const pianoEl = document.getElementById("pitchPiano");
   if (pianoEl) pianoEl.classList.toggle("hidden", !app.pitchMode);
+  syncPitchPianoLabels();
   if (typeof syncToolsMenuBadge === "function") syncToolsMenuBadge();
 }
 
@@ -2177,6 +2227,18 @@ document.getElementById("btnPitchFreeMode").addEventListener("click", (e) => {
   const msgEl = document.getElementById("pitchMsg");
   msgEl.style.color = "var(--muted)";
   msgEl.textContent = t("pitchIdleMsg");
+  updateMeta();
+  syncPitchUi();
+});
+document.getElementById("btnPitchRelMode").addEventListener("click", (e) => {
+  e.currentTarget.blur();
+  app.pitchRelative = !app.pitchRelative;
+  if (app.pitchRelative && !app.pitchMode) {
+    app.pitchMode = true;
+    applyPitchToCurrentPhrase();
+    resetTargets();
+  }
+  app.dirtyScore = true;
   updateMeta();
   syncPitchUi();
 });
@@ -2368,7 +2430,7 @@ registerMidiCallbacks({
     }
   },
 });
-initEditor({ stopRun, resetTargets, updateMeta, setHitBadge, loadDailyChallenge, newPhrase });
+initEditor({ stopRun, resetTargets, updateMeta, setHitBadge, loadDailyChallenge, newPhrase, syncPitchUi });
 initTour({ stopRun, applyLanguage });
 
 // Boot

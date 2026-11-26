@@ -13,6 +13,7 @@ const edCbs = {
   setHitBadge: () => {},
   loadDailyChallenge: () => {},
   newPhrase: () => {},
+  syncPitchUi: () => {},
 };
 
 export const ED_SIMPLE_GROUPS = [
@@ -502,8 +503,19 @@ export function applyFullSeedObj(cfg) {
   app.ghostOn = cfg.ghostOn;
   app.numBars = cfg.numBars;
   app.bpm = cfg.bpm;
+  if (cfg.pitchMode) {
+    app.pitchMode = true;
+    app.pitchClef = cfg.pitchClef || "bass";
+    if (cfg.pitchKey) app.pitchKey = cfg.pitchKey;
+    if (cfg.pitchProg) app.pitchProg = cfg.pitchProg;
+    const pBar = document.getElementById("pitchBar");
+    if (pBar) pBar.classList.remove("hidden");
+  } else {
+    app.pitchMode = false;
+  }
   toggleEditorBar(false);
   edCbs.newPhrase(cfg.seed, false);
+  edCbs.syncPitchUi();
   const full = currentFullSeedCode();
   edCbs.setHitBadge(`#${full}`, "tight");
   return full;

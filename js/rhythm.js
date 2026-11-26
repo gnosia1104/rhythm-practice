@@ -402,8 +402,18 @@ export function decodeCustomScore(input) {
   }
 }
 
-// Self-contained Full Seed Code: e.g. "44-L4T1SG-8B-80-A1B2"
-// Encodes meter, level, T1/T2/S/G toggles, bar count, BPM, and 4-hex RNG seed in one short string
+// Self-contained Full Seed Code:
+// - Rhythm only: "44-L4T1SG-8B-80-A1B2"
+// - Pitch BETA:  "44-L3-4B-90-A1B2-PB-BB-25" (Clef B/T · Resolved Flat Key · Prog AU/25/TT/BD/16/BL/MO)
+const PROG_TO_CODE = {
+  "auto": "AU", "ii-V-I": "25", "tritone": "TT", "backdoor": "BD",
+  "I-vi-ii-V": "16", "blues": "BL", "modal": "MO",
+};
+const CODE_TO_PROG = Object.fromEntries(Object.entries(PROG_TO_CODE).map(([k, v]) => [v, k]));
+const CODE_TO_KEY = {
+  C: "C", F: "F", BB: "Bb", EB: "Eb", AB: "Ab", DB: "Db", DM: "Dm", GM: "Gm", CM: "Cm", RND: "RND",
+};
+
 export function encodeFullSeedCode(cfg) {
   const tsCode = TS_TO_CODE[cfg.timeSig] || "44";
   const ts = TIME_SIGS[cfg.timeSig] || TIME_SIGS["4/4"];
@@ -411,13 +421,20 @@ export function encodeFullSeedCode(cfg) {
   const tTag = effTri === 2 ? "T2" : (effTri === 1 ? "T1" : "");
   const flags = `${tTag}${cfg.staccatoOn ? "S" : ""}${cfg.ghostOn ? "G" : ""}`;
   const hex = (Number(cfg.seed) >>> 0).toString(16).toUpperCase().padStart(4, "0");
-  return `${tsCode}-L${cfg.level}${flags}-${cfg.numBars}B-${Math.round(cfg.bpm)}-${hex}`;
+  let out = `${tsCode}-L${cfg.level}${flags}-${cfg.numBars}B-${Math.round(cfg.bpm)}-${hex}`;
+  if (cfg.pitchMode) {
+    const clefCode = cfg.pitchClef === "treble" ? "T" : "B";
+    const keyCode = String(cfg.pitchKey || "Bb").toUpperCase();
+    const progCode = PROG_TO_CODE[cfg.pitchProg] || "AU";
+    out += `-P${clefCode}-${keyCode}-${progCode}`;
+  }
+  return out;
 }
 
 export function decodeFullSeedCode(raw) {
   if (!raw || typeof raw !== "string") return null;
   const s = raw.trim().replace(/^seed\s*/i, "").replace(/^#/, "").toUpperCase();
-  const m = s.match(/^(44|34|24|54|68)-L([1-6])(T[12])?(S)?(G)?-(\d{1,2})B-(\d{2,3})-([0-9A-F]{1,8})$/);
+  const m = s.match(/^(44|34|24|54|68)-L([1-6])(T[12])?(S)?(G)?-(\d{1,2})B-(\d{2,3})-([0-9A-F]{1,8})(?:-P([BT])-([A-Z]{1,3})-([A-Z0-9]{2}))?$/);
   if (!m) return null;
   const timeSig = CODE_TO_TS[m[1]];
   const level = Number(m[2]);
@@ -430,7 +447,14 @@ export function decodeFullSeedCode(raw) {
   if (!timeSig || !BAR_OPTIONS.includes(numBars) || bpm < 40 || bpm > 180 || !Number.isFinite(seed) || seed <= 0) {
     return null;
   }
-  return { timeSig, level, tripletMode, staccatoOn, ghostOn, numBars, bpm, seed };
+  const pitchMode = Boolean(m[9]);
+  const pitchClef = m[9] === "T" ? "treble" : "bass";
+  const pitchKey = m[10] ? (CODE_TO_KEY[m[10]] || "Bb") : null;
+  const pitchProg = m[11] ? (CODE_TO_PROG[m[11]] || "auto") : null;
+  return {
+    timeSig, level, tripletMode, staccatoOn, ghostOn, numBars, bpm, seed,
+    pitchMode, pitchClef, pitchKey, pitchProg,
+  };
 }
 
 // Deterministic Daily Challenge (same 8-bar score worldwide per calendar date YYYY-MM-DD)
