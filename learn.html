@@ -147,16 +147,22 @@
     <div id="rhythmGrid" class="rhythm-grid"></div>
   </section>
 
-  <!-- Section 3: 10-Note Untimed Warm-up Quiz -->
+  <!-- Section 3: 10-Question Untimed Warm-up Quiz (Pitch / Rhythm / Mixed) -->
   <section class="learn-card">
     <div class="learn-card-head">
-      <h2 id="sec3Title">3. 10문제 낮은음자리표 워밍업 퀴즈 (박자 없음)</h2>
+      <h2 id="sec3Title">3. 10문제 오선보 · 박자 워밍업 퀴즈</h2>
       <div class="group">
+        <select id="quizModeSelect" title="퀴즈 종류 선택">
+          <option value="pitch">🎼 음정 퀴즈</option>
+          <option value="rhythm">🥁 박자(음표·쉼표) 퀴즈</option>
+          <option value="mixed" selected>🎲 혼합 (음정+박자)</option>
+        </select>
+        <button id="btnQuizHear" type="button" class="hidden" title="4박 메트로놈과 함께 리듬 소리를 미리 듣습니다">🔊 소리 힌트</button>
         <button id="btnQuizMidi" type="button">🎹 MIDI 연결</button>
         <button id="btnQuizRestart" type="button">↻ 새 10문제</button>
       </div>
     </div>
-    <p id="sec3Desc" class="learn-sub">시간 제한이나 메트로놈 없이 천천히 음표를 읽고 아래 버튼, 키보드(<strong>e4r5ty7u8i9op</strong>), 또는 MIDI 건반으로 눌러보세요. (옥타브 무관 정답!)</p>
+    <p id="sec3Desc" class="learn-sub">시간 제한 없이 천천히 연습하세요 · 음정 문제는 버튼/<strong>e4r5ty7u8i9op</strong>/MIDI(옥타브 무관), 박자 문제는 보기 클릭 또는 숫자키 <strong>1~4</strong>로 답할 수 있어요.</p>
 
     <div class="quiz-stage">
       <div id="quizProgress" class="label" style="font-weight:700;">문제 1 / 10 · 정답 0</div>
@@ -176,6 +182,6 @@
     <a id="ctaLink" href="index.html" class="cta-btn">🎸 실전 초견 트레이너 시작 →</a>
   </section>
 </div>
-<script type="module" src="js/learn.js"></script>
+<script type="module" src="js/learn.js?v=20261127b"></script>
 </body>
 </html>

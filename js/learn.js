@@ -54,16 +54,31 @@ const LEARN_I18N = {
     readoutFrets: (list) => list.length ? `4현 베이스 지판: ${list.join("  /  ")}` : "4현 베이스 0~12프렛 외 음역",
     sec2Title: "2. 음표 · 쉼표 박자 길이 소리로 체험하기",
     sec2Sub: "카드를 클릭하면 <strong>4박 메트로놈 클릭</strong>과 함께 해당 음표/쉼표 리듬이 실제 소리로 재생됩니다.",
-    sec3Title: "3. 10문제 낮은음자리표 워밍업 퀴즈 (박자 없음)",
-    sec3Desc: "시간 제한이나 메트로놈 없이 천천히 음표를 읽고 아래 버튼, 키보드(<strong>e4r5ty7u8i9op</strong>), 또는 MIDI 건반으로 눌러보세요. (옥타브 무관 정답!)",
+    sec3Title: "3. 10문제 오선보 · 박자 워밍업 퀴즈",
+    sec3Desc: "시간 제한 없이 천천히 연습하세요 · 음정 문제는 버튼/<strong>e4r5ty7u8i9op</strong>/MIDI(옥타브 무관), 박자 문제는 보기 클릭 또는 숫자키 <strong>1~4</strong>로 답할 수 있어요.",
+    quizModeOpts: ["🎼 음정 퀴즈", "🥁 박자(음표·쉼표) 퀴즈", "🎲 혼합 (음정+박자)"],
+    quizHear: "🔊 소리 힌트",
     quizMidi: "🎹 MIDI 연결",
     quizMidiOn: "🎹 MIDI 연결됨",
     quizRestart: "↻ 새 10문제",
     quizPrompt: "이 음표는 무슨 음일까요?",
+    quizRhythmPrompt: "이 음표 / 쉼표의 박자 길이는?",
     quizProg: (cur, tot, ok) => `문제 ${cur} / ${tot} · 첫 시도 정답 ${ok}`,
-    quizOk: (name, solf) => `✓ 정답! ${name} (${solf})`,
-    quizWrong: (played, target) => `✗ ${played} 눌렀어요 — 다시 찾아보세요!`,
+    quizOk: (name, solf) => solf ? `✓ 정답! ${name} (${solf})` : `✓ 정답! ${name}`,
+    quizWrong: (played) => `✗ ${played} — 다시 골라보세요!`,
     quizDone: (ok, tot) => `🎉 10문제 완주! 첫 시도 정답 ${ok}/${tot} (${Math.round(ok / tot * 100)}%)`,
+    rhythmQuizBank: [
+      { id: "whole", dur: 48, rest: false, label: "온음표 (4박)", beats: [[0, 4]] },
+      { id: "dothalf", dur: 36, rest: false, label: "점2분음표 (3박)", beats: [[0, 3]] },
+      { id: "half", dur: 24, rest: false, label: "2분음표 (2박)", beats: [[0, 2], [2, 2]] },
+      { id: "quarter", dur: 12, rest: false, label: "4분음표 (1박)", beats: [[0, 1], [1, 1], [2, 1], [3, 1]] },
+      { id: "eighth", dur: 6, rest: false, label: "8분음표 (½박)", beats: [[0, 0.5], [0.5, 0.5], [1, 0.5], [1.5, 0.5], [2, 0.5], [2.5, 0.5], [3, 0.5], [3.5, 0.5]] },
+      { id: "sixteenth", dur: 3, rest: false, label: "16분음표 (¼박)", beats: [[0, 0.25], [0.25, 0.25], [0.5, 0.25], [0.75, 0.25], [1, 1], [2, 0.25], [2.25, 0.25], [2.5, 0.25], [2.75, 0.25], [3, 1]] },
+      { id: "triplet", dur: 4, rest: false, label: "8분 3연음 (⅓박)", beats: [[0, 1/3], [1/3, 1/3], [2/3, 1/3], [1, 1], [2, 1/3], [2+1/3, 1/3], [2+2/3, 1/3], [3, 1]] },
+      { id: "hrest", dur: 24, rest: true, label: "2분쉼표 (2박 쉼)", beats: [[0, 1.8]] },
+      { id: "qrest", dur: 12, rest: true, label: "4분쉼표 (1박 쉼)", beats: [[0, 0.9], [2, 0.9]] },
+      { id: "erest", dur: 6, rest: true, label: "8분쉼표 (½박 쉼)", beats: [[0.5, 0.45], [1.5, 0.45], [2.5, 0.45], [3.5, 0.45]] },
+    ],
     ctaTitle: "이제 실전 초견으로 넘어가 볼까요?",
     ctaDesc: "실전 트레이너에서 <strong>⋯ 도구 → 🎼 음정 초견 BETA → 🎯 자유 템포</strong>를 켜면 재즈 코드 진행 악보로 바로 이어서 연습할 수 있습니다.",
     ctaLink: "🎸 실전 초견 트레이너 시작 →",
@@ -107,16 +122,31 @@ const LEARN_I18N = {
     readoutFrets: (list) => list.length ? `4-String Bass Frets: ${list.join("  /  ")}` : "Outside 0–12th fret range",
     sec2Title: "2. Interactive Note & Rest Values (Hear with Metronome)",
     sec2Sub: "Click any card to hear how the note or rest aligns against <strong>4 metronome clicks</strong>.",
-    sec3Title: "3. Untimed 10-Note Bass Clef Warm-up Quiz",
-    sec3Desc: "No metronome pressure — identify each note using the buttons below, your keyboard (<strong>e4r5ty7u8i9op</strong>), or a USB MIDI keyboard (octave-agnostic!).",
+    sec3Title: "3. Untimed 10-Question Pitch & Rhythm Quiz",
+    sec3Desc: "No tempo pressure — answer Pitch questions via buttons / <strong>e4r5ty7u8i9op</strong> / MIDI (octave-agnostic), and Rhythm questions via buttons or keys <strong>1–4</strong>.",
+    quizModeOpts: ["🎼 Pitch Quiz", "🥁 Rhythm (Note/Rest) Quiz", "🎲 Mixed (Pitch + Rhythm)"],
+    quizHear: "🔊 Hear Hint",
     quizMidi: "🎹 Connect MIDI",
     quizMidiOn: "🎹 MIDI On",
-    quizRestart: "↻ New 10 Notes",
+    quizRestart: "↻ New 10 Questions",
     quizPrompt: "Which note is shown on the staff?",
+    quizRhythmPrompt: "What is this note or rest value?",
     quizProg: (cur, tot, ok) => `Question ${cur} / ${tot} · First-try ${ok}`,
     quizOk: (name) => `✓ Correct! ${name}`,
-    quizWrong: (played) => `✗ You played ${played} — try again!`,
+    quizWrong: (played) => `✗ ${played} — try again!`,
     quizDone: (ok, tot) => `🎉 Done! First-try accuracy ${ok}/${tot} (${Math.round(ok / tot * 100)}%)`,
+    rhythmQuizBank: [
+      { id: "whole", dur: 48, rest: false, label: "Whole Note (4 beats)", beats: [[0, 4]] },
+      { id: "dothalf", dur: 36, rest: false, label: "Dotted Half (3 beats)", beats: [[0, 3]] },
+      { id: "half", dur: 24, rest: false, label: "Half Note (2 beats)", beats: [[0, 2], [2, 2]] },
+      { id: "quarter", dur: 12, rest: false, label: "Quarter Note (1 beat)", beats: [[0, 1], [1, 1], [2, 1], [3, 1]] },
+      { id: "eighth", dur: 6, rest: false, label: "8th Note (½ beat)", beats: [[0, 0.5], [0.5, 0.5], [1, 0.5], [1.5, 0.5], [2, 0.5], [2.5, 0.5], [3, 0.5], [3.5, 0.5]] },
+      { id: "sixteenth", dur: 3, rest: false, label: "16th Note (¼ beat)", beats: [[0, 0.25], [0.25, 0.25], [0.5, 0.25], [0.75, 0.25], [1, 1], [2, 0.25], [2.25, 0.25], [2.5, 0.25], [2.75, 0.25], [3, 1]] },
+      { id: "triplet", dur: 4, rest: false, label: "8th Triplet (⅓ beat)", beats: [[0, 1/3], [1/3, 1/3], [2/3, 1/3], [1, 1], [2, 1/3], [2+1/3, 1/3], [2+2/3, 1/3], [3, 1]] },
+      { id: "hrest", dur: 24, rest: true, label: "Half Rest (2 beats)", beats: [[0, 1.8]] },
+      { id: "qrest", dur: 12, rest: true, label: "Quarter Rest (1 beat)", beats: [[0, 0.9], [2, 0.9]] },
+      { id: "erest", dur: 6, rest: true, label: "8th Rest (½ beat)", beats: [[0.5, 0.45], [1.5, 0.45], [2.5, 0.45], [3.5, 0.45]] },
+    ],
     ctaTitle: "Ready for real sight-reading?",
     ctaDesc: "Open <strong>⋯ Tools → 🎼 Pitch Sight-Read BETA → 🎯 Free Tempo</strong> in the main trainer to practice real jazz progressions.",
     ctaLink: "🎸 Open Main Trainer →",
@@ -160,16 +190,31 @@ const LEARN_I18N = {
     readoutFrets: (list) => list.length ? `4弦ベース指板: ${list.join("  /  ")}` : "0〜12フレット範囲外",
     sec2Title: "2. 音符・休符の長さを音で体験",
     sec2Sub: "カードをクリックすると<strong>4拍メトロノーム</strong>と一緒に実際のリズムが再生されます。",
-    sec3Title: "3. 10問 ヘ音記号ウォームアップクイズ (拍なし)",
-    sec3Desc: "テンポ制限なしで1音ずつ確認できます。下のボタン、キーボード(<strong>e4r5ty7u8i9op</strong>)、MIDI鍵盤に対応 (オクターブ不問)。",
+    sec3Title: "3. 10問 音程・リズム ウォームアップクイズ",
+    sec3Desc: "テンポ制限なしで練習できます · 音程はボタン/<strong>e4r5ty7u8i9op</strong>/MIDI、リズムはボタンまたは数字キー<strong>1〜4</strong>で回答できます。",
+    quizModeOpts: ["🎼 音程クイズ", "🥁 リズム(音符・休符)", "🎲 ミックス (音程+リズム)"],
+    quizHear: "🔊 音ヒント",
     quizMidi: "🎹 MIDI接続",
     quizMidiOn: "🎹 MIDI接続済",
     quizRestart: "↻ 新しい10問",
     quizPrompt: "この音符は何の音でしょう？",
+    quizRhythmPrompt: "この音符・休符の長さは？",
     quizProg: (cur, tot, ok) => `問題 ${cur} / ${tot} · 一発正解 ${ok}`,
-    quizOk: (name, solf) => `✓ 正解！ ${name} (${solf})`,
-    quizWrong: (played) => `✗ ${played} を押しました — もう一度！`,
+    quizOk: (name, solf) => solf ? `✓ 正解！ ${name} (${solf})` : `✓ 正解！ ${name}`,
+    quizWrong: (played) => `✗ ${played} — もう一度！`,
     quizDone: (ok, tot) => `🎉 10問クリア！ 一発正解 ${ok}/${tot} (${Math.round(ok / tot * 100)}%)`,
+    rhythmQuizBank: [
+      { id: "whole", dur: 48, rest: false, label: "全音符 (4拍)", beats: [[0, 4]] },
+      { id: "dothalf", dur: 36, rest: false, label: "付点2分音符 (3拍)", beats: [[0, 3]] },
+      { id: "half", dur: 24, rest: false, label: "2分音符 (2拍)", beats: [[0, 2], [2, 2]] },
+      { id: "quarter", dur: 12, rest: false, label: "4분音符 (1拍)".replace("분", "分"), beats: [[0, 1], [1, 1], [2, 1], [3, 1]] },
+      { id: "eighth", dur: 6, rest: false, label: "8分音符 (½拍)", beats: [[0, 0.5], [0.5, 0.5], [1, 0.5], [1.5, 0.5], [2, 0.5], [2.5, 0.5], [3, 0.5], [3.5, 0.5]] },
+      { id: "sixteenth", dur: 3, rest: false, label: "16分音符 (¼拍)", beats: [[0, 0.25], [0.25, 0.25], [0.5, 0.25], [0.75, 0.25], [1, 1], [2, 0.25], [2.25, 0.25], [2.5, 0.25], [2.75, 0.25], [3, 1]] },
+      { id: "triplet", dur: 4, rest: false, label: "8分3連符 (⅓拍)", beats: [[0, 1/3], [1/3, 1/3], [2/3, 1/3], [1, 1], [2, 1/3], [2+1/3, 1/3], [2+2/3, 1/3], [3, 1]] },
+      { id: "hrest", dur: 24, rest: true, label: "2分休符 (2拍)", beats: [[0, 1.8]] },
+      { id: "qrest", dur: 12, rest: true, label: "4分休符 (1拍)", beats: [[0, 0.9], [2, 0.9]] },
+      { id: "erest", dur: 6, rest: true, label: "8分休符 (½拍)", beats: [[0.5, 0.45], [1.5, 0.45], [2.5, 0.45], [3.5, 0.45]] },
+    ],
     ctaTitle: "実戦初見トレーニングへ進みましょう！",
     ctaDesc: "メイントレーナーの <strong>⋯ ツール → 🎼 音程初見 BETA → 🎯 フリーテンポ</strong> でジャズコード進行譜面を練習できます。",
     ctaLink: "🎸 メイントレーナーを開く →",
@@ -198,8 +243,9 @@ let activeKey = "C";
 let selectedMidi = 41; // F2 (bass clef anchor) or G4 (67, treble clef anchor)
 let scaleNotes = [];
 
-// Quiz state
+// Quiz state (mode: "pitch" | "rhythm" | "mixed")
 const quiz = {
+  mode: "mixed",
   items: [],
   idx: 0,
   firstTryOk: 0,
@@ -544,26 +590,87 @@ function renderRhythmTiles() {
   }
 }
 
-// Section 3: 10-Note Untimed Warm-up Quiz
-function startQuiz() {
-  const pool = getDiatonicNotes(activeKey, activeClef);
-  quiz.items = [];
-  let prev = null;
-  for (let i = 0; i < 10; i++) {
-    let pick = pool[Math.floor(Math.random() * pool.length)];
-    if (prev && pick.midi === prev.midi && pool.length > 1) {
-      pick = pool[(pool.indexOf(pick) + 2) % pool.length];
-    }
-    quiz.items.push(pick);
-    prev = pick;
+// Section 3: 10-Question Untimed Warm-up Quiz (Pitch · Rhythm · Mixed)
+function shuffleArr(arr) {
+  const out = [...arr];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
   }
+  return out;
+}
+
+function makeRhythmQuizQuestion(rItem, bank) {
+  const distractors = shuffleArr(bank.filter(x => x.id !== rItem.id)).slice(0, 3);
+  const choices = shuffleArr([rItem, ...distractors]);
+  return { kind: "rhythm", rhythm: rItem, choices };
+}
+
+function playRhythmQuizAudio(rItem) {
+  if (!rItem || !rItem.beats) return;
+  stopScheduledAudio();
+  const ctx = ensureAudioCtx();
+  const beatSec = 60 / 84;
+  const t0 = ctx.currentTime + 0.05;
+  for (let b = 0; b < 4; b++) {
+    scheduleClick(ctx, t0 + b * beatSec, b === 0 ? 1318.51 : 880, b === 0 ? 0.28 : 0.17);
+  }
+  for (const [bOff, durB] of rItem.beats) {
+    scheduleBassNote(ctx, t0 + bOff * beatSec, Math.max(0.08, durB * beatSec * 0.90), 73.42);
+  }
+}
+
+function startQuiz() {
+  const pitchPool = getDiatonicNotes(activeKey, activeClef);
+  const rBank = lt("rhythmQuizBank");
+  const items = [];
+
+  const pickPitch = (prevMidi) => {
+    let pick = pitchPool[Math.floor(Math.random() * pitchPool.length)];
+    if (prevMidi !== null && pick.midi === prevMidi && pitchPool.length > 1) {
+      pick = pitchPool[(pitchPool.indexOf(pick) + 2) % pitchPool.length];
+    }
+    return { kind: "pitch", note: pick };
+  };
+
+  if (quiz.mode === "pitch") {
+    let prev = null;
+    for (let i = 0; i < 10; i++) {
+      const q = pickPitch(prev);
+      items.push(q);
+      prev = q.note.midi;
+    }
+  } else if (quiz.mode === "rhythm") {
+    const shuffledR = shuffleArr(rBank);
+    for (let i = 0; i < 10; i++) {
+      items.push(makeRhythmQuizQuestion(shuffledR[i % shuffledR.length], rBank));
+    }
+  } else {
+    // Mixed: 5 Pitch + 5 Rhythm interleaved randomly
+    let prev = null;
+    const mixed = [];
+    for (let i = 0; i < 5; i++) {
+      const q = pickPitch(prev);
+      mixed.push(q);
+      prev = q.note.midi;
+    }
+    const shuffledR = shuffleArr(rBank).slice(0, 5);
+    for (const rItem of shuffledR) {
+      mixed.push(makeRhythmQuizQuestion(rItem, rBank));
+    }
+    items.push(...shuffleArr(mixed));
+  }
+
+  quiz.items = items;
   quiz.idx = 0;
   quiz.firstTryOk = 0;
   quiz.hadWrong = false;
   quiz.done = false;
+  const firstQ = quiz.items[0];
   document.getElementById("quizStatus").style.color = "#111827";
-  document.getElementById("quizStatus").textContent = lt("quizPrompt");
+  document.getElementById("quizStatus").textContent = firstQ && firstQ.kind === "rhythm" ? lt("quizRhythmPrompt") : lt("quizPrompt");
   renderQuiz();
+  buildQuizButtons();
 }
 
 function renderQuiz() {
@@ -574,8 +681,42 @@ function renderQuiz() {
   while (svg.firstChild) svg.removeChild(svg.firstChild);
   const staffTop = 34;
   const midY = staffTop + 20;
-  const flats = (JAZZ_KEYS[activeKey] || JAZZ_KEYS.C).flats;
+  const cur = quiz.items[Math.min(quiz.idx, quiz.items.length - 1)];
+  const hearBtn = document.getElementById("btnQuizHear");
+  if (hearBtn) hearBtn.classList.toggle("hidden", !cur || cur.kind !== "rhythm" || quiz.done);
 
+  if (!cur) return;
+
+  if (cur.kind === "rhythm") {
+    // Render crisp engraved note or rest value on a clean rhythm staff
+    for (let i = 0; i < 5; i++) {
+      svg.appendChild(el("line", { x1: 24, y1: staffTop + i * 10, x2: 236, y2: staffTop + i * 10, stroke: "#cbd5e1", "stroke-width": 1.0 }));
+    }
+    svg.appendChild(el("line", { x1: 24, y1: midY, x2: 236, y2: midY, stroke: "#3f3f46", "stroke-width": 1.25 }));
+    const r = cur.rhythm;
+    const col = quiz.done ? "#16a34a" : "#111";
+    if (r.rest) {
+      drawRest(svg, r.dur, 130, midY);
+    } else if (r.id === "triplet") {
+      [92, 130, 168].forEach(x => {
+        drawNotehead(svg, 6, x, midY, null, col);
+        svg.appendChild(el("line", { x1: x + 4.7, y1: midY - 1.5, x2: x + 4.7, y2: midY - 32, stroke: col, "stroke-width": 1.5 }));
+      });
+      svg.appendChild(el("rect", { x: 96, y: midY - 32, width: 77, height: 4.4, fill: col }));
+      svg.appendChild(el("text", { x: 134, y: midY - 37, fill: col, "font-size": 13, "font-weight": 700, "font-style": "italic", "text-anchor": "middle", "font-family": "Georgia, serif" }, "3"));
+    } else {
+      drawNotehead(svg, r.dur, 130, midY, null, col);
+      if (r.dur !== 48) {
+        svg.appendChild(el("line", { x1: 134.7, y1: midY - 1.5, x2: 134.7, y2: midY - 34, stroke: col, "stroke-width": 1.5 }));
+        if (r.dur === 6) drawFlag(svg, 134.7, midY - 34, false);
+        else if (r.dur === 3) drawFlag(svg, 134.7, midY - 34, true);
+      }
+    }
+    return;
+  }
+
+  // Pitch question on 5-line Bass or Treble clef
+  const flats = (JAZZ_KEYS[activeKey] || JAZZ_KEYS.C).flats;
   const isTreble = activeClef === "treble";
   const sigPos = isTreble ? TREBLE_FLAT_SIG_POS : BASS_FLAT_SIG_POS;
   for (let i = 0; i < 5; i++) {
@@ -590,11 +731,11 @@ function renderQuiz() {
     }, "♭"));
   }
 
-  const cur = quiz.items[Math.min(quiz.idx, quiz.items.length - 1)];
-  if (cur) {
+  const sp = cur.note;
+  if (sp) {
     const nx = 164;
-    const ny = midY - cur.staffPos * 5;
-    drawLedger(svg, nx, midY, cur.staffPos);
+    const ny = midY - sp.staffPos * 5;
+    drawLedger(svg, nx, midY, sp.staffPos);
     drawNotehead(svg, 24, nx, ny, null, quiz.done ? "#16a34a" : "#111");
   }
 }
@@ -602,6 +743,23 @@ function renderQuiz() {
 function buildQuizButtons() {
   const wrap = document.getElementById("quizBtns");
   wrap.innerHTML = "";
+  const cur = quiz.items[Math.min(quiz.idx, quiz.items.length - 1)];
+
+  if (cur && cur.kind === "rhythm") {
+    const rBank = lt("rhythmQuizBank");
+    const labelMap = new Map(rBank.map(x => [x.id, x.label]));
+    cur.choices.forEach((choice, idx) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      const lbl = labelMap.get(choice.id) || choice.label;
+      btn.textContent = `${idx + 1}. ${lbl}`;
+      btn.dataset.rhythmId = choice.id;
+      btn.addEventListener("click", () => checkRhythmQuizAnswer(choice, btn));
+      wrap.appendChild(btn);
+    });
+    return;
+  }
+
   const seenPc = new Set();
   const pool = getDiatonicNotes(activeKey, activeClef);
   const uniqueNotes = [];
@@ -623,38 +781,71 @@ function buildQuizButtons() {
   }
 }
 
+function advanceQuizAfterCorrect(statusText, btnEl) {
+  const statusEl = document.getElementById("quizStatus");
+  if (!quiz.hadWrong) quiz.firstTryOk += 1;
+  statusEl.style.color = "#16a34a";
+  statusEl.textContent = statusText;
+  if (btnEl) {
+    btnEl.classList.add("q-ok");
+    window.setTimeout(() => btnEl.classList.remove("q-ok"), 240);
+  }
+  quiz.idx += 1;
+  quiz.hadWrong = false;
+  if (quiz.idx >= quiz.items.length) {
+    quiz.done = true;
+    statusEl.textContent = lt("quizDone")(quiz.firstTryOk, quiz.items.length);
+  }
+  renderQuiz();
+  buildQuizButtons();
+}
+
+function checkRhythmQuizAnswer(choice, btnEl = null) {
+  if (quiz.done) {
+    startQuiz();
+    return;
+  }
+  const cur = quiz.items[quiz.idx];
+  if (!cur || cur.kind !== "rhythm") return;
+  const rBank = lt("rhythmQuizBank");
+  const labelMap = new Map(rBank.map(x => [x.id, x.label]));
+  const pickedLbl = labelMap.get(choice.id) || choice.label;
+  if (choice.id === cur.rhythm.id) {
+    const ctx = ensureAudioCtx();
+    scheduleClick(ctx, ctx.currentTime + 0.01, 1318.51, 0.25);
+    advanceQuizAfterCorrect(lt("quizOk")(pickedLbl, ""), btnEl);
+  } else {
+    quiz.hadWrong = true;
+    const statusEl = document.getElementById("quizStatus");
+    statusEl.style.color = "#dc2626";
+    statusEl.textContent = lt("quizWrong")(pickedLbl);
+    if (btnEl) {
+      btnEl.classList.add("q-err");
+      window.setTimeout(() => btnEl.classList.remove("q-err"), 260);
+    }
+  }
+}
+
 function checkQuizAnswer(midi, btnEl = null) {
   if (quiz.done) {
     startQuiz();
     return;
   }
   const cur = quiz.items[quiz.idx];
-  if (!cur) return;
+  if (!cur || cur.kind !== "pitch") return;
+  const sp = cur.note;
   const ctx = ensureAudioCtx();
   scheduleBassNote(ctx, ctx.currentTime, 0.35, midiToFreq(midi));
 
-  const cmp = comparePitchClass(midi, cur.midi, 45);
+  const cmp = comparePitchClass(midi, sp.midi, 45);
   const statusEl = document.getElementById("quizStatus");
   if (cmp.ok) {
-    if (!quiz.hadWrong) quiz.firstTryOk += 1;
-    const solf = (lang === "ja" ? SOLFEGE_JA : SOLFEGE_KO)[cur.pc];
-    statusEl.style.color = "#16a34a";
-    statusEl.textContent = lt("quizOk")(cur.name, solf);
-    if (btnEl) {
-      btnEl.classList.add("q-ok");
-      window.setTimeout(() => btnEl.classList.remove("q-ok"), 260);
-    }
-    quiz.idx += 1;
-    quiz.hadWrong = false;
-    if (quiz.idx >= quiz.items.length) {
-      quiz.done = true;
-      statusEl.textContent = lt("quizDone")(quiz.firstTryOk, quiz.items.length);
-    }
-    renderQuiz();
+    const solf = (lang === "ja" ? SOLFEGE_JA : SOLFEGE_KO)[sp.pc];
+    advanceQuizAfterCorrect(lt("quizOk")(sp.name, lang === "en" ? "" : solf), btnEl);
   } else {
     quiz.hadWrong = true;
     statusEl.style.color = "#dc2626";
-    statusEl.textContent = lt("quizWrong")(cmp.detectedName, cur.name);
+    statusEl.textContent = lt("quizWrong")(cmp.detectedName, sp.name);
     if (btnEl) {
       btnEl.classList.add("q-err");
       window.setTimeout(() => btnEl.classList.remove("q-err"), 280);
@@ -694,6 +885,10 @@ function applyLearnLang(nextLang) {
   document.getElementById("sec2Sub").innerHTML = lt("sec2Sub");
   document.getElementById("sec3Title").textContent = lt("sec3Title");
   document.getElementById("sec3Desc").innerHTML = lt("sec3Desc");
+  const qmOpts = lt("quizModeOpts") || [];
+  const qmSel = document.getElementById("quizModeSelect");
+  for (let i = 0; i < qmSel.options.length && i < qmOpts.length; i++) qmSel.options[i].textContent = qmOpts[i];
+  document.getElementById("btnQuizHear").textContent = lt("quizHear");
   document.getElementById("btnQuizMidi").textContent = midiIn.active ? lt("quizMidiOn") : lt("quizMidi");
   document.getElementById("btnQuizRestart").textContent = lt("quizRestart");
   document.getElementById("ctaTitle").textContent = lt("ctaTitle");
@@ -733,6 +928,16 @@ document.getElementById("btnLearnPlayScale").addEventListener("click", () => {
     window.setTimeout(() => selectExplorerNote(sp.midi, false), idx * 340 + 40);
   });
 });
+document.getElementById("quizModeSelect").addEventListener("change", (e) => {
+  quiz.mode = e.target.value;
+  e.target.blur();
+  startQuiz();
+});
+document.getElementById("btnQuizHear").addEventListener("click", (e) => {
+  e.currentTarget.blur();
+  const cur = quiz.items[quiz.idx];
+  if (cur && cur.kind === "rhythm") playRhythmQuizAudio(cur.rhythm);
+});
 document.getElementById("btnQuizRestart").addEventListener("click", startQuiz);
 document.getElementById("btnQuizMidi").addEventListener("click", async () => {
   if (midiIn.active) {
@@ -743,10 +948,21 @@ document.getElementById("btnQuizMidi").addEventListener("click", async () => {
   document.getElementById("btnQuizMidi").textContent = midiIn.active ? lt("quizMidiOn") : lt("quizMidi");
 });
 
-// Keyboard (e4r5ty7u8i9op) & MIDI drive BOTH the explorer readout and active quiz!
+// Keyboard (1-4 for rhythm quiz, e4r5ty7u8i9op for pitch explorer & pitch quiz) + MIDI
 window.addEventListener("keydown", (e) => {
   if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
   if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "SELECT")) return;
+  const cur = quiz.items[quiz.idx];
+  if (cur && cur.kind === "rhythm" && !quiz.done && /^Digit[1-4]$/.test(e.code)) {
+    const idx = Number(e.code.slice(-1)) - 1;
+    const ch = cur.choices[idx];
+    if (ch) {
+      e.preventDefault();
+      const btn = document.querySelector(`#quizBtns [data-rhythm-id="${ch.id}"]`);
+      checkRhythmQuizAnswer(ch, btn);
+      return;
+    }
+  }
   const rawMidi = LEARN_KEY_TO_MIDI[e.code];
   if (Number.isFinite(rawMidi)) {
     e.preventDefault();
