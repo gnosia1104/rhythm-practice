@@ -411,7 +411,8 @@ const PROG_TO_CODE = {
 };
 const CODE_TO_PROG = Object.fromEntries(Object.entries(PROG_TO_CODE).map(([k, v]) => [v, k]));
 const CODE_TO_KEY = {
-  C: "C", F: "F", BB: "Bb", EB: "Eb", AB: "Ab", DB: "Db", DM: "Dm", GM: "Gm", CM: "Cm", RND: "RND",
+  C: "C", F: "F", BB: "Bb", EB: "Eb", AB: "Ab", DB: "Db", GB: "Gb", CB: "Cb",
+  DM: "Dm", GM: "Gm", CM: "Cm", FM: "Fm", BBM: "Bbm", EBM: "Ebm", ABM: "Abm", RND: "RND",
 };
 
 export function encodeFullSeedCode(cfg) {

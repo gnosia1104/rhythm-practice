@@ -8,26 +8,32 @@ import { TIME_SIGS } from "./rhythm.js";
 // Natural pitch classes for C D E F G A B
 const LETTER_PC = [0, 2, 4, 5, 7, 9, 11];
 const LETTER_NAMES = ["C", "D", "E", "F", "G", "A", "B"];
-// Bass clef flat key signature order: Bb(B2:-2), Eb(E3:+1), Ab(A2:-3), Db(D3:0), Gb(G2:-4)
-export const BASS_FLAT_SIG_POS = [-2, 1, -3, 0, -4];
-// Treble clef flat key signature order: Bb(B4:0), Eb(E5:+3), Ab(A4:-1), Db(D5:+2), Gb(G4:-2)
-export const TREBLE_FLAT_SIG_POS = [0, 3, -1, 2, -2];
-export const FLAT_ORDER_LETTERS = [6, 2, 5, 1, 4]; // B, E, A, D, G
+// Bass clef flat key signature order (up to 7 flats): Bb(-2), Eb(+1), Ab(-3), Db(0), Gb(-4), Cb(-1), Fb(-5)
+export const BASS_FLAT_SIG_POS = [-2, 1, -3, 0, -4, -1, -5];
+// Treble clef flat key signature order (up to 7 flats): Bb(0), Eb(+3), Ab(-1), Db(+2), Gb(-2), Cb(+1), Fb(-3)
+export const TREBLE_FLAT_SIG_POS = [0, 3, -1, 2, -2, 1, -3];
+export const FLAT_ORDER_LETTERS = [6, 2, 5, 1, 4, 0, 3]; // B, E, A, D, G, C, F
 
-// Flat-side jazz keys (Major & Minor — 0 to 5 flats)
+// All flat-side jazz keys (Major 0♭~7♭ & Minor 1♭~7♭)
 export const JAZZ_KEYS = {
-  "C":  { label: "C Maj (0♭)",  rootPc: 0,  flats: 0, minor: false },
-  "F":  { label: "F Maj (1♭)",  rootPc: 5,  flats: 1, minor: false },
-  "Bb": { label: "B♭ Maj (2♭)", rootPc: 10, flats: 2, minor: false },
-  "Eb": { label: "E♭ Maj (3♭)", rootPc: 3,  flats: 3, minor: false },
-  "Ab": { label: "A♭ Maj (4♭)", rootPc: 8,  flats: 4, minor: false },
-  "Db": { label: "D♭ Maj (5♭)", rootPc: 1,  flats: 5, minor: false },
-  "Dm": { label: "D min (1♭)",  rootPc: 2,  flats: 1, minor: true  },
-  "Gm": { label: "G min (2♭)",  rootPc: 7,  flats: 2, minor: true  },
-  "Cm": { label: "C min (3♭)",  rootPc: 0,  flats: 3, minor: true  },
+  "C":   { label: "C Maj (0♭)",   rootPc: 0,  flats: 0, minor: false },
+  "F":   { label: "F Maj (1♭)",   rootPc: 5,  flats: 1, minor: false },
+  "Bb":  { label: "B♭ Maj (2♭)",  rootPc: 10, flats: 2, minor: false },
+  "Eb":  { label: "E♭ Maj (3♭)",  rootPc: 3,  flats: 3, minor: false },
+  "Ab":  { label: "A♭ Maj (4♭)",  rootPc: 8,  flats: 4, minor: false },
+  "Db":  { label: "D♭ Maj (5♭)",  rootPc: 1,  flats: 5, minor: false },
+  "Gb":  { label: "G♭ Maj (6♭)",  rootPc: 6,  flats: 6, minor: false },
+  "Cb":  { label: "C♭ Maj (7♭)",  rootPc: 11, flats: 7, minor: false },
+  "Dm":  { label: "D min (1♭)",   rootPc: 2,  flats: 1, minor: true  },
+  "Gm":  { label: "G min (2♭)",   rootPc: 7,  flats: 2, minor: true  },
+  "Cm":  { label: "C min (3♭)",   rootPc: 0,  flats: 3, minor: true  },
+  "Fm":  { label: "F min (4♭)",   rootPc: 5,  flats: 4, minor: true  },
+  "Bbm": { label: "B♭ min (5♭)",  rootPc: 10, flats: 5, minor: true  },
+  "Ebm": { label: "E♭ min (6♭)",  rootPc: 3,  flats: 6, minor: true  },
+  "Abm": { label: "A♭ min (7♭)",  rootPc: 8,  flats: 7, minor: true  },
 };
 
-export const JAZZ_KEY_OPTIONS = ["C", "F", "Bb", "Eb", "Ab", "Db", "Dm", "Gm", "Cm"];
+export const JAZZ_KEY_OPTIONS = ["C", "F", "Bb", "Eb", "Ab", "Db", "Gb", "Cb", "Dm", "Gm", "Cm", "Fm", "Bbm", "Ebm", "Abm"];
 
 export const JAZZ_PROG_OPTIONS = ["auto", "ii-V-I", "tritone", "backdoor", "I-vi-ii-V", "blues", "modal"];
 

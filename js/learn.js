@@ -259,9 +259,10 @@ function lt(k) {
 
 function getDiatonicNotes(keyId, clef = activeClef) {
   const keyAcc = getKeySignatureAcc(keyId);
+  const flats = (JAZZ_KEYS[keyId] || JAZZ_KEYS.C).flats;
   const letterPc = [0, 2, 4, 5, 7, 9, 11];
   const isTreble = clef === "treble";
-  const minM = isTreble ? 60 : 28; // Treble: C4(60)..A5(81) | Bass: E1(28)..C3(48)
+  const minM = isTreble ? (flats >= 6 ? 59 : 60) : 28; // Include Cb4(59) in 6♭/7♭ treble keys
   const maxM = isTreble ? 81 : 48;
   const minOct = isTreble ? 4 : 1;
   const maxOct = isTreble ? 5 : 3;
