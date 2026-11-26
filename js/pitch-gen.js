@@ -175,40 +175,99 @@ function makeChord(keyRootPc, degreeSemi, qualKey, keyId) {
   };
 }
 
-// Authentic 4-bar Jazz Harmony Phrase Idioms (used by "auto" to avoid dry textbook diatonic loops)
-const MAJOR_JAZZ_BLOCKS_4 = [
-  // 1. Secondary Dominant Turnaround (Imaj7 -> VI7 -> ii7 -> V7)
-  [[0, "maj7"], [9, "dom7"], [2, "m7"], [7, "dom7"]],
-  // 2. Tritone Sub Cadence (Imaj7 -> ii7 -> bII7 -> Imaj7) — chromatic descending bass!
-  [[0, "maj7"], [2, "m7"], [1, "lyd7"], [0, "maj7"]],
-  // 3. Backdoor Cadence (IVmaj7 -> iv7 -> bVII7 -> Imaj7) — lush jazz/neo-soul!
-  [[5, "maj7"], [5, "m7"], [10, "dom7"], [0, "maj7"]],
-  // 4. Chain of Dominants (iii7 -> VI7 -> II7 -> V7) — Rhythm Changes / Standard drive!
-  [[4, "m7"], [9, "dom7"], [2, "dom7"], [7, "dom7"]],
-  // 5. Passing Diminished (Imaj7 -> bIIIdim7 -> ii7 -> V7)
-  [[0, "maj7"], [3, "dim7"], [2, "m7"], [7, "dom7"]],
-  // 6. Secondary ii-V to IV (Imaj7 -> I7 -> IVmaj7 -> iv7)
-  [[0, "maj7"], [0, "dom7"], [5, "maj7"], [5, "m7"]],
-  // 7. Modal Interchange Lift (Imaj7 -> bVIImaj7 -> bVImaj7 -> V7)
-  [[0, "maj7"], [10, "maj7"], [8, "maj7"], [7, "dom7"]],
-  // 8. Classic Standard (ii7 -> V7 -> iii7 -> VI7)
-  [[2, "m7"], [7, "dom7"], [4, "m7"], [9, "dom7"]],
+// Section-aware Jazz Harmony Block Pools (for genuine 8/12/16/32-bar A-A'-B-A'' Song Form!)
+// A_OPEN: ends on Half Cadence / Dominant tension (Question phrase)
+const MAJOR_A_OPEN = [
+  [[0, "maj7"], [9, "dom7"], [2, "m7"], [7, "dom7"]],    // Imaj7 -> VI7 -> ii7 -> V7
+  [[0, "maj7"], [3, "dim7"], [2, "m7"], [7, "dom7"]],    // Imaj7 -> bIIIdim7 -> ii7 -> V7
+  [[0, "maj7"], [10, "maj7"], [8, "maj7"], [7, "dom7"]], // Imaj7 -> bVIImaj7 -> bVImaj7 -> V7
+];
+// A_CLOSE: resolves cleanly to Tonic (Answer phrase)
+const MAJOR_A_CLOSE = [
+  [[0, "maj7"], [2, "m7"], [1, "lyd7"], [0, "maj7"]],    // Imaj7 -> ii7 -> bII7 -> Imaj7 (Tritone sub!)
+  [[2, "m7"], [7, "dom7"], [0, "maj7"], [0, "maj6"]],    // ii7 -> V7 -> Imaj7 -> I6
+  [[5, "maj7"], [5, "m7"], [10, "dom7"], [0, "maj7"]],   // IVmaj7 -> iv7 -> bVII7 -> Imaj7 (Backdoor!)
+];
+// B_BRIDGE: contrasting harmonic color (Subdominant lift / Cycle of Dominants)
+const MAJOR_B_BRIDGE = [
+  [[4, "m7"], [9, "dom7"], [2, "dom7"], [7, "dom7"]],    // iii7 -> VI7 -> II7 -> V7 (Cycle of 5ths!)
+  [[0, "dom7"], [5, "maj7"], [5, "m7"], [10, "dom7"]],   // I7 -> IVmaj7 -> iv7 -> bVII7
+  [[5, "maj7"], [5, "m7"], [4, "m7"], [9, "dom7"]],      // IVmaj7 -> iv7 -> iii7 -> VI7
+  [[2, "m7"], [7, "dom7"], [4, "m7"], [9, "dom7"]],      // ii7 -> V7 -> iii7 -> VI7
 ];
 
-const MINOR_JAZZ_BLOCKS_4 = [
-  // 1. Autumn Leaves Cycle (iv7 -> bVII7 -> bIIImaj7 -> bVImaj7)
-  [[5, "m7"], [10, "dom7"], [3, "maj7"], [8, "maj7"]],
-  // 2. Minor ii-V-i (im7 -> iiø7 -> V7b9 -> im7)
-  [[0, "m7"], [2, "m7b5"], [7, "dom7b9"], [0, "m7"]],
-  // 3. Minor Tritone Sub (im7 -> iiø7 -> bII7 -> im7)
-  [[0, "m7"], [2, "m7b5"], [1, "lyd7"], [0, "m7"]],
-  // 4. Blue Bossa / Minor Turnaround (im7 -> iv7 -> iiø7 -> V7b9)
-  [[0, "m7"], [5, "m7"], [2, "m7b5"], [7, "dom7b9"]],
-  // 5. Chromatic Backdoor Minor (im7 -> bVImaj7 -> bVII7 -> im7)
-  [[0, "m7"], [8, "maj7"], [10, "dom7"], [0, "m7"]],
+const MINOR_A_OPEN = [
+  [[0, "m7"], [5, "m7"], [2, "m7b5"], [7, "dom7b9"]],    // im7 -> iv7 -> iiø7 -> V7b9
+  [[0, "m7"], [8, "maj7"], [2, "m7b5"], [7, "dom7b9"]],  // im7 -> bVImaj7 -> iiø7 -> V7b9
+];
+const MINOR_A_CLOSE = [
+  [[0, "m7"], [2, "m7b5"], [7, "dom7b9"], [0, "m7"]],    // im7 -> iiø7 -> V7b9 -> im7
+  [[0, "m7"], [2, "m7b5"], [1, "lyd7"], [0, "m7"]],      // im7 -> iiø7 -> bII7 -> im7 (Tritone sub!)
+  [[0, "m7"], [8, "maj7"], [10, "dom7"], [0, "m7"]],     // im7 -> bVImaj7 -> bVII7 -> im7
+];
+const MINOR_B_BRIDGE = [
+  [[5, "m7"], [10, "dom7"], [3, "maj7"], [8, "maj7"]],   // Autumn Leaves: iv7 -> bVII7 -> bIIImaj7 -> bVImaj7
+  [[3, "maj7"], [8, "maj7"], [2, "m7b5"], [7, "dom7b9"]],// Relative Major lift -> Minor ii-V
+  [[5, "m7"], [2, "m7b5"], [7, "dom7b9"], [0, "dom7"]],  // Subdominant drive -> V/iv
 ];
 
-// 1. Sophisticated Jazz Chord Progression Generator
+// Build structured Song Form metadata per bar: { section, isSectionStart, phraseBar, phraseLen, isCadenceEnd }
+export function buildSongForm(numBars) {
+  const plan = [];
+  if (numBars <= 4) {
+    for (let b = 0; b < numBars; b++) {
+      plan.push({ section: "A", role: "A_CLOSE", isSectionStart: b === 0, phraseBar: b, phraseLen: numBars, isFinalBar: b === numBars - 1 });
+    }
+    return plan;
+  }
+  if (numBars === 8) {
+    // 8-bar Antecedent (A, Question -> Half Cadence) + Consequent (A', Answer -> Full Cadence)
+    for (let b = 0; b < 8; b++) {
+      const sec = b < 4 ? "A" : "A'";
+      plan.push({ section: sec, role: b < 4 ? "A_OPEN" : "A_CLOSE", isSectionStart: b === 0 || b === 4, phraseBar: b % 4, phraseLen: 4, isFinalBar: b === 7 });
+    }
+    return plan;
+  }
+  if (numBars === 12) {
+    // 12-bar 3-phrase Jazz Form: [A] 4 -> [A'] 4 -> [B/Cadence] 4
+    const secs = ["A", "A'", "B"];
+    const roles = ["A_OPEN", "B_BRIDGE", "A_CLOSE"];
+    for (let b = 0; b < 12; b++) {
+      const g = Math.floor(b / 4);
+      plan.push({ section: secs[g], role: roles[g], isSectionStart: (b % 4) === 0, phraseBar: b % 4, phraseLen: 4, isFinalBar: b === 11 });
+    }
+    return plan;
+  }
+  if (numBars === 16) {
+    // 16-bar Classic Standard: [A] 4 -> [A'] 4 -> [B] 4 -> [A''] 4
+    const secs = ["A", "A'", "B", "A''"];
+    const roles = ["A_OPEN", "A_CLOSE", "B_BRIDGE", "A_CLOSE"];
+    for (let b = 0; b < 16; b++) {
+      const g = Math.floor(b / 4);
+      plan.push({ section: secs[g], role: roles[g], isSectionStart: (b % 4) === 0, phraseBar: b % 4, phraseLen: 4, isFinalBar: b === 15 });
+    }
+    return plan;
+  }
+  // 32-bar Full Real Book AABA Standard ([A] 8 -> [A'] 8 -> [B] 8 -> [A''] 8)
+  const chunkRoles = ["A_OPEN", "A_CLOSE", "A_OPEN", "A_CLOSE", "B_BRIDGE", "B_BRIDGE", "A_OPEN", "A_CLOSE"];
+  const secLabels = ["A", null, "A'", null, "B", null, "A''", null];
+  for (let b = 0; b < numBars; b++) {
+    const c4 = Math.floor(b / 4) % chunkRoles.length;
+    const secIdx = Math.floor(b / 8);
+    const sec = ["A", "A'", "B", "A''"][secIdx % 4];
+    plan.push({
+      section: sec,
+      role: chunkRoles[c4],
+      isSectionStart: (b % 8) === 0 && Boolean(secLabels[c4]),
+      phraseBar: b % 4,
+      phraseLen: 4,
+      isFinalBar: b === numBars - 1,
+    });
+  }
+  return plan;
+}
+
+// 1. Phrase-Structured Jazz Chord Progression Generator
 export function generateChordProgression(numBars, keyId, progType, rand) {
   const k = JAZZ_KEYS[keyId] || JAZZ_KEYS.Bb;
   const r = k.rootPc;
@@ -234,7 +293,6 @@ export function generateChordProgression(numBars, keyId, progType, rand) {
   }
 
   if (progType === "tritone") {
-    // Jazz Tritone Substitution: ii7 -> bII7 -> Imaj7 -> VI7 (chromatic root drop!)
     const cycle = isMin
       ? [[2, "m7b5"], [1, "lyd7"], [0, "m7"], [8, "dom7"]]
       : [[2, "m7"], [1, "lyd7"], [0, "maj7"], [9, "dom7"]];
@@ -247,7 +305,6 @@ export function generateChordProgression(numBars, keyId, progType, rand) {
   }
 
   if (progType === "backdoor") {
-    // Backdoor Cadence: Imaj7 -> IVmaj7 -> iv7 -> bVII7 (or resolving to I)
     const cycle = isMin
       ? [[0, "m7"], [5, "m7"], [10, "dom7"], [3, "maj7"]]
       : [[5, "maj7"], [5, "m7"], [10, "dom7"], [0, "maj7"]];
@@ -280,7 +337,7 @@ export function generateChordProgression(numBars, keyId, progType, rand) {
     return chords;
   }
 
-  // "auto": Phrase-Level Jazz Harmony Composer (stitches authentic 4-bar jazz idioms with cadential endings)
+  // "auto": Song-Form Phrase Composer (A -> A' -> B -> A'' with real Half/Full Cadences & Bridge Contrast!)
   if (numBars === 2) {
     const pairs = isMin
       ? [[[2, "m7b5"], [7, "dom7b9"]], [[0, "m7"], [7, "dom7b9"]], [[5, "m7"], [1, "lyd7"]]]
@@ -289,25 +346,27 @@ export function generateChordProgression(numBars, keyId, progType, rand) {
     return p.map(([deg, q]) => makeChord(r, deg, q, keyId));
   }
 
-  const blocks = isMin ? MINOR_JAZZ_BLOCKS_4 : MAJOR_JAZZ_BLOCKS_4;
-  const openerPool = isMin ? [1, 2, 3, 4] : [0, 1, 4, 5, 6];
-  const cadencePool = isMin ? [1, 2, 3] : [0, 1, 2, 3];
+  const formPlan = buildSongForm(numBars);
+  const pools = isMin
+    ? { A_OPEN: MINOR_A_OPEN, A_CLOSE: MINOR_A_CLOSE, B_BRIDGE: MINOR_B_BRIDGE }
+    : { A_OPEN: MAJOR_A_OPEN, A_CLOSE: MAJOR_A_CLOSE, B_BRIDGE: MAJOR_B_BRIDGE };
+
+  // Reuse the same A_OPEN theme block when A returns (A -> A' -> A'') for authentic song cohesion!
+  const themeAOpen = pools.A_OPEN[Math.floor(rand() * pools.A_OPEN.length)];
+  const themeAClose = pools.A_CLOSE[Math.floor(rand() * pools.A_CLOSE.length)];
   const totalChunks = Math.ceil(numBars / 4);
-  let lastBlockIdx = -1;
 
   for (let ch = 0; ch < totalChunks; ch++) {
-    let idx;
-    if (ch === 0) {
-      idx = openerPool[Math.floor(rand() * openerPool.length)];
-    } else if (ch === totalChunks - 1) {
-      const filtered = cadencePool.filter(i => i !== lastBlockIdx);
-      idx = filtered[Math.floor(rand() * filtered.length)] ?? cadencePool[0];
+    const role = formPlan[ch * 4]?.role || "A_CLOSE";
+    let block;
+    if (role === "A_OPEN") {
+      block = (ch === 0 || rand() < 0.72) ? themeAOpen : pools.A_OPEN[Math.floor(rand() * pools.A_OPEN.length)];
+    } else if (role === "A_CLOSE") {
+      block = (ch === totalChunks - 1 || rand() < 0.65) ? themeAClose : pools.A_CLOSE[Math.floor(rand() * pools.A_CLOSE.length)];
     } else {
-      const candidates = blocks.map((_, i) => i).filter(i => i !== lastBlockIdx);
-      idx = candidates[Math.floor(rand() * candidates.length)];
+      block = pools.B_BRIDGE[Math.floor(rand() * pools.B_BRIDGE.length)];
     }
-    lastBlockIdx = idx;
-    for (const [deg, q] of blocks[idx]) {
+    for (const [deg, q] of block) {
       if (chords.length < numBars) {
         chords.push(makeChord(r, deg, q, keyId));
       }
@@ -355,6 +414,7 @@ export function assignPitchesToPhrase(phrase, keySetting = "Bb", progType = "aut
   const rand = mulberry32(seedBase);
 
   const barChords = generateChordProgression(numBars, keyId, progType, rand);
+  const songForm = buildSongForm(numBars);
   phrase.pitchMeta = {
     key: keyId,
     randomKey: keySetting === "RND",
@@ -362,6 +422,7 @@ export function assignPitchesToPhrase(phrase, keySetting = "Bb", progType = "aut
     clef: isTreble ? "treble" : "bass",
     flats: (JAZZ_KEYS[keyId] || JAZZ_KEYS.C).flats,
     chords: barChords,
+    sections: songForm.map(f => (numBars >= 8 && f.isSectionStart) ? f.section : null),
   };
 
   const targets = phrase.targets || [];
@@ -371,14 +432,23 @@ export function assignPitchesToPhrase(phrase, keySetting = "Bb", progType = "aut
     barTargetIdxs[targets[i].bar].push(i);
   }
 
-  // Assign a musical contour archetype per bar so lines never feel like mechanical 1-3-5-7 climbs
+  // Assign phrase-coherent contour archetypes: A' / A'' echo A's contours, while B Bridge contrasts!
   const CONTOURS = ["WALK_UP", "WALK_DOWN", "ENCLOSURE", "POCKET", "GUIDE_DROP"];
   const barContours = [];
   for (let b = 0; b < numBars; b++) {
-    const prevC = b > 0 ? barContours[b - 1] : null;
-    const pool = CONTOURS.filter(c => c !== prevC);
-    barContours.push(pool[Math.floor(rand() * pool.length)]);
+    const f = songForm[b];
+    if (b >= 4 && (f.section === "A'" || f.section === "A''") && rand() < 0.72) {
+      // Echo the corresponding bar in section A for real motific continuity!
+      barContours.push(barContours[f.phraseBar] || CONTOURS[0]);
+    } else {
+      const prevC = b > 0 ? barContours[b - 1] : null;
+      const pool = CONTOURS.filter(c => c !== prevC);
+      barContours.push(pool[Math.floor(rand() * pool.length)]);
+    }
   }
+
+  // Record signed interval motifs from Section A (first 4 bars) so A' & A'' recall the theme!
+  const motifAIntervals = [[], [], [], []];
 
   let prevMidi = null;
   let prevInt1 = 0;
@@ -392,10 +462,21 @@ export function assignPitchesToPhrase(phrase, keySetting = "Bb", progType = "aut
     const b = tgt.bar;
     const chord = barChords[b] || barChords[0];
     const nextChord = b + 1 < numBars ? barChords[b + 1] : null;
+    const formBar = songForm[b] || { section: "A", role: "A_CLOSE", phraseBar: b % 4, phraseLen: 4, isFinalBar: b === numBars - 1 };
     const contour = barContours[b];
     const barIds = barTargetIdxs[b];
     const posInBar = barIds.indexOf(i);
     const notesLeftInBar = barIds.length - 1 - posInBar;
+    const isVeryLastNote = (i === targets.length - 1);
+
+    // Macro Phrase Register Arc (기승전결):
+    // Bar 0 grounded -> Bar 1-2 rise toward climax -> Bar 3 land back down; [B] Bridge lifts +3..4 semitones!
+    const arcOffsets = [-2, +1, +3, -1];
+    const sectionLift = formBar.section === "B" ? 4 : (formBar.section === "A''" ? 1 : 0);
+    const barCenterMidi = Math.max(sweetLo, Math.min(sweetHi, centerMidi + (arcOffsets[formBar.phraseBar % 4] || 0) + sectionLift));
+    const recallMotif = (b >= 4 && (formBar.section === "A'" || formBar.section === "A''"))
+      ? motifAIntervals[formBar.phraseBar % 4]?.[posInBar]
+      : null;
 
     const barTick = tgt.globalSlot - b * ts.barTicks;
     const isDownbeat = barTick === 0;
@@ -540,16 +621,34 @@ export function assignPitchesToPhrase(phrase, keySetting = "Bb", progType = "aut
         }
       }
 
-      // D. Gentle Register Gravity toward staff sweet spot
+      // D. Phrase Register Arc + Motific Recall + Final Cadence Resolution
+      if (isVeryLastNote && formBar.isFinalBar) {
+        // Satisfying musical ending on Tonic Root (or 5th on a Dominant turnaround)
+        if (isRoot) score += 5.5;
+        else if (isFifth) score += 2.2;
+        else score -= 3.0;
+      }
+      if (recallMotif !== null && recallMotif !== undefined && prevMidi !== null && !isDownbeat && !isBarEndApproach) {
+        // Echo Section A's melodic direction & interval contour in A' / A''!
+        const diffNow = m - prevMidi;
+        if (Math.sign(diffNow) === Math.sign(recallMotif)) {
+          score += Math.abs(diffNow - recallMotif) <= 2 ? 2.6 : 1.3;
+        }
+      }
       if (m < sweetLo) score -= (sweetLo - m) * 0.45;
       else if (m > sweetHi) score -= (m - sweetHi) * 0.55;
-      else score -= Math.abs(m - centerMidi) * 0.04;
+      else score -= Math.abs(m - barCenterMidi) * 0.14;
 
       candidates.push({ midi: m, score });
     }
 
     const chosenMidi = weightedPick(candidates, rand, isDownbeat ? 0.65 : 1.10);
     tgt.pitch = spellBassMidi(chosenMidi, keyId, clef);
+
+    // Record Section A interval motif (bars 0..3) for later variation in A' / A''
+    if (b < 4 && prevMidi !== null) {
+      motifAIntervals[b][posInBar] = chosenMidi - prevMidi;
+    }
 
     // Track enclosure direction if we just picked the penultimate note before a chord change
     if (isPreApproachEnclosure && nextChord) {

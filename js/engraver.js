@@ -349,13 +349,28 @@ export function renderScore(svg, phrase) {
         }));
       }
 
-      // Subtle measure number
+      // Jazz chord symbol + Real Book Rehearsal Section box ([A], [A'], [B], [A'']) when Pitch BETA is active
+      const secLbl = (hasPitch && phrase.pitchMeta.sections) ? phrase.pitchMeta.sections[bIdx] : null;
+      let secBoxW = 0;
+      if (secLbl) {
+        secBoxW = secLbl.length >= 3 ? 25 : (secLbl.length === 2 ? 20 : 16);
+        g.appendChild(el("rect", {
+          x: barX0 + 1, y: staffTop - 61, width: secBoxW, height: 15, rx: 3,
+          fill: secLbl === "B" ? "#fef3c7" : "#f0fdfa",
+          stroke: secLbl === "B" ? "#d97706" : "#0d9488", "stroke-width": 1.15
+        }));
+        g.appendChild(el("text", {
+          x: barX0 + 1 + secBoxW / 2, y: staffTop - 50,
+          "font-family": "ui-sans-serif, system-ui, sans-serif",
+          "font-size": 10, "font-weight": 800,
+          fill: secLbl === "B" ? "#b45309" : "#0f766e", "text-anchor": "middle"
+        }, secLbl));
+      }
+      // Subtle measure number (shifts cleanly right of Rehearsal Section box when present)
       g.appendChild(el("text", {
-        x: barX0 + 3, y: staffTop - (hasPitch ? 52 : 40),
+        x: barX0 + (secBoxW > 0 ? secBoxW + 6 : 3), y: staffTop - (hasPitch ? 50 : 40),
         "font-family": "Georgia, serif", "font-size": 10.5, fill: "#9ca3af"
       }, `${bIdx + 1}`));
-
-      // Jazz chord symbol above each bar when Pitch BETA is active
       if (hasPitch && phrase.pitchMeta.chords && phrase.pitchMeta.chords[bIdx]) {
         const chSym = phrase.pitchMeta.chords[bIdx].symbol;
         g.appendChild(el("text", {
