@@ -967,6 +967,8 @@ function applyLanguage(lang) {
   document.getElementById("lblToolsSecCreate").textContent = t("toolsSecCreate");
   document.getElementById("lblToolsSecUtil").textContent = t("toolsSecUtil");
   document.getElementById("lblToolsSecHelp").textContent = t("toolsSecHelp");
+  document.getElementById("btnLearnPage").textContent = t("btnLearnPage");
+  document.getElementById("lnkPitchLearn").textContent = t("lnkPitchLearn");
   document.getElementById("btnDrillText").textContent = t("btnDrill");
   document.getElementById("lblDrillTitle").textContent = t("drillTitle");
   document.getElementById("lblGapClick").textContent = t("drillGapLbl");
@@ -2191,6 +2193,9 @@ document.getElementById("btnPitchHints").addEventListener("click", (e) => {
   app.pitchShowHints = !app.pitchShowHints;
   app.dirtyScore = true;
   syncPitchUi();
+});
+document.getElementById("btnLearnPage").addEventListener("click", () => {
+  window.location.href = "learn.html";
 });
 
 

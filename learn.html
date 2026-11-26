@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="google-site-verification" content="xEk6qUh5Gqa-MZwSuYThDKT_GtdN7JEgimP4F_JKVB4" />
+<title>낮은음자리표 악보 읽기 &amp; 음표 박자 기초 가이드 — Rhythm Sight-Reader</title>
+<meta name="description" content="오선보를 처음 보는 초보자와 베이시스트를 위한 인터랙티브 낮은음자리표(Bass Clef) 악보 읽기 &amp; 음표 길이 학습 페이지. 음표를 직접 눌러 소리와 4현 베이스 지판 위치를 확인하고, e4r5ty7u8i9op 키보드·MIDI로 10문제 음정 퀴즈를 무료로 연습하세요. Interactive Bass Clef &amp; Rhythm Note Values Guide (KO/EN/JA)." />
+<meta name="keywords" content="낮은음자리표 보는 법, 낮은음자리표 악보 읽기, 베이스 악보 보는 법, 오선보 읽는 법, 음표 길이, 박자 기초, 베이스 지판 음계, 4분음표 8분음표 16분음표, how to read bass clef, bass clef notes chart, rhythm note values interactive, ヘ音記号 読み方, ベース 楽譜 読み方" />
+<meta name="robots" content="index, follow, max-image-preview:large" />
+<link rel="canonical" href="https://gnosia1104.github.io/rhythm-practice/learn.html" />
+<meta property="og:type" content="article" />
+<meta property="og:site_name" content="Rhythm Sight-Reader" />
+<meta property="og:url" content="https://gnosia1104.github.io/rhythm-practice/learn.html" />
+<meta property="og:title" content="낮은음자리표 악보 읽기 &amp; 음표 박자 인터랙티브 학습 — Rhythm Sight-Reader" />
+<meta property="og:description" content="직접 눌러 소리를 들으며 배우는 낮은음자리표 5선보 + 4현 베이스 지판 + 음표/쉼표 박자 체험 + 10문제 워밍업 퀴즈." />
+<meta property="og:image" content="https://gnosia1104.github.io/rhythm-practice/og-image.png?v=2" />
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23171717'/%3E%3Cellipse cx='26' cy='44' rx='10' ry='7.2' transform='rotate(-22 26 44)' fill='%23ffffff'/%3E%3Crect x='33' y='14' width='4.2' height='29' rx='2' fill='%23ffffff'/%3E%3Cpath d='M35 14 C44 16 49 21 47 30 C45 24 41 21 35 20 Z' fill='%2322c55e'/%3E%3C/svg%3E" />
+<link rel="stylesheet" href="css/styles.css" />
+<style>
+  .learn-app { max-width: 1020px; margin: 0 auto; padding: 18px 16px 48px; display: flex; flex-direction: column; gap: 18px; }
+  .learn-hero { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+  .learn-hero h1 { font-size: 20px; letter-spacing: -0.02em; margin-bottom: 4px; }
+  .learn-hero p { font-size: 13px; color: var(--muted); line-height: 1.5; max-width: 680px; }
+  .learn-nav { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .learn-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; }
+  .learn-card-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+  .learn-card h2 { font-size: 16px; letter-spacing: -0.015em; }
+  .learn-sub { font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+  .mnemonic-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+  .mnemonic-box { background: #f8fafc; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; font-size: 12.5px; line-height: 1.5; }
+  .mnemonic-box strong { display: block; margin-bottom: 2px; color: #0f172a; }
+  .staff-explorer-wrap { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; overflow-x: auto; }
+  .staff-explorer-wrap svg { width: 100%; min-width: 560px; height: auto; display: block; }
+  .note-hit-node { cursor: pointer; }
+  .note-hit-node:hover .note-hover-halo { opacity: 1; }
+  .note-readout { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; background: #f0fdfa; border: 1px solid #99f6e4; border-radius: 10px; padding: 10px 14px; font-size: 13px; }
+  .note-readout-main { font-weight: 800; color: #0f766e; font-size: 15px; }
+  .fretboard-wrap { background: #1e293b; border-radius: 10px; padding: 10px 12px; overflow-x: auto; }
+  .fretboard-wrap svg { width: 100%; min-width: 520px; height: auto; display: block; }
+  .rhythm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
+  .rhythm-tile { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; text-align: center; transition: border-color 0.12s, background 0.12s, transform 0.08s; }
+  .rhythm-tile:hover { border-color: #0d9488; background: #f0fdfa; }
+  .rhythm-tile.playing { border-color: #16a34a; background: #dcfce7; transform: scale(0.99); }
+  .rhythm-tile svg { width: 120px; height: 54px; }
+  .rhythm-tile-title { font-weight: 700; font-size: 13px; color: #111827; }
+  .rhythm-tile-desc { font-size: 11.5px; color: var(--muted); line-height: 1.4; }
+  .quiz-stage { display: flex; flex-direction: column; align-items: center; gap: 14px; background: #fafafa; border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+  .quiz-svg-box { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 8px 18px; }
+  .quiz-btns { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; max-width: 560px; }
+  .quiz-btns button { min-width: 48px; font-weight: 700; }
+  .quiz-btns button.q-ok { background: #16a34a; color: #fff; border-color: #16a34a; }
+  .quiz-btns button.q-err { background: #dc2626; color: #fff; border-color: #dc2626; }
+  .quiz-status { font-size: 13.5px; font-weight: 700; min-height: 22px; }
+  .cta-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; background: #18181b; color: #fff; border-radius: 14px; padding: 18px 20px; }
+  .cta-bar p { font-size: 13px; color: #d4d4d8; margin-top: 3px; }
+  .cta-btn { display: inline-flex; align-items: center; gap: 6px; background: #22c55e; color: #052e16; font-weight: 800; padding: 10px 18px; border-radius: 10px; text-decoration: none; font-size: 14px; }
+  .cta-btn:hover { background: #4ade80; }
+</style>
+<script defer src="https://cloud.umami.is/script.js" data-website-id="9070201e-fd1f-4081-ad26-1219def68ba6" data-domains="gnosia1104.github.io"></script>
+</head>
+<body>
+<div class="learn-app">
+  <div class="top-bar">
+    <div class="brand-lockup">
+      <a href="index.html" style="text-decoration:none;color:inherit;display:inline-flex;align-items:baseline;gap:8px;">
+        <span class="brand-title">Rhythm Sight-Reader</span>
+        <span class="brand-sub" id="lblBrandSub">📖 기초 학습 (오선보 · 음표)</span>
+      </a>
+    </div>
+    <div class="learn-nav">
+      <a id="lnkBackHome" href="index.html" class="cta-btn" style="padding:6px 12px;font-size:12.5px;background:#18181b;color:#fff;">← 실전 트레이너로 돌아가기</a>
+      <select id="learnLangSelect" class="lang-select" aria-label="Language">
+        <option value="ko">🇰🇷 한국어</option>
+        <option value="en">🇺🇸 English</option>
+        <option value="ja">🇯🇵 日本語</option>
+      </select>
+    </div>
+  </div>
+
+  <section class="learn-hero">
+    <div>
+      <h1 id="heroTitle">낮은음자리표(Bass Clef) 오선보 &amp; 음표 박자 입문</h1>
+      <p id="heroDesc">오선보를 처음 보셔도 괜찮습니다. 아래 음표를 직접 눌러 소리와 4현 베이스 지판 위치를 확인하고, 키보드(<code>e4r5ty7u8i9op</code>)나 MIDI로 천천히 따라 누르며 익혀보세요.</p>
+    </div>
+  </section>
+
+  <!-- Section 1: Interactive Bass Clef Note Explorer + 4-String Fretboard -->
+  <section class="learn-card">
+    <div class="learn-card-head">
+      <h2 id="sec1Title">1. 낮은음자리표(5선보) 음정 눌러서 익히기</h2>
+      <div class="group">
+        <label class="group">
+          <span id="lblLearnKey" class="label">조표(♭)</span>
+          <select id="learnKeySelect">
+            <option value="C" selected>C Maj (0♭)</option>
+            <option value="F">F Maj (1♭ · B♭)</option>
+            <option value="Bb">B♭ Maj (2♭ · B♭,E♭)</option>
+            <option value="Eb">E♭ Maj (3♭ · B♭,E♭,A♭)</option>
+            <option value="Ab">A♭ Maj (4♭ · B♭,E♭,A♭,D♭)</option>
+            <option value="Db">D♭ Maj (5♭)</option>
+          </select>
+        </label>
+        <button id="btnLearnPlayScale" type="button" class="primary">▶ 스케일 순서대로 듣기</button>
+      </div>
+    </div>
+
+    <div class="mnemonic-grid">
+      <div class="mnemonic-box">
+        <strong id="mnem1Title">📍 기준점: 4째 줄 = F (파)</strong>
+        <span id="mnem1Desc">낮은음자리표(𝄢)의 두 점 사이에 끼인 <strong>위에서 두 번째(4째) 줄</strong>이 바로 <strong>F(파)</strong>입니다. 여기서 한 칸씩 위아래로 세면 모든 음을 읽을 수 있어요.</span>
+      </div>
+      <div class="mnemonic-box">
+        <strong id="mnem2Title">📏 줄(Lines) 아래→위: G · B · D · F · A</strong>
+        <span id="mnem2Desc"><strong>솔 - 시 - 레 - 파 - 라</strong> (영어 암기법: <em>Good Boys Do Fine Always</em>). 줄 위에 걸친 음표 5개만 외워도 초견 속도가 2배 빨라집니다.</span>
+      </div>
+      <div class="mnemonic-box">
+        <strong id="mnem3Title">⬜ 칸(Spaces) 아래→위: A · C · E · G</strong>
+        <span id="mnem3Desc"><strong>라 - 도 - 미 - 솔</strong> (영어 암기법: <em>All Cows Eat Grass</em>). 줄과 줄 사이 빈칸 4개의 음입니다.</span>
+      </div>
+    </div>
+
+    <div class="staff-explorer-wrap">
+      <svg id="explorerSvg" viewBox="0 0 920 148" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+
+    <div id="noteReadout" class="note-readout">
+      <span id="noteReadoutMain" class="note-readout-main">음표를 클릭하거나 키보드(e4r5ty7u8i9op)를 눌러보세요!</span>
+      <span id="noteReadoutSub" class="learn-sub">소리 + 계이름 + 4현 베이스 지판 위치가 표시됩니다</span>
+    </div>
+
+    <div class="fretboard-wrap" aria-label="4-String Bass Fretboard">
+      <svg id="fretboardSvg" viewBox="0 0 920 116" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+  </section>
+
+  <!-- Section 2: Interactive Note & Rest Duration Explorer -->
+  <section class="learn-card">
+    <div class="learn-card-head">
+      <h2 id="sec2Title">2. 음표 · 쉼표 박자 길이 소리로 체험하기</h2>
+      <span id="sec2Sub" class="learn-sub">카드를 클릭하면 <strong>4박 메트로놈 클릭</strong>과 함께 해당 음표/쉼표 리듬이 실제 소리로 재생됩니다.</span>
+    </div>
+    <div id="rhythmGrid" class="rhythm-grid"></div>
+  </section>
+
+  <!-- Section 3: 10-Note Untimed Warm-up Quiz -->
+  <section class="learn-card">
+    <div class="learn-card-head">
+      <h2 id="sec3Title">3. 10문제 낮은음자리표 워밍업 퀴즈 (박자 없음)</h2>
+      <div class="group">
+        <button id="btnQuizMidi" type="button">🎹 MIDI 연결</button>
+        <button id="btnQuizRestart" type="button">↻ 새 10문제</button>
+      </div>
+    </div>
+    <p id="sec3Desc" class="learn-sub">시간 제한이나 메트로놈 없이 천천히 음표를 읽고 아래 버튼, 키보드(<strong>e4r5ty7u8i9op</strong>), 또는 MIDI 건반으로 눌러보세요. (옥타브 무관 정답!)</p>
+
+    <div class="quiz-stage">
+      <div id="quizProgress" class="label" style="font-weight:700;">문제 1 / 10 · 정답 0</div>
+      <div class="quiz-svg-box">
+        <svg id="quizSvg" viewBox="0 0 260 124" width="260" height="124" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+      <div id="quizStatus" class="quiz-status">이 음표는 무슨 음일까요?</div>
+      <div id="quizBtns" class="quiz-btns"></div>
+    </div>
+  </section>
+
+  <section class="cta-bar">
+    <div>
+      <strong id="ctaTitle" style="font-size:16px;">이제 실전 초견으로 넘어가 볼까요?</strong>
+      <p id="ctaDesc">실전 트레이너에서 <strong>⋯ 도구 → 🎼 음정 초견 BETA → 🎯 자유 템포</strong>를 켜면 재즈 코드 진행 악보로 바로 이어서 연습할 수 있습니다.</p>
+    </div>
+    <a id="ctaLink" href="index.html" class="cta-btn">🎸 실전 초견 트레이너 시작 →</a>
+  </section>
+</div>
+<script type="module" src="js/learn.js"></script>
+</body>
+</html>
