@@ -4,10 +4,10 @@ import { app } from "./state.js";
 export function formatPlayMods(soundOn, showBeatNums, showCursor, blindGrade, inputMode, gapClick = app.gapClick, fadeBeats = app.fadeBeats, rushOn = app.rushOn) {
   const parts = [inputMode === "AUDIO" ? "AUD" : inputMode];
   if (!soundOn) parts.push("M×");
+  else if (gapClick && gapClick !== "OFF") parts.push(`Gap${gapClick}`);
   if (blindGrade) parts.push("Blind");
   if (showBeatNums) parts.push("+B");
   if (showCursor) parts.push("+C");
-  if (gapClick && gapClick !== "OFF") parts.push(`Gap${gapClick}`);
   if (fadeBeats > 0) parts.push(`Fade${fadeBeats}b`);
   if (rushOn) parts.push("Rush");
   return parts.join(" · ");
@@ -16,8 +16,8 @@ export function formatPlayMods(soundOn, showBeatNums, showCursor, blindGrade, in
 export function formatPlayModsCompact(h) {
   const inp = h.mode === "AUDIO" ? "AUD" : (h.mode || "KEY");
   const flags = [];
-  if (h.gapClick && h.gapClick !== "OFF") flags.push(`Gap${h.gapClick}`);
-  else if (h.soundOn === false) flags.push("M×");
+  if (h.soundOn === false) flags.push("M×");
+  else if (h.gapClick && h.gapClick !== "OFF") flags.push(`Gap${h.gapClick}`);
   if (h.blindGrade) flags.push("Blind");
   if (h.showBeatNums) flags.push("+B");
   if (h.showCursor) flags.push("+C");
@@ -90,10 +90,10 @@ export function computeChartMaxInfo(phrase = app.phrase, cfg = null) {
   if (c.showBeatNums) { modMult *= 0.94; modTags.push("+B ×0.94"); }
   if (c.showCursor) { modMult *= 0.90; modTags.push("+C ×0.90"); }
   if (c.blindGrade) { modMult *= 1.05; modTags.push("Blind ×1.05"); }
-  if (c.gapClick === "1+1") { modMult *= 1.08; modTags.push("Gap1+1 ×1.08"); }
+  if (c.soundOn === false) { modMult *= 1.22; modTags.push("M× ×1.22"); }
+  else if (c.gapClick === "1+1") { modMult *= 1.08; modTags.push("Gap1+1 ×1.08"); }
   else if (c.gapClick === "2+2") { modMult *= 1.10; modTags.push("Gap2+2 ×1.10"); }
   else if (c.gapClick === "1+3") { modMult *= 1.18; modTags.push("Gap1+3 ×1.18"); }
-  else if (c.soundOn === false) { modMult *= 1.12; modTags.push("M× ×1.12"); }
   if (c.fadeBeats === 1) { modMult *= 1.08; modTags.push("Fade1b ×1.08"); }
   else if (c.fadeBeats === 2) { modMult *= 1.15; modTags.push("Fade2b ×1.15"); }
 
