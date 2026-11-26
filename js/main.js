@@ -32,6 +32,9 @@ import {
 import {
   hasSeenTour, renderTourStep, openTour, closeTour, nextTourStep, prevTourStep, initTour,
 } from "./tour.js";
+import {
+  trackPracticeStart, trackPracticeComplete, trackPracticeStop, trackShare,
+} from "./analytics.js";
 
 function resetTargets() {
   const ts = getTimeSig(app.phrase ? app.phrase.timeSig : app.timeSig);
@@ -178,6 +181,7 @@ async function startRun(demo = false, keepRushRound = false) {
   app.state = demo ? "DEMO" : "COUNTIN";
   setHitBadge(demo ? t("badgeDemo") : t("badgeCountIn"), "");
   syncTransportButtons();
+  trackPracticeStart(app, demo);
   scheduleRunAudio(
     app.bpm,
     app.numBars,
@@ -199,6 +203,13 @@ function stopRun() {
     return;
   }
   if (app.state !== "COUNTIN" && app.state !== "PLAY" && app.state !== "DEMO" && !hadRushTimer) return;
+  if (app.state === "PLAY") {
+    const ctx = getAudioCtx();
+    const tsStop = getTimeSig();
+    const playStartT = app.startAudioT + tsStop.countInClicks * tsStop.clickSec(app.bpm);
+    const elapsed = ctx ? Math.max(0, ctx.currentTime - playStartT) : 0;
+    trackPracticeStop(app, elapsed);
+  }
   stopScheduledAudio();
   resetTargets();
   app.state = "READY";
@@ -589,6 +600,9 @@ function finalizeRun() {
   };
   drawDistribution(errs, hits, total, mean, sd, tight, sustainStats, app.extraHits);
   const rank = computeScoreRank(app.lastResult);
+  const tsTrack = getTimeSig();
+  const durSec = app.numBars * tsTrack.clicksPerBar * tsTrack.clickSec(app.bpm);
+  trackPracticeComplete(app, { rank: rank.grade, acc, durationSec: durSec });
   const rankEl = document.getElementById("rankBadge");
   rankEl.textContent = rank.grade;
   rankEl.className = `rank-pill ${rank.cls}`;
@@ -1665,6 +1679,7 @@ document.getElementById("btnShareUrl").addEventListener("click", async (e) => {
   btn.blur();
   const url = buildShareUrl();
   await copyToClipboard(url);
+  trackShare("url", app);
   flashBtnText(btn, t("btnShareCopied"), () => t("btnShareUrl"));
   setHitBadge(app.customMode ? t("edUrlCopied") : t("edSeedCopied"), "tight");
 });
@@ -1675,6 +1690,7 @@ document.getElementById("btnShareResult").addEventListener("click", async (e) =>
   const text = buildResultCardText();
   if (!text) return;
   await copyToClipboard(text);
+  trackShare("text", app);
   flashBtnText(btn, t("resultCopied"), () => t("btnShareResult"));
 });
 
@@ -1683,6 +1699,7 @@ document.getElementById("btnBragCard").addEventListener("click", async (e) => {
   btn.blur();
   const blob = await renderScoreCardPngBlob();
   if (!blob) return;
+  trackShare("card", app);
   const snap = (app.lastResult && app.lastResult.snap) || {};
   const dDate = snap.dailyDate !== undefined ? snap.dailyDate : app.dailyDate;
   const dPlus = snap.dailyPlus !== undefined ? snap.dailyPlus : app.dailyPlus;
