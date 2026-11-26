@@ -1290,7 +1290,7 @@ function frame() {
         const tickInBar = curTick - bIdx * ts.barTicks;
         const lay = app.scoreLayout.barLayouts[bIdx];
         if (lay) {
-          const cx = lay.barX0 + lay.innerPadL + (tickInBar / lay.barTicks) * lay.innerW;
+          const cx = lay.tickX ? lay.tickX(tickInBar) : (lay.barX0 + lay.innerPadL + (tickInBar / lay.barTicks) * lay.innerW);
           cursorEl.setAttribute("x1", cx.toFixed(1));
           cursorEl.setAttribute("x2", cx.toFixed(1));
           cursorEl.setAttribute("y1", String(lay.staffTop - 22));

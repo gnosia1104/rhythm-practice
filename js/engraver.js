@@ -161,9 +161,10 @@ function drawKeySigFlats(g, x0, midY, flats, clef = "bass") {
 function drawAccidental(g, x, y, acc) {
   const sym = acc === -1 ? "♭" : "♮";
   g.appendChild(el("text", {
-    x, y: y + 5.2, fill: "#111",
+    x, y: y + 5.0, fill: "#111",
+    stroke: "#ffffff", "stroke-width": 2.6, "paint-order": "stroke",
     "font-family": 'Georgia, "Times New Roman", serif',
-    "font-size": acc === -1 ? 17.5 : 16.5, "font-weight": 600,
+    "font-size": acc === -1 ? 16.2 : 15.2, "font-weight": 600,
     "text-anchor": "middle"
   }, sym));
 }
@@ -251,26 +252,32 @@ export function renderScore(svg, phrase) {
   const ts = TIME_SIGS[phrase.timeSig || "4/4"] || TIME_SIGS["4/4"];
   const numBars = phrase.bars.length;
   const isNarrow = window.innerWidth <= 640;
+  const hasPitch = Boolean(app.pitchMode && phrase.pitchMeta);
+  const pitchFlats = hasPitch ? (phrase.pitchMeta.flats || 0) : 0;
+  const keyAcc = hasPitch ? getKeySignatureAcc(phrase.pitchMeta.key) : null;
+  const hasDenseNotes = hasPitch && phrase.bars.some(bar => bar.some(bt => bt.some(ev => !ev.rest && ev.dur <= 4)));
+
   let barsPerSystem;
   if (phrase.timeSig === "5/4") {
-    // 5/4 has 25% more beats per bar: use 1 bar/line on mobile and 2-3 bars/line on desktop for clean spacing
+    barsPerSystem = isNarrow ? 1 : (numBars <= 2 ? numBars : (numBars <= 4 ? 2 : 3));
+  } else if (hasDenseNotes) {
+    // Give 16th-note / triplet pitched bars generous horizontal width so accidentals never collide with noteheads
+    barsPerSystem = isNarrow ? 1 : (numBars <= 2 ? numBars : (numBars <= 4 ? 2 : 3));
+  } else if (hasPitch && pitchFlats >= 5) {
     barsPerSystem = isNarrow ? 1 : (numBars <= 2 ? numBars : (numBars <= 4 ? 2 : 3));
   } else {
     barsPerSystem = numBars <= 2 ? numBars : (isNarrow ? 2 : 4);
   }
   const numSystems = Math.ceil(numBars / barsPerSystem);
   const W = isNarrow ? 600 : 1120;
-  const hasPitch = Boolean(app.pitchMode && phrase.pitchMeta);
-  const pitchFlats = hasPitch ? (phrase.pitchMeta.flats || 0) : 0;
-  const keyAcc = hasPitch ? getKeySignatureAcc(phrase.pitchMeta.key) : null;
   const sysH = hasPitch ? 196 : 164;
   const H = numSystems * sysH + 10;
   svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
 
   const leftPad = 14;
   const rightPad = 16;
-  const flatsW = pitchFlats > 0 ? (pitchFlats * 9.5 + 6) : 0;
-  const clefArea = 72 + flatsW; // Bass clef + flat key sig + time sig on first system
+  const flatsW = pitchFlats > 0 ? (pitchFlats * 10 + 10) : 0;
+  const clefArea = 74 + flatsW; // Bass/Treble clef + flat key sig + time sig on first system
   const barLayouts = [];
 
   // Map target & rest feedback by (bar, beat, slot)
@@ -328,12 +335,73 @@ export function renderScore(svg, phrase) {
       const bIdx = sys * barsPerSystem + off;
       const barX0 = leftPad + headerW + off * barW;
       const barX1 = barX0 + barW;
-      const innerPadL = barsPerSystem >= 4 ? 17 : (barsPerSystem === 3 ? 21 : 26);
+      const beats = phrase.bars[bIdx];
+
+      // Pre-scan accidentals in this bar so horizontal spacing expands cleanly before every ♭/♮ (zero 16th-note overlap!)
+      const accTickSet = new Set();
+      let beat0HasAcc = false;
+      if (hasPitch) {
+        const preAcc = new Map();
+        for (let bt = 0; bt < ts.beatsPerBar; bt++) {
+          for (const ev of beats[bt]) {
+            if (ev.rest || !ev.pitch || ev.tiedIn) continue;
+            const p = ev.pitch;
+            const aKey = `${p.writtenOct}:${p.letter}`;
+            const activeA = preAcc.has(aKey) ? preAcc.get(aKey) : keyAcc[p.letter];
+            if (p.acc !== activeA) {
+              const tPos = bt * ts.beatTicks + ev.slot;
+              accTickSet.add(tPos);
+              if (tPos === 0) beat0HasAcc = true;
+              preAcc.set(aKey, p.acc);
+            }
+          }
+        }
+      }
+
+      const basePadL = barsPerSystem >= 4 ? 17 : (barsPerSystem === 3 ? 21 : 26);
+      const innerPadL = basePadL + (beat0HasAcc ? 9 : 0);
       const innerPadR = barsPerSystem >= 4 ? 12 : (barsPerSystem === 3 ? 15 : 18);
       const innerW = barW - innerPadL - innerPadR;
-      const tickX = (barTick) => barX0 + innerPadL + (barTick / ts.barTicks) * innerW;
+
+      let tickX;
+      if (accTickSet.size === 0) {
+        tickX = (barTick) => barX0 + innerPadL + (barTick / ts.barTicks) * innerW;
+      } else {
+        // Piecewise-linear accidental-aware tick mapping: inserts extra horizontal breathing room right before each accidental
+        const anchors = [0];
+        for (let bt = 0; bt < ts.beatsPerBar; bt++) {
+          for (const ev of beats[bt]) {
+            const tPos = bt * ts.beatTicks + ev.slot;
+            if (tPos > 0 && tPos < ts.barTicks && anchors[anchors.length - 1] !== tPos) {
+              anchors.push(tPos);
+            }
+          }
+        }
+        anchors.push(ts.barTicks);
+        const accBonus = Math.max(4.5, ts.barTicks * 0.11);
+        const cumU = [0];
+        for (let k = 1; k < anchors.length; k++) {
+          const dt = anchors[k] - anchors[k - 1];
+          const extra = accTickSet.has(anchors[k]) ? accBonus : 0;
+          cumU.push(cumU[k - 1] + dt + extra);
+        }
+        const totalU = cumU[cumU.length - 1] || ts.barTicks;
+        tickX = (barTick) => {
+          if (barTick <= 0) return barX0 + innerPadL;
+          if (barTick >= ts.barTicks) return barX0 + innerPadL + innerW;
+          for (let k = 1; k < anchors.length; k++) {
+            if (barTick <= anchors[k]) {
+              const t0 = anchors[k - 1], t1 = anchors[k];
+              const frac = (barTick - t0) / Math.max(1e-6, t1 - t0);
+              const u = cumU[k - 1] + frac * (cumU[k] - cumU[k - 1]);
+              return barX0 + innerPadL + (u / totalU) * innerW;
+            }
+          }
+          return barX0 + innerPadL + innerW;
+        };
+      }
       const slotX = (bt, slot) => tickX(bt * ts.beatTicks + slot);
-      barLayouts[bIdx] = { staffTop, barX0, barX1, innerPadL, innerW, barTicks: ts.barTicks, beatsPerBar: ts.beatsPerBar, beatTicks: ts.beatTicks };
+      barLayouts[bIdx] = { staffTop, barX0, barX1, innerPadL, innerW, barTicks: ts.barTicks, beatsPerBar: ts.beatsPerBar, beatTicks: ts.beatTicks, tickX };
 
       // Highlight currently selected beat in the Custom Score Editor directly on the sheet music
       if (typeof edState !== "undefined" && edState.open && edState.selBar === bIdx) {
@@ -413,7 +481,6 @@ export function renderScore(svg, phrase) {
         }
       }
 
-      const beats = phrase.bars[bIdx];
       const barAccState = hasPitch ? new Map() : null;
       const hideFeedback = app.blindGrade && (app.state === "COUNTIN" || app.state === "PLAY");
 
@@ -462,7 +529,7 @@ export function renderScore(svg, phrase) {
                 const aKey = `${p.writtenOct}:${p.letter}`;
                 const activeAcc = barAccState.has(aKey) ? barAccState.get(aKey) : keyAcc[p.letter];
                 if (p.acc !== activeAcc) {
-                  drawAccidental(beatG, nx - 12.2, ny, p.acc);
+                  drawAccidental(beatG, nx - 11.4, ny, p.acc);
                   barAccState.set(aKey, p.acc);
                 }
               }
