@@ -3,6 +3,7 @@ import { TIME_SIGS } from "./rhythm.js";
 import { app, edState, getTimeSig, isGapBar } from "./state.js";
 import { t } from "./i18n.js";
 import { getTimingThresholds } from "./scoring.js";
+import { BASS_FLAT_SIG_POS, getKeySignatureAcc } from "./pitch-gen.js";
 
 // -------------------------------------------------------------------------
 // 2. Print-Quality SVG Vector Sheet Music Engraver
@@ -80,21 +81,21 @@ export function drawRest(g, dur, x, midY) {
   }
 }
 
-export function drawNotehead(g, dur, x, y, art = null) {
+export function drawNotehead(g, dur, x, y, art = null, color = "#111", stemDown = false) {
   if (art === "ghost") {
     // Engraved X dead-note head (percussive muted bass note)
     g.appendChild(el("path", {
       d: `M ${x - 4.6} ${y - 4.3} L ${x + 4.6} ${y + 4.3} M ${x - 4.6} ${y + 4.3} L ${x + 4.6} ${y - 4.3}`,
-      stroke: "#111", "stroke-width": 2.15, "stroke-linecap": "round"
+      stroke: color, "stroke-width": 2.15, "stroke-linecap": "round"
     }));
     if (dur === 9 || dur === 18) {
-      g.appendChild(el("circle", { cx: x + 9.2, cy: y - 4.5, r: 1.9, fill: "#111" }));
+      g.appendChild(el("circle", { cx: x + 9.2, cy: y - 4.5, r: 1.9, fill: color }));
     }
     return;
   }
   if (dur === 48) {
     // Engraved whole note (wide oval + tilted inner cutout, no stem)
-    g.appendChild(el("ellipse", { cx: x, cy: y, rx: 7.2, ry: 4.5, fill: "#111" }));
+    g.appendChild(el("ellipse", { cx: x, cy: y, rx: 7.2, ry: 4.5, fill: color }));
     g.appendChild(el("ellipse", {
       cx: x, cy: y, rx: 3.6, ry: 2.7, fill: "#fff",
       transform: `rotate(24 ${x} ${y})`
@@ -104,28 +105,73 @@ export function drawNotehead(g, dur, x, y, art = null) {
   if (dur === 24 || dur === 36) {
     // Engraved half note (tilted hollow oval)
     g.appendChild(el("ellipse", {
-      cx: x, cy: y, rx: 5.7, ry: 4.0, fill: "#111",
+      cx: x, cy: y, rx: 5.7, ry: 4.0, fill: color,
       transform: `rotate(-22 ${x} ${y})`
     }));
     g.appendChild(el("ellipse", {
       cx: x, cy: y, rx: 3.9, ry: 1.9, fill: "#fff",
       transform: `rotate(-22 ${x} ${y})`
     }));
-    if (dur === 36) g.appendChild(el("circle", { cx: x + 9.6, cy: y - 4.5, r: 2.0, fill: "#111" }));
+    if (dur === 36) g.appendChild(el("circle", { cx: x + 9.6, cy: y - 4.5, r: 2.0, fill: color }));
     return;
   }
   // Filled notehead (quarter=12, dot4=18, triplet-quarter=8, dot8=9, 8th=6, triplet-8th=4, 16th=3)
   g.appendChild(el("ellipse", {
-    cx: x, cy: y, rx: 5.3, ry: 3.8, fill: "#111",
+    cx: x, cy: y, rx: 5.3, ry: 3.8, fill: color,
     transform: `rotate(-22 ${x} ${y})`
   }));
   if (dur === 9 || dur === 18) {
-    g.appendChild(el("circle", { cx: x + 9.2, cy: y - 4.5, r: 1.9, fill: "#111" }));
+    g.appendChild(el("circle", { cx: x + 9.2, cy: y - 4.5, r: 1.9, fill: color }));
   }
   if (art === "staccato") {
-    // Crisp staccato dot centered beneath notehead (notehead side, opposite up-stem)
-    g.appendChild(el("circle", { cx: x, cy: y + 11.5, r: 2.05, fill: "#111" }));
+    // Crisp staccato dot centered on notehead side (opposite stem)
+    g.appendChild(el("circle", { cx: x, cy: stemDown ? y - 10.5 : y + 11.5, r: 2.05, fill: color }));
   }
+}
+
+function drawKeySigFlats(g, x0, midY, flats) {
+  for (let i = 0; i < flats && i < BASS_FLAT_SIG_POS.length; i++) {
+    const fy = midY - BASS_FLAT_SIG_POS[i] * 5 + 5.5;
+    g.appendChild(el("text", {
+      x: x0 + i * 9.5, y: fy, fill: "#111",
+      "font-family": 'Georgia, "Times New Roman", serif',
+      "font-size": 19, "font-weight": 500
+    }, "♭"));
+  }
+}
+
+function drawAccidental(g, x, y, acc) {
+  const sym = acc === -1 ? "♭" : "♮";
+  g.appendChild(el("text", {
+    x, y: y + 5.2, fill: "#111",
+    "font-family": 'Georgia, "Times New Roman", serif',
+    "font-size": acc === -1 ? 17.5 : 16.5, "font-weight": 600,
+    "text-anchor": "middle"
+  }, sym));
+}
+
+function drawLedgerLines(g, nx, midY, staffPos) {
+  if (staffPos >= 6) {
+    for (let p = 6; p <= staffPos; p += 2) {
+      const ly = midY - p * 5;
+      g.appendChild(el("line", { x1: nx - 8.5, y1: ly, x2: nx + 8.5, y2: ly, stroke: "#3f3f46", "stroke-width": 1.05 }));
+    }
+  } else if (staffPos <= -6) {
+    for (let p = -6; p >= staffPos; p -= 2) {
+      const ly = midY - p * 5;
+      g.appendChild(el("line", { x1: nx - 8.5, y1: ly, x2: nx + 8.5, y2: ly, stroke: "#3f3f46", "stroke-width": 1.05 }));
+    }
+  }
+}
+
+export function drawFlagDown(g, sx, botY, doubleFlag, color = "#111") {
+  const flagPath = (y0) => el("path", {
+    d: `M ${sx} ${y0} C ${sx + 1.8} ${y0 - 6.5}, ${sx + 11} ${y0 - 9.5}, ${sx + 8.8} ${y0 - 20.5}
+        C ${sx + 9} ${y0 - 14}, ${sx + 3.8} ${y0 - 10}, ${sx} ${y0 - 6} Z`,
+    fill: color
+  });
+  g.appendChild(flagPath(botY));
+  if (doubleFlag) g.appendChild(flagPath(botY - 7));
 }
 
 export function drawTuplet(g, x1, x2, topY, withBracket) {
@@ -196,13 +242,17 @@ export function renderScore(svg, phrase) {
   }
   const numSystems = Math.ceil(numBars / barsPerSystem);
   const W = isNarrow ? 600 : 1120;
-  const sysH = 164;
+  const hasPitch = Boolean(app.pitchMode && phrase.pitchMeta);
+  const pitchFlats = hasPitch ? (phrase.pitchMeta.flats || 0) : 0;
+  const keyAcc = hasPitch ? getKeySignatureAcc(phrase.pitchMeta.key) : null;
+  const sysH = hasPitch ? 196 : 164;
   const H = numSystems * sysH + 10;
   svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
 
   const leftPad = 14;
   const rightPad = 16;
-  const clefArea = 72; // Bass clef + time sig on first system
+  const flatsW = pitchFlats > 0 ? (pitchFlats * 9.5 + 6) : 0;
+  const clefArea = 72 + flatsW; // Bass clef + flat key sig + time sig on first system
   const barLayouts = [];
 
   // Map target & rest feedback by (bar, beat, slot)
@@ -216,7 +266,7 @@ export function renderScore(svg, phrase) {
   }
 
   for (let sys = 0; sys < numSystems; sys++) {
-    const staffTop = sys * sysH + 58;
+    const staffTop = sys * sysH + (hasPitch ? 68 : 58);
     const midY = staffTop + 20;
     const stemTopY = midY - 35;
     const g = el("g");
@@ -237,10 +287,13 @@ export function renderScore(svg, phrase) {
       stroke: "#111", "stroke-width": 1.4
     }));
 
-    // Bass clef (+ time signature on first system)
+    // Bass clef (+ flat key signature on every system + time signature on first system)
     drawBassClef(g, leftPad + 6, staffTop);
-    const headerW = sys === 0 ? clefArea : 42;
-    if (sys === 0) drawTimeSig(g, leftPad + 54, staffTop, ts.num, ts.den);
+    if (pitchFlats > 0) {
+      drawKeySigFlats(g, leftPad + 37, midY, pitchFlats);
+    }
+    const headerW = sys === 0 ? clefArea : (42 + flatsW);
+    if (sys === 0) drawTimeSig(g, leftPad + 54 + flatsW, staffTop, ts.num, ts.den);
 
     const sysBars = Math.min(barsPerSystem, numBars - sys * barsPerSystem);
     const usableW = (W - rightPad) - (leftPad + headerW);
@@ -273,9 +326,19 @@ export function renderScore(svg, phrase) {
 
       // Subtle measure number
       g.appendChild(el("text", {
-        x: barX0 + 3, y: staffTop - 40,
+        x: barX0 + 3, y: staffTop - (hasPitch ? 52 : 40),
         "font-family": "Georgia, serif", "font-size": 10.5, fill: "#9ca3af"
       }, `${bIdx + 1}`));
+
+      // Jazz chord symbol above each bar when Pitch BETA is active
+      if (hasPitch && phrase.pitchMeta.chords && phrase.pitchMeta.chords[bIdx]) {
+        const chSym = phrase.pitchMeta.chords[bIdx].symbol;
+        g.appendChild(el("text", {
+          x: barX0 + innerPadL - 5, y: staffTop - 36,
+          "font-family": 'ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+          "font-size": 13.5, "font-weight": 800, fill: "#1e293b", "letter-spacing": "-0.02em"
+        }, chSym));
+      }
 
       // Subtle Gap Click mute-bar shading & label
       if (typeof isGapBar === "function" && isGapBar(bIdx, app.gapClick)) {
@@ -306,6 +369,8 @@ export function renderScore(svg, phrase) {
       }
 
       const beats = phrase.bars[bIdx];
+      const barAccState = hasPitch ? new Map() : null;
+      const hideFeedback = app.blindGrade && (app.state === "COUNTIN" || app.state === "PLAY");
 
       // Draw each beat / compound group
       for (let bt = 0; bt < ts.beatsPerBar; bt++) {
@@ -317,6 +382,8 @@ export function renderScore(svg, phrase) {
         g.appendChild(beatG);
         const beamGroups = [];
         let curBeam = [];
+        const beatSingleNotes = [];
+        let beatMinY = midY;
 
         for (const ev of events) {
           const nx = slotX(bt, ev.slot);
@@ -324,19 +391,72 @@ export function renderScore(svg, phrase) {
             drawRest(beatG, ev.dur, nx, midY);
             if (curBeam.length) { beamGroups.push(curBeam); curBeam = []; }
           } else {
-            drawNotehead(beatG, ev.dur, nx, midY, ev.art);
-            if (ev.dur !== 48) {
-              const sx = nx + 4.7;
-              beatG.appendChild(el("line", {
-                x1: sx, y1: midY - 1.5, x2: sx, y2: stemTopY,
-                stroke: "#111", "stroke-width": 1.35
-              }));
-              // Beamable: 16th(3), triplet-8th(4), 8th(6), dot8(9) — NOT quarter(12) or triplet-quarter(8)
-              if (ev.dur <= 9 && ev.dur !== 8) {
-                curBeam.push({ ev, nx, sx });
-              } else if (curBeam.length) {
-                beamGroups.push(curBeam);
-                curBeam = [];
+            const p = (hasPitch && ev.pitch) ? ev.pitch : null;
+            const ny = p ? (midY - p.staffPos * 5) : midY;
+            if (ny < beatMinY) beatMinY = ny;
+
+            // Check if pitch was played wrong (AUDIO Pitch BETA) to highlight notehead subtly
+            const tgtMatch = fbMap.get(`${bIdx}:${bt}:${ev.slot}`);
+            const noteColor = (hasPitch && !hideFeedback && tgtMatch && tgtMatch.hit && tgtMatch.pitchOk === false)
+              ? "#dc2626"
+              : "#111";
+
+            if (p) {
+              drawLedgerLines(beatG, nx, midY, p.staffPos);
+              // Bar-scoped flat / natural accidental (never prints redundant key-sig flats)
+              if (!ev.tiedIn) {
+                const aKey = `${p.writtenOct}:${p.letter}`;
+                const activeAcc = barAccState.has(aKey) ? barAccState.get(aKey) : keyAcc[p.letter];
+                if (p.acc !== activeAcc) {
+                  drawAccidental(beatG, nx - 12.2, ny, p.acc);
+                  barAccState.set(aKey, p.acc);
+                }
+              }
+            }
+
+            const isBeamable = (ev.dur !== 48 && ev.dur <= 9 && ev.dur !== 8);
+            if (!hasPitch) {
+              // Original 1-line rhythm mode (100% preserved)
+              drawNotehead(beatG, ev.dur, nx, midY, ev.art);
+              if (ev.dur !== 48) {
+                const sx = nx + 4.7;
+                beatG.appendChild(el("line", {
+                  x1: sx, y1: midY - 1.5, x2: sx, y2: stemTopY,
+                  stroke: "#111", "stroke-width": 1.35
+                }));
+                if (isBeamable) {
+                  curBeam.push({ ev, nx, ny: midY, sx, staffPos: 0, color: "#111" });
+                } else if (curBeam.length) {
+                  beamGroups.push(curBeam);
+                  curBeam = [];
+                }
+              }
+            } else {
+              // 5-line pitched bass clef mode: defer stems on beamable runs so group stem direction is unified
+              if (isBeamable) {
+                curBeam.push({ ev, nx, ny, staffPos: p ? p.staffPos : 0, color: noteColor });
+              } else {
+                if (curBeam.length) { beamGroups.push(curBeam); curBeam = []; }
+                const sDown = p ? (p.staffPos >= 0) : false;
+                drawNotehead(beatG, ev.dur, nx, ny, ev.art, noteColor, sDown);
+                if (ev.dur !== 48) {
+                  const sx = sDown ? (nx - 4.7) : (nx + 4.7);
+                  const yEnd = sDown ? (ny + 33) : (ny - 33);
+                  beatG.appendChild(el("line", {
+                    x1: sx, y1: sDown ? ny + 1.5 : ny - 1.5, x2: sx, y2: yEnd,
+                    stroke: noteColor, "stroke-width": 1.35
+                  }));
+                }
+                beatSingleNotes.push({ ev, nx, ny, sDown, p });
+              }
+              // Optional note-name learning hint (C, Bb, F...)
+              if (app.pitchShowHints && p && !ev.tiedIn) {
+                const hintY = p.staffPos >= 0 ? (ny - 11) : (ny + 16);
+                beatG.appendChild(el("text", {
+                  x: nx, y: hintY, fill: "#64748b",
+                  "font-family": "ui-sans-serif, system-ui, sans-serif",
+                  "font-size": 9.2, "font-weight": 700, "text-anchor": "middle"
+                }, p.name));
               }
             }
           }
@@ -345,57 +465,113 @@ export function renderScore(svg, phrase) {
 
         // Beams or flags for each contiguous beamable run inside the beat/group
         for (const beamable of beamGroups) {
-          if (beamable.length === 1) {
-            const b0 = beamable[0];
-            drawFlag(beatG, b0.sx, stemTopY, b0.ev.dur === 3);
-          } else if (beamable.length >= 2) {
-            const xFirst = beamable[0].sx - 0.65;
-            const xLast = beamable[beamable.length - 1].sx + 0.65;
-            // Primary 8th beam
-            beatG.appendChild(el("rect", {
-              x: xFirst, y: stemTopY, width: xLast - xFirst, height: 4.5, fill: "#111"
-            }));
-
-            // Secondary 16th beams (dur === 3 ticks)
-            const connected = new Array(beamable.length).fill(false);
-            const y2 = stemTopY + 7.0;
-            for (let i = 0; i < beamable.length - 1; i++) {
-              const a = beamable[i], b = beamable[i + 1];
-              if (a.ev.dur === 3 && b.ev.dur === 3 && a.ev.slot + a.ev.dur === b.ev.slot) {
-                beatG.appendChild(el("rect", {
-                  x: a.sx - 0.65, y: y2, width: (b.sx - a.sx) + 1.3, height: 4.0, fill: "#111"
-                }));
-                connected[i] = true;
-                connected[i + 1] = true;
+          if (!hasPitch) {
+            if (beamable.length === 1) {
+              const b0 = beamable[0];
+              drawFlag(beatG, b0.sx, stemTopY, b0.ev.dur === 3);
+            } else if (beamable.length >= 2) {
+              const xFirst = beamable[0].sx - 0.65;
+              const xLast = beamable[beamable.length - 1].sx + 0.65;
+              beatG.appendChild(el("rect", {
+                x: xFirst, y: stemTopY, width: xLast - xFirst, height: 4.5, fill: "#111"
+              }));
+              const connected = new Array(beamable.length).fill(false);
+              const y2 = stemTopY + 7.0;
+              for (let i = 0; i < beamable.length - 1; i++) {
+                const a = beamable[i], b = beamable[i + 1];
+                if (a.ev.dur === 3 && b.ev.dur === 3 && a.ev.slot + a.ev.dur === b.ev.slot) {
+                  beatG.appendChild(el("rect", {
+                    x: a.sx - 0.65, y: y2, width: (b.sx - a.sx) + 1.3, height: 4.0, fill: "#111"
+                  }));
+                  connected[i] = true;
+                  connected[i + 1] = true;
+                }
+              }
+              for (let i = 0; i < beamable.length; i++) {
+                const item = beamable[i];
+                if (item.ev.dur === 3 && !connected[i]) {
+                  const stubW = 9.5;
+                  const sx = i < beamable.length - 1 ? item.sx - 0.65 : item.sx - stubW + 0.65;
+                  beatG.appendChild(el("rect", {
+                    x: sx, y: y2, width: stubW, height: 4.0, fill: "#111"
+                  }));
+                }
               }
             }
-            for (let i = 0; i < beamable.length; i++) {
-              const item = beamable[i];
-              if (item.ev.dur === 3 && !connected[i]) {
-                const stubW = 9.5;
-                const sx = i < beamable.length - 1 ? item.sx - 0.65 : item.sx - stubW + 0.65;
-                beatG.appendChild(el("rect", {
-                  x: sx, y: y2, width: stubW, height: 4.0, fill: "#111"
+          } else {
+            // Pitched 5-line beamable group: unified stem direction based on average staff position
+            const avgPos = beamable.reduce((s, it) => s + it.staffPos, 0) / beamable.length;
+            const sDown = avgPos >= 0;
+            for (const it of beamable) {
+              drawNotehead(beatG, it.ev.dur, it.nx, it.ny, it.ev.art, it.color, sDown);
+              it.sx = sDown ? (it.nx - 4.7) : (it.nx + 4.7);
+            }
+            if (beamable.length === 1) {
+              const b0 = beamable[0];
+              const yEnd = sDown ? (b0.ny + 33) : (b0.ny - 33);
+              beatG.appendChild(el("line", {
+                x1: b0.sx, y1: sDown ? b0.ny + 1.5 : b0.ny - 1.5, x2: b0.sx, y2: yEnd,
+                stroke: b0.color, "stroke-width": 1.35
+              }));
+              if (sDown) drawFlagDown(beatG, b0.sx, yEnd, b0.ev.dur === 3, b0.color);
+              else drawFlag(beatG, b0.sx, yEnd, b0.ev.dur === 3);
+            } else {
+              const beamY = sDown
+                ? Math.max(midY + 14, Math.max(...beamable.map(it => it.ny)) + 29)
+                : Math.min(midY - 14, Math.min(...beamable.map(it => it.ny)) - 29);
+              for (const it of beamable) {
+                beatG.appendChild(el("line", {
+                  x1: it.sx, y1: sDown ? it.ny + 1.5 : it.ny - 1.5, x2: it.sx, y2: beamY,
+                  stroke: it.color, "stroke-width": 1.35
                 }));
+              }
+              const xFirst = beamable[0].sx - 0.65;
+              const xLast = beamable[beamable.length - 1].sx + 0.65;
+              const mainY = sDown ? (beamY - 4.5) : beamY;
+              beatG.appendChild(el("rect", {
+                x: xFirst, y: mainY, width: xLast - xFirst, height: 4.5, fill: "#111"
+              }));
+              const connected = new Array(beamable.length).fill(false);
+              const y2 = sDown ? (beamY - 11.5) : (beamY + 7.0);
+              for (let i = 0; i < beamable.length - 1; i++) {
+                const a = beamable[i], b = beamable[i + 1];
+                if (a.ev.dur === 3 && b.ev.dur === 3 && a.ev.slot + a.ev.dur === b.ev.slot) {
+                  beatG.appendChild(el("rect", {
+                    x: a.sx - 0.65, y: y2, width: (b.sx - a.sx) + 1.3, height: 4.0, fill: "#111"
+                  }));
+                  connected[i] = true;
+                  connected[i + 1] = true;
+                }
+              }
+              for (let i = 0; i < beamable.length; i++) {
+                const item = beamable[i];
+                if (item.ev.dur === 3 && !connected[i]) {
+                  const stubW = 9.5;
+                  const sx = i < beamable.length - 1 ? item.sx - 0.65 : item.sx - stubW + 0.65;
+                  beatG.appendChild(el("rect", {
+                    x: sx, y: y2, width: stubW, height: 4.0, fill: "#111"
+                  }));
+                }
               }
             }
           }
         }
 
         // Tuplet numerals / brackets: 1-beat 8th triplets ("8t") and 2-beat quarter triplets ("4t")
+        const tupTopY = hasPitch ? Math.min(stemTopY, beatMinY - 22) : stemTopY;
         if (events.length && events.some(e => e.tuplet === "8t")) {
           const xStart = slotX(bt, events[0].slot) + (events[0].rest ? 0 : 4.7);
           const lastEv = events[events.length - 1];
           const xEnd = slotX(bt, lastEv.slot) + (lastEv.rest ? 4 : 4.7);
-          const allBeamed3 = beamGroups.length === 1 && beamGroups[0].length === 3 && !events.some(e => e.rest);
-          drawTuplet(beatG, xStart, xEnd, stemTopY, !allBeamed3);
+          const allBeamed3 = !hasPitch && beamGroups.length === 1 && beamGroups[0].length === 3 && !events.some(e => e.rest);
+          drawTuplet(beatG, xStart, xEnd, tupTopY, !allBeamed3);
         }
         if (events.length && events[0].tuplet === "4t" && events[0].slot === 0 && bt + 1 < ts.beatsPerBar) {
           const nextEvents = beats[bt + 1];
           const lastSlot = nextEvents.length ? nextEvents[nextEvents.length - 1].slot : 4;
           const xStart = slotX(bt, 0) + 4.7;
           const xEnd = slotX(bt + 1, lastSlot) + 4.7;
-          drawTuplet(beatG, xStart, xEnd, stemTopY, true);
+          drawTuplet(beatG, xStart, xEnd, tupTopY, true);
         }
 
         // Cross-beat tie
@@ -403,19 +579,20 @@ export function renderScore(svg, phrase) {
           const prevEv = beats[bt - 1][beats[bt - 1].length - 1];
           const currEv = events[0];
           if (prevEv.tiedOut && currEv.tiedIn) {
-            drawTie(beatG, slotX(bt - 1, prevEv.slot), slotX(bt, currEv.slot), midY);
+            const tieY = (hasPitch && currEv.pitch) ? (midY - currEv.pitch.staffPos * 5) : midY;
+            drawTie(beatG, slotX(bt - 1, prevEv.slot), slotX(bt, currEv.slot), tieY);
           }
         }
 
         // Feedback markers beneath noteheads & rests (hidden during take when blindGrade is ON)
-        const hideFeedback = app.blindGrade && (app.state === "COUNTIN" || app.state === "PLAY");
+        const fbBaseY = staffTop + (hasPitch ? 82 : 59);
         for (const ev of events) {
           if (hideFeedback) break;
           if (ev.rest) {
             const rst = restFbMap.get(`${bIdx}:${bt}:${ev.slot}`);
             if (rst && rst.error) {
               const nx = slotX(bt, ev.slot);
-              const fbY = staffTop + 59;
+              const fbY = fbBaseY;
               const bg = el("rect", {
                 x: nx - 9, y: midY - 16, width: 18, height: 32, rx: 4,
                 fill: "rgba(220, 38, 38, 0.14)"
@@ -430,7 +607,7 @@ export function renderScore(svg, phrase) {
               g.appendChild(rNode);
             } else if (rst && rst.passed) {
               const nx = slotX(bt, ev.slot);
-              const fbY = staffTop + 59;
+              const fbY = fbBaseY;
               const rNode = el("text", {
                 x: nx, y: fbY, fill: "#16a34a",
                 "font-size": 13, "font-weight": 800, "text-anchor": "middle",
@@ -445,7 +622,7 @@ export function renderScore(svg, phrase) {
           const tgt = fbMap.get(`${bIdx}:${bt}:${ev.slot}`);
           if (!tgt) continue;
           const nx = slotX(bt, ev.slot);
-          const fbY = staffTop + 59;
+          const fbY = fbBaseY;
           let sym = "", color = "";
           if (tgt.hit && tgt.errMs !== null) {
             const tw = getTimingThresholds(app.bpm);
@@ -453,6 +630,10 @@ export function renderScore(svg, phrase) {
             if (ae <= tw.tight) { sym = "★"; color = "#16a34a"; }
             else if (ae <= tw.ok) { sym = tgt.errMs > 0 ? "+" : "−"; color = "#d97706"; }
             else { sym = tgt.errMs > 0 ? ">" : "<"; color = "#dc2626"; }
+            // In Pitch BETA (AUDIO), if pitch was wrong, override color to crimson and show played note tag
+            if (hasPitch && tgt.pitchOk === false) {
+              color = "#dc2626";
+            }
           } else if (tgt.missed) {
             sym = "×"; color = "#dc2626";
           }
@@ -465,9 +646,22 @@ export function renderScore(svg, phrase) {
             }, sym);
             if (tgt.errMs !== null) {
               const sign = tgt.errMs >= 0 ? "+" : "";
-              tNode.appendChild(el("title", {}, `${sign}${tgt.errMs.toFixed(1)} ms`));
+              let tip = `${sign}${tgt.errMs.toFixed(1)} ms`;
+              if (hasPitch && tgt.pitch && tgt.detectedPitch) {
+                tip += tgt.pitchOk
+                  ? ` · Pitch ✓ (${tgt.pitch.name})`
+                  : ` · Pitch ✗ (${tgt.pitch.name} ≠ ${tgt.detectedPitch})`;
+              }
+              tNode.appendChild(el("title", {}, tip));
             }
             g.appendChild(tNode);
+          }
+          if (hasPitch && tgt.hit && tgt.pitchOk === false && tgt.detectedPitch) {
+            g.appendChild(el("text", {
+              x: nx, y: fbY + 11, fill: "#dc2626",
+              "font-size": 9, "font-weight": 800, "text-anchor": "middle",
+              "font-family": "ui-sans-serif, system-ui, sans-serif"
+            }, `≠${tgt.detectedPitch}`));
           }
 
           // Sustain / Articulation bar beneath notehead (AUDIO sustain + staccato reverse-sustain + ghost mute check)
@@ -475,7 +669,7 @@ export function renderScore(svg, phrase) {
             const endTickInBar = bt * ts.beatTicks + ev.slot + tgt.durSlots;
             const rawEndX = tickX(endTickInBar);
             const spanW = Math.max(12, Math.min(barX1 - 6, rawEndX) - nx - 3);
-            const susY = staffTop + 67;
+            const susY = staffTop + (hasPitch ? 96 : 67);
             const barG = el("g");
             // Expected duration track
             barG.appendChild(el("rect", {

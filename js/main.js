@@ -19,8 +19,11 @@ import {
 } from "./audio-out.js";
 import {
   registerAudioInCallbacks, populateAudioDevices, populateChannelSelect, startAudioInput, stopAudioInput,
-  closeSustainTarget,
+  closeSustainTarget, schedulePitchCheck,
 } from "./audio-in.js";
+import {
+  JAZZ_KEYS, assignPitchesToPhrase, clearPitchesFromPhrase,
+} from "./pitch-gen.js";
 import {
   clearShareQueryUrl, buildShareUrl, copyToClipboard, flashBtnText,
   buildResultCardText, renderScoreCardPngBlob,
@@ -70,7 +73,11 @@ function resetTargets() {
     tgt.peakLevel = 0;
     tgt.ghostHeldMs = null;
     tgt.ghostWrongKey = false;
+    tgt.pitchOk = null;
+    tgt.detectedPitch = null;
+    tgt.pitchCents = null;
   }
+  audioIn.pendingPitchChecks = [];
   for (const rst of (app.phrase.rests || [])) {
     rst.timeSec = countIn + rst.globalSlot * tickSec;
     rst.endSec = rst.timeSec + rst.durSlots * tickSec;
@@ -122,6 +129,16 @@ function clearFadeOutClasses() {
   document.querySelectorAll("#scoreSvg .beat-fade.faded").forEach(n => n.classList.remove("faded"));
 }
 
+function applyPitchToCurrentPhrase() {
+  if (!app.phrase) return;
+  if (app.pitchMode) {
+    assignPitchesToPhrase(app.phrase, app.pitchKey, app.pitchProg);
+  } else {
+    clearPitchesFromPhrase(app.phrase);
+  }
+  app.dirtyScore = true;
+}
+
 function newPhrase(forcedSeed = null, keepDaily = false) {
   cancelRushTimer(true);
   app.runSeq += 1;
@@ -135,6 +152,7 @@ function newPhrase(forcedSeed = null, keepDaily = false) {
     clearShareQueryUrl();
   }
   app.phrase = generatePhrase(app.numBars, app.level, app.tripletMode, app.timeSig, forcedSeed, app.staccatoOn, app.ghostOn);
+  applyPitchToCurrentPhrase();
   resetTargets();
   app.state = "READY";
   setHitBadge(t("badgeWait"), "");
@@ -412,6 +430,7 @@ function handleHit(hitAudioT, source, hitKind = "NORMAL", keyCode = null) {
 
     let artBadgeOverride = null;
     if (source === "AUDIO") {
+      if (app.pitchMode) schedulePitchCheck(best, hitAudioT);
       if (best.art === "staccato" || best.art === "ghost" || best.durSec >= 0.30 || (best.hasRestAfter && (best.restEndSec - best.endSec) >= 0.18)) {
         best.sustainFloor = Math.max(audioIn.threshold * 0.28, 0.005);
         best.peakLevel = audioIn.level;
@@ -623,6 +642,18 @@ function finalizeRun() {
   renderLog();
   clearFadeOutClasses();
 
+  // Pitch BETA post-run summary (Audio pitch-class accuracy)
+  if (app.pitchMode) {
+    const pitchedTgts = app.phrase.targets.filter(tg => tg.hit && tg.pitchOk !== null);
+    const pitchMsgEl = document.getElementById("pitchMsg");
+    if (pitchedTgts.length) {
+      const pOk = pitchedTgts.filter(tg => tg.pitchOk === true).length;
+      const pPct = (pOk / pitchedTgts.length) * 100;
+      pitchMsgEl.style.color = pPct >= 85 ? "var(--green)" : (pPct >= 65 ? "var(--amber)" : "var(--red)");
+      pitchMsgEl.textContent = t("pitchResult", pOk, pitchedTgts.length, pPct);
+    }
+  }
+
   // Special Training BETA post-run feedback (Gap Click sub-score & BPM Rush sudden death)
   const drillMsgEl = document.getElementById("drillMsg");
   const tsDone = getTimeSig();
@@ -801,15 +832,16 @@ function updateMeta() {
   const lvFlags = `${tTag}${app.staccatoOn ? "S" : ""}${app.ghostOn ? "G" : ""}`;
   const playMods = formatPlayMods(app.soundOn, app.showBeatNums, app.showCursor, app.blindGrade, app.inputMode);
   const baseTitle = LEVEL_TITLES[app.level].replace(/^Lv\d+/, `Lv${app.level}${lvFlags}`);
+  const pitchTag = app.pitchMode ? ` · 🎼 ${(JAZZ_KEYS[app.pitchKey] || JAZZ_KEYS.Bb).label}` : "";
   if (app.customMode) {
-    document.getElementById("metaLevel").textContent = `✏️ Custom · ${app.timeSig} · ${app.numBars} bars · [${playMods}]`;
+    document.getElementById("metaLevel").textContent = `✏️ Custom · ${app.timeSig} · ${app.numBars} bars${pitchTag} · [${playMods}]`;
     document.getElementById("metaSeed").textContent = app.phrase.customCode ? app.phrase.customCode.slice(0, 14) + "…" : "Custom";
   } else if (app.dailyDate) {
     const dTag = app.dailyPlus ? "🔥 Daily+" : "🏆 Daily";
-    document.getElementById("metaLevel").textContent = `${dTag} ${app.dailyDate} · ${app.timeSig} · ${baseTitle} · [${playMods}]`;
+    document.getElementById("metaLevel").textContent = `${dTag} ${app.dailyDate} · ${app.timeSig} · ${baseTitle}${pitchTag} · [${playMods}]`;
     document.getElementById("metaSeed").textContent = `#${currentFullSeedCode()}`;
   } else {
-    document.getElementById("metaLevel").textContent = `${app.timeSig} · ${baseTitle} · [${playMods}]`;
+    document.getElementById("metaLevel").textContent = `${app.timeSig} · ${baseTitle}${pitchTag} · [${playMods}]`;
     document.getElementById("metaSeed").textContent = `#${currentFullSeedCode()}`;
   }
   const chartMax = computeChartMaxInfo(app.phrase);
@@ -929,6 +961,18 @@ function applyLanguage(lang) {
   document.getElementById("drillMsg").style.color = "var(--muted)";
   document.getElementById("drillMsg").textContent = t("drillIdleMsg");
   if (typeof syncDrillUi === "function") syncDrillUi();
+  document.getElementById("btnPitchText").textContent = t("btnPitch");
+  document.getElementById("lblPitchTitle").textContent = t("pitchTitle");
+  document.getElementById("lblPitchKey").textContent = t("pitchKeyLbl");
+  document.getElementById("lblPitchProg").textContent = t("pitchProgLbl");
+  const progOpts = t("pitchProgOpts") || [];
+  const progSel = document.getElementById("pitchProgSelect");
+  for (let i = 0; i < progSel.options.length && i < progOpts.length; i++) {
+    progSel.options[i].textContent = progOpts[i];
+  }
+  document.getElementById("pitchMsg").style.color = "var(--muted)";
+  document.getElementById("pitchMsg").textContent = t("pitchIdleMsg");
+  if (typeof syncPitchUi === "function") syncPitchUi();
   document.getElementById("btnShareUrl").textContent = t("btnShareUrl");
   document.getElementById("btnShareResult").textContent = t("btnShareResult");
   document.getElementById("btnBragCard").textContent = t("btnBragCard");
@@ -1743,6 +1787,7 @@ function bootInitialScore() {
   const params = new URLSearchParams(location.search || "");
   if (applySeedQueryParams(params)) return;
   app.phrase = generatePhrase(app.numBars, app.level, app.tripletMode, app.timeSig, null, app.staccatoOn, app.ghostOn);
+  applyPitchToCurrentPhrase();
   resetTargets();
 }
 
@@ -1831,6 +1876,75 @@ document.getElementById("btnDrillReset").addEventListener("click", (e) => {
 
 
 // -------------------------------------------------------------------------
+// Pitch Sight-Reading BETA Controls (Flat-Key Jazz Harmony + Octave-Agnostic Audio)
+// -------------------------------------------------------------------------
+function syncPitchUi() {
+  const bar = document.getElementById("pitchBar");
+  const barOpen = !bar.classList.contains("hidden");
+  document.getElementById("btnPitchBeta").classList.toggle("active", barOpen || app.pitchMode);
+  const toggleBtn = document.getElementById("btnPitchToggle");
+  toggleBtn.textContent = app.pitchMode ? t("pitchOn") : t("pitchOff");
+  toggleBtn.classList.toggle("active", app.pitchMode);
+  document.getElementById("pitchKeySelect").value = app.pitchKey;
+  document.getElementById("pitchProgSelect").value = app.pitchProg;
+  const hintBtn = document.getElementById("btnPitchHints");
+  hintBtn.textContent = app.pitchShowHints ? t("pitchHintsOn") : t("pitchHintsOff");
+  hintBtn.classList.toggle("active", app.pitchShowHints);
+  if (typeof syncToolsMenuBadge === "function") syncToolsMenuBadge();
+}
+
+document.getElementById("btnPitchBeta").addEventListener("click", (e) => {
+  e.currentTarget.blur();
+  const bar = document.getElementById("pitchBar");
+  const willOpen = bar.classList.contains("hidden");
+  bar.classList.toggle("hidden", !willOpen);
+  // Auto-enable Pitch BETA when first opening the drawer so the user sees 5-line jazz notation immediately
+  if (willOpen && !app.pitchMode) {
+    app.pitchMode = true;
+    applyPitchToCurrentPhrase();
+    updateMeta();
+  }
+  syncPitchUi();
+});
+document.getElementById("btnPitchClose").addEventListener("click", () => {
+  document.getElementById("pitchBar").classList.add("hidden");
+  syncPitchUi();
+});
+document.getElementById("btnPitchToggle").addEventListener("click", (e) => {
+  e.currentTarget.blur();
+  app.pitchMode = !app.pitchMode;
+  applyPitchToCurrentPhrase();
+  const msgEl = document.getElementById("pitchMsg");
+  msgEl.style.color = "var(--muted)";
+  msgEl.textContent = t("pitchIdleMsg");
+  updateMeta();
+  syncPitchUi();
+});
+document.getElementById("pitchKeySelect").addEventListener("change", (e) => {
+  app.pitchKey = e.target.value;
+  e.target.blur();
+  if (!app.pitchMode) app.pitchMode = true;
+  applyPitchToCurrentPhrase();
+  updateMeta();
+  syncPitchUi();
+});
+document.getElementById("pitchProgSelect").addEventListener("change", (e) => {
+  app.pitchProg = e.target.value;
+  e.target.blur();
+  if (!app.pitchMode) app.pitchMode = true;
+  applyPitchToCurrentPhrase();
+  updateMeta();
+  syncPitchUi();
+});
+document.getElementById("btnPitchHints").addEventListener("click", (e) => {
+  e.currentTarget.blur();
+  app.pitchShowHints = !app.pitchShowHints;
+  app.dirtyScore = true;
+  syncPitchUi();
+});
+
+
+// -------------------------------------------------------------------------
 // Categorized Toolbar Dropdowns (🎚️ 난이도 통합 패널 · ⋯ 도구)
 // -------------------------------------------------------------------------
 const TOOLBAR_MENUS = [
@@ -1865,11 +1979,12 @@ function syncAllDropdownBadges() {
   document.getElementById("diffSummaryBadge").textContent = diffParts.join(" · ");
   document.getElementById("btnDiffMenu").classList.toggle("active", diffDropOpen);
 
-  // 2. Tools Menu (Editor · Drills · Sync · PDF · Tour · Guide)
-  const anyDrill = (app.gapClick !== "OFF") || (app.fadeBeats > 0) || app.rushOn;
+  // 2. Tools Menu (Editor · Drills · Pitch · Sync · PDF · Tour · Guide)
+  const anyDrill = (app.gapClick !== "OFF") || (app.fadeBeats > 0) || app.rushOn || app.pitchMode;
   const anyPanelOpen =
     !document.getElementById("editorBar").classList.contains("hidden") ||
     !document.getElementById("drillBar").classList.contains("hidden") ||
+    !document.getElementById("pitchBar").classList.contains("hidden") ||
     !document.getElementById("calBar").classList.contains("hidden");
   const toolsDropOpen = !document.getElementById("toolsDropdown").classList.contains("hidden");
   document.getElementById("btnToolsMenu").classList.toggle("active", toolsDropOpen || anyDrill || anyPanelOpen);
@@ -1938,7 +2053,7 @@ document.addEventListener("keydown", (e) => {
     syncAllDropdownBadges();
   }
 });
-["btnEdClose", "btnCalClose", "btnDrillClose"].forEach(id => {
+["btnEdClose", "btnCalClose", "btnDrillClose", "btnPitchClose"].forEach(id => {
   const elBtn = document.getElementById(id);
   if (elBtn) elBtn.addEventListener("click", () => window.setTimeout(syncAllDropdownBadges, 0));
 });

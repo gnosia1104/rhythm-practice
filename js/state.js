@@ -25,6 +25,10 @@ export const app = {
   rushMinAcc: 90,   // 85 | 90 | 95
   rushRound: 0,
   rushTimerId: null,
+  pitchMode: false,     // Pitch Sight-Reading BETA (flat-key jazz 5-line bass clef)
+  pitchKey: "Bb",       // C | F | Bb | Eb | Ab | Db | Dm | Gm | Cm
+  pitchProg: "auto",    // auto | ii-V-I | I-vi-ii-V | blues | modal
+  pitchShowHints: false,// optional note-name labels (C, Bb, F...) for learning bass clef
   keyOn: true,
   showTouchDock: false,
   audioOn: false,
@@ -54,8 +58,11 @@ export const audioIn = {
   filters: [],
   splitter: null,
   analysers: [],
+  pitchAnalysers: [],
   zeroGain: null,
   buf: null,
+  pitchBuf: null,
+  pendingPitchChecks: [],
   pollId: null,
   deviceId: "",
   userPickedDevice: false,

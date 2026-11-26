@@ -1402,6 +1402,31 @@ button.active .beta-tag {
   line-height: 1.45;
 }
 
+.pitch-bar {
+  border: 1px solid #99f6e4;
+  background: linear-gradient(180deg, #f0fdfa 0%, #ffffff 100%);
+  border-radius: 12px;
+  padding: 11px 14px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12.5px;
+}
+
+.pitch-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.pitch-msg {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
 .beat-fade {
   transition: opacity 0.14s ease-out;
 }
@@ -1634,6 +1659,6 @@ button.active .tools-badge {
 @media print {
   body { background: #fff; padding: 0; }
   .app { max-width: none; }
-  .lang-select, .toolbar, .status-strip, .audio-bar, .cal-bar, .editor-bar, .drill-bar, .meta-share-btn, .results-grid, .guide-card, .sheet-footer, .touch-dock, .tour-overlay { display: none !important; }
+  .lang-select, .toolbar, .status-strip, .audio-bar, .cal-bar, .editor-bar, .drill-bar, .pitch-bar, .meta-share-btn, .results-grid, .guide-card, .sheet-footer, .touch-dock, .tour-overlay { display: none !important; }
   .sheet-paper { border: none; box-shadow: none; padding: 0; }
 }

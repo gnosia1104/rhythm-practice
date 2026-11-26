@@ -165,6 +165,7 @@
             <div id="lblToolsSecCreate" class="tools-sec-lbl">제작 · 훈련</div>
             <button id="btnEditor" type="button" role="menuitem" title="커스텀 악보 에디터 열기/닫기">✏️ 에디터</button>
             <button id="btnDrill" type="button" role="menuitem" title="특수 훈련 베타 (갭 클릭 · 시야 방해 · BPM 러쉬)"><span id="btnDrillText">🧪 특수훈련</span><span class="beta-tag">BETA</span></button>
+            <button id="btnPitchBeta" type="button" role="menuitem" title="재즈 플랫 키 5선보 음정 초견 베타 (오디오 피치 판정 지원)"><span id="btnPitchText">🎼 음정 초견</span><span class="beta-tag">BETA</span></button>
             <div class="tools-sep"></div>
             <div id="lblToolsSecUtil" class="tools-sec-lbl">보정 · 출력</div>
             <button id="btnSyncCal" type="button" role="menuitem" title="타이밍 지연 보정 (블루투스 이어폰 / 오디오 인터페이스)">⏱ 보정</button>
@@ -328,6 +329,41 @@
       <button id="btnDrillClose" type="button" class="cal-close" title="닫기">✕</button>
     </div>
     <span id="drillMsg" class="drill-msg">실험적 특수 초견 훈련(베타): 갭 클릭(내적 박자), 시야 방해(선독 강제), BPM 러쉬(성공 시 +5 BPM 가속)를 자유롭게 조합해 보세요.</span>
+  </div>
+
+  <!-- Pitch Sight-Reading BETA Drawer (Flat-Key Jazz Harmony + Octave-Agnostic Audio Pitch Detection) -->
+  <div id="pitchBar" class="pitch-bar hidden">
+    <div class="pitch-row">
+      <strong><span id="lblPitchTitle">🎼 음정 초견</span> <span class="beta-tag">BETA</span></strong>
+      <button id="btnPitchToggle" type="button">🎼 음정 OFF</button>
+      <label class="group">
+        <span id="lblPitchKey" class="label">조표(♭)</span>
+        <select id="pitchKeySelect" title="재즈 플랫 키 선택 (0♭ ~ 5♭)">
+          <option value="C">C Maj (0♭)</option>
+          <option value="F">F Maj (1♭)</option>
+          <option value="Bb" selected>B♭ Maj (2♭)</option>
+          <option value="Eb">E♭ Maj (3♭)</option>
+          <option value="Ab">A♭ Maj (4♭)</option>
+          <option value="Db">D♭ Maj (5♭)</option>
+          <option value="Dm">D min (1♭)</option>
+          <option value="Gm">G min (2♭)</option>
+          <option value="Cm">C min (3♭)</option>
+        </select>
+      </label>
+      <label class="group">
+        <span id="lblPitchProg" class="label">코드 진행</span>
+        <select id="pitchProgSelect" title="재즈 화성 진행 스타일 선택">
+          <option value="auto">Auto (기능화성)</option>
+          <option value="ii-V-I">ii - V - I</option>
+          <option value="I-vi-ii-V">I - vi - ii - V</option>
+          <option value="blues">Jazz Blues</option>
+          <option value="modal">1-Chord (Modal)</option>
+        </select>
+      </label>
+      <button id="btnPitchHints" type="button" title="음표 위/아래 음이름(B♭, D, F...) 힌트 표시">음이름 OFF</button>
+      <button id="btnPitchClose" type="button" class="cal-close" title="닫기">✕</button>
+    </div>
+    <span id="pitchMsg" class="pitch-msg">재즈 플랫 키(0♭~5♭) 기능화성 기반 5선보 베이스라인(베타): 강박 코드톤·약박 경과음·마디 끝 어프로치 자동 배치 · 오디오 입력 시 옥타브 무관 음정 판정(높은 B·낮은 B 모두 정답).</span>
   </div>
 
   <!-- PDF-Style Vector Sheet Music -->

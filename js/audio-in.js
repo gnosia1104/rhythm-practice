@@ -2,6 +2,7 @@
 import { app, audioIn, IS_MOBILE } from "./state.js";
 import { t } from "./i18n.js";
 import { getAudioCtx, ensureAudioCtx, resetAudioCtxIfIdle, setAudioSessionType } from "./audio-out.js";
+import { detectBassPitch, comparePitchClass } from "./pitch-detect.js";
 
 const audioInCbs = {
   handleHit: () => {},
@@ -206,6 +207,7 @@ export async function startAudioInput(forceReconnect = false) {
     source.connect(splitter);
     const filters = [];
     const analysers = [];
+    const pitchAnalysers = [];
     for (let c = 0; c < chCount; c++) {
       const hp = ctx.createBiquadFilter();
       hp.type = "highpass";
@@ -215,12 +217,17 @@ export async function startAudioInput(forceReconnect = false) {
       lp.frequency.value = 1200;
       const an = ctx.createAnalyser();
       an.fftSize = 1024;
+      const pan = ctx.createAnalyser();
+      pan.fftSize = 4096;
       splitter.connect(hp, c);
       hp.connect(lp);
       lp.connect(an);
+      lp.connect(pan);
       an.connect(zeroGain);
+      pan.connect(zeroGain);
       filters.push(hp, lp);
       analysers.push(an);
+      pitchAnalysers.push(pan);
     }
 
     audioIn.stream = stream;
@@ -228,8 +235,11 @@ export async function startAudioInput(forceReconnect = false) {
     audioIn.filters = filters;
     audioIn.splitter = splitter;
     audioIn.analysers = analysers;
+    audioIn.pitchAnalysers = pitchAnalysers;
     audioIn.zeroGain = zeroGain;
     audioIn.buf = new Float32Array(1024);
+    audioIn.pitchBuf = new Float32Array(4096);
+    audioIn.pendingPitchChecks = [];
     audioIn.channelCount = chCount;
     audioIn.active = true;
     audioIn.prevLevel = 0;
@@ -285,6 +295,7 @@ export function stopAudioInput() {
   for (const flt of (audioIn.filters || [])) { try { flt.disconnect(); } catch (_) {} }
   if (audioIn.splitter) { try { audioIn.splitter.disconnect(); } catch (_) {} }
   for (const an of audioIn.analysers) { try { an.disconnect(); } catch (_) {} }
+  for (const pan of (audioIn.pitchAnalysers || [])) { try { pan.disconnect(); } catch (_) {} }
   if (audioIn.zeroGain) { try { audioIn.zeroGain.disconnect(); } catch (_) {} }
   if (audioIn.stream) {
     for (const t of audioIn.stream.getTracks()) t.stop();
@@ -294,6 +305,8 @@ export function stopAudioInput() {
   audioIn.filters = [];
   audioIn.splitter = null;
   audioIn.analysers = [];
+  audioIn.pitchAnalysers = [];
+  audioIn.pendingPitchChecks = [];
   audioIn.zeroGain = null;
   audioIn.active = false;
   audioIn.level = 0;
@@ -402,9 +415,19 @@ export function pollAudioInput() {
       if (app.state === "COUNTIN" || app.state === "PLAY") {
         audioInCbs.handleHit(now - audioIn.latencyMs / 1000, "AUDIO");
       } else if (app.state === "READY") {
-        audioInCbs.setHitBadge(t("badgeDetected", bestCh + 1), "tight");
+        if (app.pitchMode && audioIn.pitchAnalysers[bestCh] && audioIn.pitchBuf) {
+          // Schedule a quick +55ms pitch read in READY mode so bassists can verify live pitch detection
+          audioIn.pendingPitchChecks.push({ tgt: null, ch: bestCh, checkAt: now + 0.055, isReadyPreview: true });
+        } else {
+          audioInCbs.setHitBadge(t("badgeDetected", bestCh + 1), "tight");
+        }
       }
     }
+  }
+
+  // Dual-Track Pitch BETA: process post-onset (+55ms) pitch checks once per attack (zero timing latency impact)
+  if (app.pitchMode && audioIn.pendingPitchChecks.length && audioIn.pitchBuf) {
+    processPendingPitchChecks(ctx, now);
   }
 
   if ((app.inputMode === "AUDIO" || app.inputMode === "BOTH") &&
@@ -419,6 +442,59 @@ export function pollAudioInput() {
   audioIn.fluxBase = audioIn.fluxBase === 0
     ? fluxScaled
     : (audioIn.fluxBase * 0.80 + fluxScaled * 0.20);
+}
+
+export function schedulePitchCheck(tgt, onsetAudioT) {
+  if (!app.pitchMode || !tgt || !tgt.pitch || tgt.art === "ghost") return;
+  if (!audioIn.active || !audioIn.pitchAnalysers.length) return;
+  const ch = Math.min(audioIn.pitchAnalysers.length - 1, Math.max(0, audioIn.hotChannel || 0));
+  // Check 55ms after onset (past pick/finger transient) or earlier if note is very short
+  const delaySec = Math.min(0.055, Math.max(0.032, (tgt.durSec || 0.25) * 0.45));
+  audioIn.pendingPitchChecks.push({
+    tgt,
+    ch,
+    checkAt: onsetAudioT + delaySec,
+    isReadyPreview: false,
+  });
+}
+
+function processPendingPitchChecks(ctx, now) {
+  const remaining = [];
+  for (const item of audioIn.pendingPitchChecks) {
+    if (now < item.checkAt) {
+      remaining.push(item);
+      continue;
+    }
+    const pan = audioIn.pitchAnalysers[item.ch];
+    if (!pan) continue;
+    pan.getFloatTimeDomainData(audioIn.pitchBuf);
+    const det = detectBassPitch(audioIn.pitchBuf, ctx.sampleRate);
+
+    if (item.isReadyPreview) {
+      if (det) {
+        audioInCbs.setHitBadge(`[AUD] Ch${item.ch + 1} · ${det.noteName} (${Math.round(det.freq)}Hz)`, "tight");
+      } else {
+        audioInCbs.setHitBadge(t("badgeDetected", item.ch + 1), "tight");
+      }
+      continue;
+    }
+
+    const tgt = item.tgt;
+    if (!tgt || !tgt.pitch || !tgt.hit) continue;
+    if (det) {
+      const cmp = comparePitchClass(det.midiFloat, tgt.pitch.midi, 45);
+      tgt.pitchOk = cmp.ok;
+      tgt.detectedPitch = cmp.detectedName;
+      tgt.pitchCents = cmp.cents;
+      if (!app.blindGrade) {
+        if (!cmp.ok) {
+          audioInCbs.setHitBadge(`[AUD] ${tgt.pitch.name} ≠ ${cmp.detectedName}`, "err");
+        }
+        app.dirtyScore = true;
+      }
+    }
+  }
+  audioIn.pendingPitchChecks = remaining;
 }
 
 export function markRestsInRange(startSec, endSec, kind) {

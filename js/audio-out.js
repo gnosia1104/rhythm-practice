@@ -218,12 +218,15 @@ export function scheduleRunAudio(bpm, numBars, startAudioT, playMetronome, demoT
       const durSec = tgt.durSlots * tickSec;
       if (tgt.art === "ghost") {
         scheduleGhostNote(ctx, when);
-      } else if (tgt.art === "staccato") {
-        // Musical staccato: sustain half of the written note value (50%), then cut cleanly
-        scheduleBassNote(ctx, when, Math.max(0.08, durSec * 0.50), 73.42);
       } else {
-        // All notes on the middle line of bass clef = D (sounding D2 = 73.42Hz on bass guitar)
-        scheduleBassNote(ctx, when, durSec, 73.42);
+        const demoFreq = (tgt.pitch && Number.isFinite(tgt.pitch.freq)) ? tgt.pitch.freq : 73.42;
+        if (tgt.art === "staccato") {
+          // Musical staccato: sustain half of the written note value (50%), then cut cleanly
+          scheduleBassNote(ctx, when, Math.max(0.08, durSec * 0.50), demoFreq);
+        } else {
+          // Middle line of bass clef = D (sounding D2 = 73.42Hz), or real bass pitch in Pitch BETA
+          scheduleBassNote(ctx, when, durSec, demoFreq);
+        }
       }
     }
   }
