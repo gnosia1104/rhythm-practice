@@ -137,8 +137,11 @@ function clearFadeOutClasses() {
   document.querySelectorAll("#scoreSvg .beat-fade.faded").forEach(n => n.classList.remove("faded"));
 }
 
-function applyPitchToCurrentPhrase() {
+function applyPitchToCurrentPhrase(rebuildRhythm = false) {
   if (!app.phrase) return;
+  if (rebuildRhythm && !app.customMode && !app.dailyDate) {
+    app.phrase = generatePhrase(app.numBars, app.level, app.tripletMode, app.timeSig, app.phrase.seed, app.staccatoOn, app.ghostOn, app.pitchMode);
+  }
   if (app.pitchMode) {
     assignPitchesToPhrase(app.phrase, app.pitchKey, app.pitchProg, app.pitchClef);
   } else {
@@ -159,8 +162,8 @@ function newPhrase(forcedSeed = null, keepDaily = false) {
     app.customMode = false;
     clearShareQueryUrl();
   }
-  app.phrase = generatePhrase(app.numBars, app.level, app.tripletMode, app.timeSig, forcedSeed, app.staccatoOn, app.ghostOn);
-  applyPitchToCurrentPhrase();
+  app.phrase = generatePhrase(app.numBars, app.level, app.tripletMode, app.timeSig, forcedSeed, app.staccatoOn, app.ghostOn, app.pitchMode && !keepDaily);
+  applyPitchToCurrentPhrase(false);
   resetTargets();
   app.state = "READY";
   setHitBadge(t("badgeWait"), "");
@@ -2258,7 +2261,8 @@ document.getElementById("btnPitchBeta").addEventListener("click", (e) => {
   // Auto-enable Pitch BETA when first opening the drawer so the user sees 5-line jazz notation immediately
   if (willOpen && !app.pitchMode) {
     app.pitchMode = true;
-    applyPitchToCurrentPhrase();
+    applyPitchToCurrentPhrase(true);
+    resetTargets();
     updateMeta();
   }
   syncPitchUi();
@@ -2270,7 +2274,7 @@ document.getElementById("btnPitchClose").addEventListener("click", () => {
 document.getElementById("btnPitchToggle").addEventListener("click", (e) => {
   e.currentTarget.blur();
   app.pitchMode = !app.pitchMode;
-  applyPitchToCurrentPhrase();
+  applyPitchToCurrentPhrase(true);
   resetTargets();
   const msgEl = document.getElementById("pitchMsg");
   msgEl.style.color = "var(--muted)";

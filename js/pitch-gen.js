@@ -534,9 +534,10 @@ export function assignPitchesToPhrase(phrase, keySetting = "Bb", progType = "aut
     }
   }
 
-  // Record signed interval motifs from Verse (bars 0..3) AND first Chorus (4 bars) so hooks return naturally!
-  const motifVerseIntervals = [[], [], [], []];
-  const motifChorusIntervals = [[], [], [], []];
+  // Record per-bar signed interval motifs so repeated/varied rhythmic motifs (M1 -> M1', M1_REP, M2 -> M2_REP)
+  // carry the SAME melodic contour transposed onto the new chord!
+  const barIntervals = Array.from({ length: numBars }, () => []);
+  const motifMap = phrase.motifMap || null;
 
   let prevMidi = null;
   let prevInt1 = 0;
@@ -571,11 +572,20 @@ export function assignPitchesToPhrase(phrase, keySetting = "Bb", progType = "aut
       sectionOffset = [+2, +3, +1, +2, +3, +4, +2, +1][sb];
     }
     const barCenterMidi = Math.max(sweetLo, Math.min(sweetHi, centerMidi + sectionOffset));
-    const isReturningChorus = (formBar.role === "CHORUS" || formBar.role === "CHORUS_END") && firstChorusStart >= 0 && b >= firstChorusStart + 4;
-    const isSecondVerse = formBar.role === "VERSE" && b >= 4;
-    const recallMotif = isReturningChorus
-      ? motifChorusIntervals[formBar.phraseBar % 4]?.[posInBar]
-      : (isSecondVerse ? motifVerseIntervals[formBar.phraseBar % 4]?.[posInBar] : null);
+
+    // Coupled Rhythm + Pitch Motif Recall:
+    // If this bar repeats or varies an earlier motif bar (srcBar), lock onto its exact interval contour!
+    const mInfo = motifMap ? motifMap[b] : null;
+    let recallMotif = null;
+    let recallStrength = 0;
+    if (mInfo && mInfo.srcBar !== null && mInfo.srcBar < b && posInBar > 0) {
+      const srcArr = barIntervals[mInfo.srcBar];
+      const inPreservedHead = mInfo.exact || posInBar <= Math.max(1, Math.floor(barIds.length / 2));
+      if (inPreservedHead && srcArr && srcArr[posInBar] !== undefined) {
+        recallMotif = srcArr[posInBar];
+        recallStrength = mInfo.exact ? 4.8 : 3.8;
+      }
+    }
 
     const barTick = tgt.globalSlot - b * ts.barTicks;
     const isDownbeat = barTick === 0;
@@ -728,10 +738,15 @@ export function assignPitchesToPhrase(phrase, keySetting = "Bb", progType = "aut
         else score -= 3.0;
       }
       if (recallMotif !== null && recallMotif !== undefined && prevMidi !== null && !isDownbeat && !isBarEndApproach) {
-        // Echo Section A's melodic direction & interval contour in A' / A''!
+        // Strong motific sequence lock: echo the motif's exact interval direction & step size on the new chord!
         const diffNow = m - prevMidi;
         if (Math.sign(diffNow) === Math.sign(recallMotif)) {
-          score += Math.abs(diffNow - recallMotif) <= 2 ? 2.6 : 1.3;
+          const distErr = Math.abs(diffNow - recallMotif);
+          if (distErr <= 1) score += recallStrength;
+          else if (distErr <= 2) score += recallStrength * 0.72;
+          else score += recallStrength * 0.35;
+        } else if (recallMotif === 0 && diffNow === 0) {
+          score += recallStrength * 0.85;
         }
       }
       if (m < sweetLo) score -= (sweetLo - m) * 0.45;
@@ -741,14 +756,12 @@ export function assignPitchesToPhrase(phrase, keySetting = "Bb", progType = "aut
       candidates.push({ midi: m, score });
     }
 
-    const chosenMidi = weightedPick(candidates, rand, isDownbeat ? 0.65 : 1.10);
+    const chosenMidi = weightedPick(candidates, rand, isDownbeat ? 0.65 : (recallStrength > 0 ? 0.75 : 1.05));
     tgt.pitch = spellBassMidi(chosenMidi, keyId, clef);
 
-    // Record Verse (bars 0..3) and first Chorus (4 bars) interval motifs for authentic hook recall!
-    if (b < 4 && prevMidi !== null) {
-      motifVerseIntervals[b][posInBar] = chosenMidi - prevMidi;
-    } else if (firstChorusStart >= 0 && b >= firstChorusStart && b < firstChorusStart + 4 && prevMidi !== null) {
-      motifChorusIntervals[b - firstChorusStart][posInBar] = chosenMidi - prevMidi;
+    // Record per-bar interval sequence for motific repetition & variation
+    if (prevMidi !== null) {
+      barIntervals[b][posInBar] = chosenMidi - prevMidi;
     }
 
     // Track enclosure direction if we just picked the penultimate note before a chord change

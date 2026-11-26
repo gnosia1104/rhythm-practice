@@ -511,7 +511,7 @@ export function getDailyChallengeSpec(dateStr = null, isPlus = false) {
   };
 }
 
-export function generatePhrase(numBars, level, tripletMode = 0, timeSigKey = "4/4", forcedSeed = null, staccatoOn = false, ghostOn = false) {
+export function generatePhrase(numBars, level, tripletMode = 0, timeSigKey = "4/4", forcedSeed = null, staccatoOn = false, ghostOn = false, motific = false) {
   const ts = TIME_SIGS[timeSigKey] || TIME_SIGS["4/4"];
   const tMode = (typeof tripletMode === "boolean") ? (tripletMode ? 2 : 0) : (Number(tripletMode) || 0);
   const activeTriMode = (!ts.compound && level >= 2) ? tMode : 0;
@@ -536,55 +536,154 @@ export function generatePhrase(numBars, level, tripletMode = 0, timeSigKey = "4/
   let bestBars = [];
   let bestTargets = [];
   let bestRests = [];
+  let bestMotifMap = null;
+
+  const cloneBar = (bar) => bar.map(beat => beat.map(ev => ({ ...ev })));
+
+  // Build one random rhythm bar (optionally preferring cadential longer-note endings)
+  const buildRandomBar = (preferCadence, flagsRef) => {
+    const beats = [];
+    let prevRest = false;
+    while (beats.length < ts.beatsPerBar) {
+      const bt = beats.length;
+      const rem = ts.beatsPerBar - bt;
+      const cands = pool.filter(([cells, _w, starts]) =>
+        cells.length <= rem &&
+        beatStartAllowed(cells, starts, bt, ts.beatsPerBar, ts.compound) &&
+        !(prevRest && patternIsAllRest(cells))
+      );
+      const weights = cands.map(([cells, w]) => {
+        let ww = w;
+        if (preferCadence && bt >= Math.floor(ts.beatsPerBar / 2)) {
+          // Cadence bar ending: favor longer breathing notes (quarter/half) over busy 16ths
+          const maxDur = Math.max(...cells.flat().map(ev => ev[1]));
+          if (maxDur >= 12) ww *= 2.4;
+          else if (maxDur <= 3) ww *= 0.35;
+        }
+        return ww;
+      });
+      const totalW = weights.reduce((s, w) => s + w, 0);
+      let r = rand() * totalW;
+      let chosen = cands[0][0];
+      for (let ci = 0; ci < cands.length; ci++) {
+        r -= weights[ci];
+        if (r <= 0) { chosen = cands[ci][0]; break; }
+      }
+      for (const cell of chosen) {
+        beats.push(cell.map(([slot, dur, rest, tuplet]) => {
+          if (tuplet) flagsRef.hasTriplet = true;
+          if (tuplet === "4t") flagsRef.hasQuarterTriplet = true;
+          return { slot, dur, rest, tuplet: tuplet || null, tiedIn: false, tiedOut: false, art: null };
+        }));
+      }
+      prevRest = patternIsAllRest(chosen);
+    }
+    for (let bt = 1; bt < ts.beatsPerBar; bt++) {
+      if (!beats[bt - 1].length || !beats[bt].length) continue;
+      const prevEv = beats[bt - 1][beats[bt - 1].length - 1];
+      const currEv = beats[bt][0];
+      if (
+        !prevEv.rest && !currEv.rest && !prevEv.tiedIn &&
+        !prevEv.tuplet && !currEv.tuplet &&
+        prevEv.slot + prevEv.dur === ts.beatTicks && currEv.slot === 0 &&
+        rand() < tieProb
+      ) {
+        prevEv.tiedOut = true;
+        currEv.tiedIn = true;
+      }
+    }
+    return beats;
+  };
+
+  // Motific Tail Variation: keep the motif bar's opening head verbatim, vary only the tail beats!
+  const varyBarTail = (baseBar, flagsRef) => {
+    const out = cloneBar(baseBar);
+    const minSplit = Math.max(1, Math.floor(ts.beatsPerBar / 2));
+    let splitBt = -1;
+    for (let bt = minSplit; bt < ts.beatsPerBar; bt++) {
+      if (out[bt].length > 0 && !out[bt][0].tiedIn) {
+        splitBt = bt;
+        break;
+      }
+    }
+    if (splitBt === -1) return buildRandomBar(false, flagsRef);
+    // Clean any tie leading into the replaced tail
+    if (splitBt > 0 && out[splitBt - 1].length) {
+      out[splitBt - 1][out[splitBt - 1].length - 1].tiedOut = false;
+    }
+    out.length = splitBt;
+    let prevRest = splitBt > 0 && out[splitBt - 1].length > 0 && out[splitBt - 1].every(e => e.rest);
+    while (out.length < ts.beatsPerBar) {
+      const bt = out.length;
+      const rem = ts.beatsPerBar - bt;
+      const cands = pool.filter(([cells, _w, starts]) =>
+        cells.length <= rem &&
+        beatStartAllowed(cells, starts, bt, ts.beatsPerBar, ts.compound) &&
+        !(prevRest && patternIsAllRest(cells))
+      );
+      const totalW = cands.reduce((s, c) => s + c[1], 0);
+      let r = rand() * totalW;
+      let chosen = cands[0][0];
+      for (const [cells, w] of cands) {
+        r -= w;
+        if (r <= 0) { chosen = cells; break; }
+      }
+      for (const cell of chosen) {
+        out.push(cell.map(([slot, dur, rest, tuplet]) => {
+          if (tuplet) flagsRef.hasTriplet = true;
+          if (tuplet === "4t") flagsRef.hasQuarterTriplet = true;
+          return { slot, dur, rest, tuplet: tuplet || null, tiedIn: false, tiedOut: false, art: null };
+        }));
+      }
+      prevRest = patternIsAllRest(chosen);
+    }
+    return out;
+  };
 
   for (let attempt = 0; attempt < 40; attempt++) {
     const bars = [];
-    let hasTriplet = false;
-    let hasQuarterTriplet = false;
+    const motifMap = [];
+    const flagsRef = { hasTriplet: false, hasQuarterTriplet: false };
     let hasStaccato = false;
     let hasGhost = false;
-    for (let b = 0; b < numBars; b++) {
-      const beats = [];
-      let prevRest = false;
-      while (beats.length < ts.beatsPerBar) {
-        const bt = beats.length;
-        const rem = ts.beatsPerBar - bt;
-        const cands = pool.filter(([cells, _w, starts]) =>
-          cells.length <= rem &&
-          beatStartAllowed(cells, starts, bt, ts.beatsPerBar, ts.compound) &&
-          !(prevRest && patternIsAllRest(cells))
-        );
-        const totalW = cands.reduce((s, c) => s + c[1], 0);
-        let r = rand() * totalW;
-        let chosen = cands[0][0];
-        for (const [cells, w] of cands) {
-          r -= w;
-          if (r <= 0) { chosen = cells; break; }
-        }
-        for (const cell of chosen) {
-          beats.push(cell.map(([slot, dur, rest, tuplet]) => {
-            if (tuplet) hasTriplet = true;
-            if (tuplet === "4t") hasQuarterTriplet = true;
-            return { slot, dur, rest, tuplet: tuplet || null, tiedIn: false, tiedOut: false, art: null };
-          }));
-        }
-        prevRest = patternIsAllRest(chosen);
-      }
+    const useMotific = Boolean(motific && numBars >= 4);
 
-      for (let bt = 1; bt < ts.beatsPerBar; bt++) {
-        if (!beats[bt - 1].length || !beats[bt].length) continue;
-        const prevEv = beats[bt - 1][beats[bt - 1].length - 1];
-        const currEv = beats[bt][0];
-        if (
-          !prevEv.rest && !currEv.rest && !prevEv.tiedIn &&
-          !prevEv.tuplet && !currEv.tuplet &&
-          prevEv.slot + prevEv.dur === ts.beatTicks && currEv.slot === 0 &&
-          rand() < tieProb
-        ) {
-          prevEv.tiedOut = true;
-          currEv.tiedIn = true;
+    for (let b = 0; b < numBars; b++) {
+      let beats;
+      let mInfo = null;
+      if (!useMotific) {
+        beats = buildRandomBar(false, flagsRef);
+      } else {
+        // 8-bar section rhythmic motif architecture:
+        // [0: M1] [1: M2] [2: M1' tail-var] [3: Half-Cadence]
+        // [4: M1 exact return!] [5: M2/M2' return!] [6: M1'' var] [7: Full-Cadence]
+        const secStart = Math.floor(b / 8) * 8;
+        const off = b - secStart;
+        if (off === 0 || off === 1) {
+          beats = buildRandomBar(false, flagsRef);
+          mInfo = { role: off === 0 ? "M1" : "M2", srcBar: b, exact: true };
+        } else if (off === 2) {
+          beats = varyBarTail(bars[secStart], flagsRef);
+          mInfo = { role: "M1_VAR", srcBar: secStart, exact: false };
+        } else if (off === 3) {
+          beats = buildRandomBar(true, flagsRef);
+          mInfo = { role: "CADENCE", srcBar: null, exact: false };
+        } else if (off === 4) {
+          beats = cloneBar(bars[secStart]);
+          mInfo = { role: "M1_REP", srcBar: secStart, exact: true };
+        } else if (off === 5) {
+          const exactM2 = rand() < 0.55;
+          beats = exactM2 ? cloneBar(bars[secStart + 1]) : varyBarTail(bars[secStart + 1], flagsRef);
+          mInfo = { role: exactM2 ? "M2_REP" : "M2_VAR", srcBar: secStart + 1, exact: exactM2 };
+        } else if (off === 6) {
+          beats = varyBarTail(bars[secStart], flagsRef);
+          mInfo = { role: "M1_VAR2", srcBar: secStart, exact: false };
+        } else {
+          beats = buildRandomBar(true, flagsRef);
+          mInfo = { role: "CADENCE_END", srcBar: null, exact: false };
         }
       }
+      motifMap.push(mInfo);
 
       // Assign optional bass articulations (ghost dead-notes & staccato) on untied notes
       if (staccatoOn || ghostOn) {
@@ -633,10 +732,11 @@ export function generatePhrase(numBars, level, tripletMode = 0, timeSigKey = "4/
     bestBars = bars;
     bestTargets = targets;
     bestRests = rests;
+    bestMotifMap = useMotific ? motifMap : null;
     const minTargets = Math.max(2, level === 1 ? numBars : numBars * Math.min(2, ts.beatsPerBar));
     const triOk = activeTriMode === 0
       ? true
-      : (activeTriMode === 2 ? hasQuarterTriplet : hasTriplet);
+      : (activeTriMode === 2 ? flagsRef.hasQuarterTriplet : flagsRef.hasTriplet);
     if (
       targets.length >= minTargets &&
       triOk &&
@@ -645,7 +745,7 @@ export function generatePhrase(numBars, level, tripletMode = 0, timeSigKey = "4/
     ) break;
   }
 
-  return { seed, timeSig: timeSigKey, bars: bestBars, targets: bestTargets, rests: bestRests, isCustom: false, customCode: "" };
+  return { seed, timeSig: timeSigKey, bars: bestBars, targets: bestTargets, rests: bestRests, motifMap: bestMotifMap, isCustom: false, customCode: "" };
 }
 
 
