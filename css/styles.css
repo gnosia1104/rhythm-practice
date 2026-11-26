@@ -1694,21 +1694,28 @@ button.active .beta-tag {
   text-transform: uppercase;
 }
 
-.tools-dropdown button {
+.tools-dropdown button,
+.tools-dropdown a.tools-link {
   width: 100%;
   text-align: left;
   justify-content: flex-start;
   display: flex;
   align-items: center;
   gap: 5px;
-  border-color: transparent;
+  border: 1px solid transparent;
   background: transparent;
+  color: var(--ink);
+  text-decoration: none;
+  font-family: inherit;
+  font-weight: 500;
   padding: 7px 10px;
   border-radius: 8px;
   font-size: 12.5px;
+  cursor: pointer;
 }
 
-.tools-dropdown button:hover:not(:disabled) {
+.tools-dropdown button:hover:not(:disabled),
+.tools-dropdown a.tools-link:hover {
   background: #f4f4f5;
   border-color: transparent;
 }

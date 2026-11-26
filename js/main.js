@@ -2275,9 +2275,6 @@ document.getElementById("btnPitchHints").addEventListener("click", (e) => {
   app.dirtyScore = true;
   syncPitchUi();
 });
-document.getElementById("btnLearnPage").addEventListener("click", () => {
-  window.location.href = "learn.html";
-});
 
 
 // -------------------------------------------------------------------------
