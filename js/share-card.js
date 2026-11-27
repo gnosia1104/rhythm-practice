@@ -6,7 +6,12 @@ import { formatPlayMods, computeScoreRank, getTimingThresholds } from "./scoring
 export function clearShareQueryUrl() {
   try {
     if (location.protocol !== "file:" && location.search) {
-      history.replaceState(null, "", location.pathname);
+      const qs = new URLSearchParams(location.search);
+      const keep = new URLSearchParams();
+      if (qs.has("room")) keep.set("room", qs.get("room"));
+      if (qs.has("lang")) keep.set("lang", qs.get("lang"));
+      const suffix = keep.toString() ? `?${keep.toString()}` : "";
+      history.replaceState(null, "", `${location.pathname}${suffix}`);
     }
   } catch (_) {}
 }

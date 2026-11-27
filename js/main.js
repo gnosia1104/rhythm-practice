@@ -43,6 +43,10 @@ import {
 import {
   trackPracticeStart, trackPracticeComplete, trackPracticeStop, trackShare, trackRefVisit,
 } from "./analytics.js";
+import {
+  initRoom, syncRoomLanguage, isRoomPlaying,
+  notifyRoomChartChanged, notifyRoomLiveProgress, notifyRoomFinish,
+} from "./room.js";
 
 function resetTargets() {
   const ts = getTimeSig(app.phrase ? app.phrase.timeSig : app.timeSig);
@@ -418,6 +422,46 @@ function closeKeyStaccato(releaseElapsed) {
   app.dirtyScore = true;
 }
 
+function pushLiveRoomProgress() {
+  if (!isRoomPlaying() || !app.phrase) return;
+  const tgts = app.phrase.targets || [];
+  const total = tgts.length;
+  let hits = 0, missedNotes = 0, tight = 0;
+  const tw = getTimingThresholds(app.bpm);
+  const errs = [];
+  for (const tg of tgts) {
+    if (tg.hit) {
+      hits += 1;
+      if (tg.errMs !== null) {
+        errs.push(tg.errMs);
+        if (Math.abs(tg.errMs) <= tw.tight) tight += 1;
+      }
+    } else if (tg.missed) {
+      missedNotes += 1;
+    }
+  }
+  const restErrs = (app.phrase.rests || []).filter(r => r.error).length;
+  const doneNotes = hits + missedNotes;
+  const misses = missedNotes + restErrs;
+  let sd = 0;
+  if (errs.length > 1) {
+    const m = errs.reduce((a, b) => a + b, 0) / errs.length;
+    sd = Math.sqrt(errs.reduce((s, e) => s + (e - m) ** 2, 0) / errs.length);
+  }
+  const det = computeDetailedScore(app.phrase, hits, total, sd, app.extraHits, restErrs, app.keyExtraHits, app.audioExtraHits);
+  const acc = doneNotes > 0 ? (hits / doneNotes) * 100 : 100;
+  notifyRoomLiveProgress({
+    score: det.score,
+    maxScore: det.maxScore,
+    hits,
+    total,
+    doneNotes,
+    misses,
+    acc,
+    tight,
+  });
+}
+
 function handleHit(hitAudioT, source, hitKind = "NORMAL", keyCode = null, playedMidi = null) {
   if (app.state !== "COUNTIN" && app.state !== "PLAY") return;
   const ts = getTimeSig();
@@ -548,6 +592,7 @@ function handleHit(hitAudioT, source, hitKind = "NORMAL", keyCode = null, played
       setHitBadge(hitRest ? `[${src}] REST ERR !` : `[${src}] EXTRA !`, "err");
     }
   }
+  pushLiveRoomProgress();
 }
 
 function finalizeRun() {
@@ -666,6 +711,19 @@ function finalizeRun() {
   const durSec = app.numBars * tsTrack.clicksPerBar * tsTrack.clickSec(app.bpm);
   app.runTrackOpen = false;
   trackPracticeComplete(app, { rank: rank.grade, acc, durationSec: durSec });
+  notifyRoomFinish({
+    score: scoreDetail.score,
+    maxScore: scoreDetail.maxScore,
+    acc,
+    hits,
+    total,
+    misses: (total - hits) + restErrs,
+    tight,
+    mean,
+    sd,
+    rank: rank.grade,
+    rankCls: rank.cls,
+  });
   const rankEl = document.getElementById("rankBadge");
   rankEl.textContent = rank.grade;
   rankEl.className = `rank-pill ${rank.cls}`;
@@ -950,6 +1008,7 @@ function updateMeta() {
   document.getElementById("audioBar").classList.toggle("hidden", !app.audioOn);
 
   syncTransportButtons();
+  notifyRoomChartChanged();
 }
 
 function applyLanguage(lang) {
@@ -1105,6 +1164,7 @@ function applyLanguage(lang) {
   }
   renderLog();
   syncGuideUi();
+  syncRoomLanguage();
   updateMeta();
   app.dirtyScore = true;
 }
@@ -1244,7 +1304,10 @@ function frame() {
           changed = true;
         }
       }
-      if (changed && !app.blindGrade) app.dirtyScore = true;
+      if (changed) {
+        if (!app.blindGrade) app.dirtyScore = true;
+        pushLiveRoomProgress();
+      }
     }
 
     const clickIdxNow = elapsed >= 0 ? Math.floor(elapsed / clickSec) : -1;
@@ -2552,7 +2615,7 @@ initTour({ stopRun, applyLanguage });
 
 // Boot
 const bootParams = new URLSearchParams(location.search || "");
-const arrivedViaSharedLink = ["seed", "daily", "dailyplus", "custom"].some(k => bootParams.has(k));
+const arrivedViaSharedLink = ["seed", "daily", "dailyplus", "custom", "room"].some(k => bootParams.has(k));
 if (bootParams.has("ref")) {
   trackRefVisit(bootParams.get("ref"));
 }
@@ -2587,6 +2650,27 @@ try {
 syncTouchDock();
 drawDistribution([], 0, 0, 0, 0, 0);
 applyLanguage(getCurLang());
+initRoom({
+  applyRoomChart: (chart) => {
+    if (!chart) return;
+    if (chart.customCode) {
+      if (Number.isFinite(Number(chart.bpm))) {
+        app.bpm = Math.max(40, Math.min(180, Math.round(Number(chart.bpm))));
+      }
+      loadCustomFromInput(chart.customCode);
+      return;
+    }
+    if (chart.seedCode) {
+      const cfg = decodeFullSeedCode(chart.seedCode);
+      if (cfg) applyFullSeedObj(cfg);
+    }
+  },
+  triggerRoomStart: () => startRun(false),
+  stopRun,
+  newPhrase,
+  setHitBadge,
+  updateMeta,
+});
 syncToolsMenuBadge();
 renderLog();
 requestAnimationFrame(frame);

@@ -60,7 +60,7 @@
   "description": "Free browser-based rhythm & pitch sight-reading trainer for musicians featuring 6 progressive levels, 5 time signatures, triplets, staccato, ghost notes, gap click metronome, custom score editor, daily challenges, and audio interface onset/sustain/rest grading."
 }
 </script>
-<link rel="stylesheet" href="css/styles.css?v=20261127e" />
+<link rel="stylesheet" href="css/styles.css?v=20261127f" />
 <script defer src="https://cloud.umami.is/script.js" data-website-id="9070201e-fd1f-4081-ad26-1219def68ba6" data-domains="gnosia1104.github.io"></script>
 </head>
 <body>
@@ -193,6 +193,7 @@
       <div class="group">
         <button id="btnDaily" class="daily-btn" title="오늘의 4/4 데일리 챌린지 (고정 8마디)">🏆 데일리</button>
         <button id="btnDailyPlus" class="daily-plus-btn" title="오늘의 변박·고급 데일리+ 챌린지 (3/4·2/4·5/4·6/8)">🔥 데일리+</button>
+        <button id="btnRoom" class="room-btn" title="실시간 멀티플레이어 방 대결 (4자리 코드 · 초대 링크)">⚔️ 방 대결</button>
       </div>
     </div>
   </div>
@@ -393,6 +394,51 @@
     <span id="pitchMsg" class="pitch-msg">재즈 플랫 키(0♭~7♭) · C부터 e4r5ty7u8i9op(좌측 q2w=A·B♭·B) / MIDI / 오디오 입력 (옥타브 무관 정답).</span>
   </div>
 
+  <!-- Real-Time Multiplayer Room Panel (Gartic Phone / Kahoot Style) -->
+  <div id="roomBar" class="room-bar hidden">
+    <div class="room-head">
+      <div class="group">
+        <strong><span id="lblRoomTitle">⚔️ 실시간 방 대결</span> <span class="beta-tag">MULTI</span></strong>
+      </div>
+      <button id="btnRoomClose" type="button" class="cal-close" title="닫기">✕</button>
+    </div>
+
+    <div id="roomEntryView" class="room-entry-row">
+      <input id="roomNickInput" class="room-input" type="text" maxlength="16" placeholder="닉네임 (예: GrooveKing)" />
+      <button id="btnRoomCreate" type="button" class="primary">🏠 방 만들기</button>
+      <span class="room-sep-or">or</span>
+      <input id="roomCodeInput" class="room-input room-code-in" type="text" maxlength="6" placeholder="방 코드" />
+      <button id="btnRoomJoin" type="button">🚪 입장</button>
+    </div>
+
+    <div id="roomActiveView" class="room-active hidden">
+      <div class="room-active-bar">
+        <div class="group">
+          <span id="roomCodeBadge" class="room-code-badge">#0000</span>
+          <span id="roomModeBadge" class="room-mode-pill local">LOCAL TAB</span>
+          <button id="btnRoomCopyLink" type="button">🔗 초대 링크</button>
+        </div>
+        <div id="roomHostControls" class="group">
+          <select id="roomRuleSelect" title="대전 룰 선택">
+            <option value="score">🎯 스코어 어택</option>
+            <option value="sd3">💀 서든데스 (3미스 탈락)</option>
+          </select>
+          <button id="btnRoomAddBot" type="button" title="혼자 테스트용 봇 추가/초기화">🤖 +봇 (0/3)</button>
+          <button id="btnRoomNewScore" type="button">🎲 새 악보</button>
+          <button id="btnRoomStart" type="button" class="primary">▶ 라운드 시작</button>
+          <button id="btnRoomEndNow" type="button" class="hidden">🏁 마감</button>
+        </div>
+        <button id="btnRoomLeave" type="button" class="danger">나가기</button>
+      </div>
+
+      <div id="roomChartSummary" class="room-chart-summary"></div>
+      <div id="roomPodium" class="room-podium hidden"></div>
+      <div id="roomLeaderboard" class="room-leaderboard"></div>
+    </div>
+
+    <span id="roomMsg" class="room-msg">닉네임을 입력하고 방을 만들거나 4자리 코드로 바로 입장하세요.</span>
+  </div>
+
   <!-- PDF-Style Vector Sheet Music -->
   <div class="sheet-paper">
     <div class="sheet-header">
@@ -527,7 +573,7 @@
   </div>
 </div>
 
-<script type="module" src="js/main.js?v=20261127e"></script>
+<script type="module" src="js/main.js?v=20261127f"></script>
 </body>
 </html>
 
