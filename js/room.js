@@ -16,6 +16,7 @@ export const SUPABASE_URL = "https://fdpnrxkohvfrcesoxpwo.supabase.co";
 export const SUPABASE_ANON_KEY = "sb_publishable_ifPAkMXSsD1C_2xEToofNg_GtDLtkVB";
 
 const ROOM_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // Excludes confusing I/O/0/1
+export const MAX_ROOM_PLAYERS = 10; // Total room capacity including bots
 const NICK_STORAGE_KEY = "rhythm_room_nick_v1";
 const CHAT_MUTE_STORAGE_KEY = "rhythm_room_chat_muted_v1";
 const HOST_SESSION_PREFIX = "rhythm_room_host_";
@@ -444,6 +445,7 @@ function handleRemotePresenceSync(presenceState) {
       if (!m || !m.id) continue;
       presentIds.add(m.id);
       if (!roomState.players.has(m.id)) {
+        if (roomState.players.size >= MAX_ROOM_PLAYERS) continue;
         roomState.players.set(m.id, makePlayerRecord(m.id, m.name || "Player", Boolean(m.isHost), false));
       } else {
         const cur = roomState.players.get(m.id);
@@ -469,6 +471,12 @@ function handleIncomingMessage(msg) {
 
   if (msg.type === "hello") {
     const isNew = !roomState.players.has(msg.id);
+    if (isNew && roomState.players.size >= MAX_ROOM_PLAYERS) {
+      if (roomState.isHost) {
+        sendMsg({ type: "room_full", targetId: msg.id, max: MAX_ROOM_PLAYERS });
+      }
+      return;
+    }
     const p = roomState.players.get(msg.id) || makePlayerRecord(msg.id, msg.name, Boolean(msg.isHost), false);
     p.name = msg.name || p.name;
     if (msg.isHost) p.isHost = true;
@@ -488,7 +496,18 @@ function handleIncomingMessage(msg) {
     return;
   }
 
+  if (msg.type === "room_full") {
+    if (msg.targetId === roomState.clientId && !roomState.isHost) {
+      const maxN = Number(msg.max) || MAX_ROOM_PLAYERS;
+      leaveRoom(false).then(() => {
+        setRoomStatusMsg(t("roomFullMsg", maxN), "var(--red)");
+      });
+    }
+    return;
+  }
+
   if (msg.type === "hello_ack") {
+    if (!roomState.players.has(msg.id) && roomState.players.size >= MAX_ROOM_PLAYERS) return;
     const p = roomState.players.get(msg.id) || makePlayerRecord(msg.id, msg.name, Boolean(msg.isHost), false);
     p.name = msg.name || p.name;
     if (msg.isHost) p.isHost = true;
@@ -1188,6 +1207,10 @@ function hostAddBot() {
     for (const id of roomState.bots) roomState.players.delete(id);
     roomState.bots = [];
   } else {
+    if (roomState.players.size >= MAX_ROOM_PLAYERS) {
+      setRoomStatusMsg(t("roomFullMsg", MAX_ROOM_PLAYERS), "var(--amber)");
+      return;
+    }
     const idx = roomState.bots.length;
     const prof = BOT_PROFILES[idx % BOT_PROFILES.length];
     const id = `BOT_${idx + 1}_${randomId(4)}`;
@@ -1252,6 +1275,8 @@ export function renderRoomUi() {
 
   const botBtn = document.getElementById("btnRoomAddBot");
   if (botBtn) {
+    const canAddBot = roomState.bots.length >= 3 || roomState.players.size < MAX_ROOM_PLAYERS;
+    botBtn.disabled = !canAddBot;
     botBtn.textContent = roomState.bots.length >= 3
       ? t("roomClearBots")
       : t("roomAddBot", roomState.bots.length);
@@ -1277,7 +1302,7 @@ export function renderRoomUi() {
     : (roomState.phase === "PLAYING"
       ? t("roomPhasePlaying")
       : (roomState.phase === "PODIUM" ? t("roomPhasePodium") : t("roomPhaseLobby")));
-  document.getElementById("roomChartSummary").textContent = `${phaseTxt} · ${ruleTxt} · ${chartLabel} · ${roomState.players.size}P`;
+  document.getElementById("roomChartSummary").textContent = `${phaseTxt} · ${ruleTxt} · ${chartLabel} · ${roomState.players.size}/${MAX_ROOM_PLAYERS}P`;
 
   const cdBanner = document.getElementById("roomCountdownBanner");
   if (cdBanner) {
