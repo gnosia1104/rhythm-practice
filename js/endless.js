@@ -25,7 +25,6 @@ export const endlessState = {
   maxCombo: 0,
   survivedBars: 0,
   bestBars: 0,
-  escalate: false,          // +5 BPM every 8 bars (or 2 full lines)
   baseBpm: 60,
   curBpm: 60,
   nextGlobalBar: 0,
@@ -266,12 +265,7 @@ function swapSlot(slotToReplace) {
   const startG = endlessState.nextGlobalBar;
   const lineIndex = Math.floor(startG / slotBars);
 
-  // Optional Escalation: every 2 lines (8 bars on desktop), bump BPM +5 (capped at 180)
-  let nextBpm = endlessState.baseBpm;
-  if (endlessState.escalate) {
-    const steps = Math.floor(lineIndex / 2);
-    nextBpm = Math.min(180, endlessState.baseBpm + steps * 5);
-  }
+  const nextBpm = endlessState.baseBpm;
   endlessState.curBpm = nextBpm;
 
   const chunk = buildLineChunk(slotToReplace, startG, endlessState.nextBarStartSec, nextBpm, app.level);
@@ -480,12 +474,6 @@ export function renderEndlessHud() {
   if (comboEl) comboEl.textContent = `${endlessState.combo} COMBO`;
   const bestEl = document.getElementById("endlessBestVal");
   if (bestEl) bestEl.textContent = t("endlessBest", endlessState.bestBars);
-
-  const escBtn = document.getElementById("btnEndlessEsc");
-  if (escBtn) {
-    escBtn.textContent = endlessState.escalate ? t("endlessEscOn") : t("endlessEscOff");
-    escBtn.classList.toggle("active", endlessState.escalate);
-  }
 }
 
 export function syncEndlessLanguage() {
@@ -531,11 +519,6 @@ export function initEndless(callbacks) {
   });
   document.getElementById("btnEndlessClose").addEventListener("click", () => {
     setEndlessMode(false);
-  });
-  document.getElementById("btnEndlessEsc").addEventListener("click", (e) => {
-    e.currentTarget.blur();
-    endlessState.escalate = !endlessState.escalate;
-    renderEndlessHud();
   });
 
   syncEndlessLanguage();
