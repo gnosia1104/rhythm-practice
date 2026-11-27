@@ -45,6 +45,7 @@ export function syncAllDropdownBadges() {
     !document.getElementById("achBar").classList.contains("hidden") ||
     !document.getElementById("lbBar").classList.contains("hidden") ||
     !document.getElementById("diagBar").classList.contains("hidden") ||
+    !document.getElementById("feedbackBar").classList.contains("hidden") ||
     !document.getElementById("calBar").classList.contains("hidden");
   const toolsDropOpen = !document.getElementById("toolsDropdown").classList.contains("hidden");
   document.getElementById("btnToolsMenu").classList.toggle("active", toolsDropOpen || anyDrill || anyPanelOpen);
@@ -147,7 +148,7 @@ export function initToolbarMenus() {
       syncAllDropdownBadges();
     }
   });
-  ["btnEdClose", "btnCalClose", "btnDrillClose", "btnPitchClose"].forEach((id) => {
+  ["btnEdClose", "btnCalClose", "btnDrillClose", "btnPitchClose", "btnFbClose"].forEach((id) => {
     const elBtn = document.getElementById(id);
     if (elBtn) elBtn.addEventListener("click", () => window.setTimeout(syncAllDropdownBadges, 0));
   });

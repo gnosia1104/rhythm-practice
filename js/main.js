@@ -66,6 +66,7 @@ import {
 import {
   initDiagnostics, syncDiagnosticsLanguage, recordDiagnosticsRun,
 } from "./diagnostics.js";
+import { initFeedback, syncFeedbackLanguage } from "./feedback.js";
 import {
   cancelRushTimer, saveRushBest, clearFadeOutClasses, syncDrillUi, initDrills,
 } from "./drills.js";
@@ -1169,6 +1170,7 @@ function applyLanguage(lang) {
   syncAchievementsLanguage();
   syncLeaderboardLanguage();
   syncDiagnosticsLanguage();
+  syncFeedbackLanguage();
   updateMeta();
   app.dirtyScore = true;
 }
@@ -2052,6 +2054,10 @@ initDiagnostics({
     newPhrase();
     setHitBadge(t("diagDrillApplied", weak.label, app.level), "tight");
   },
+  setHitBadge,
+});
+initFeedback({
+  onUiChange: () => syncToolsMenuBadge(),
   setHitBadge,
 });
 syncToolsMenuBadge();

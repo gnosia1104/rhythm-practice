@@ -60,7 +60,7 @@
   "description": "Free browser-based rhythm & pitch sight-reading trainer for musicians featuring 6 progressive levels, 5 time signatures, triplets, staccato, ghost notes, gap click metronome, custom score editor, daily challenges, and audio interface onset/sustain/rest grading."
 }
 </script>
-<link rel="stylesheet" href="css/styles.css?v=20261128c" />
+<link rel="stylesheet" href="css/styles.css?v=20261128g" />
 <script defer src="https://cloud.umami.is/script.js" data-website-id="9070201e-fd1f-4081-ad26-1219def68ba6" data-domains="gnosia1104.github.io"></script>
 </head>
 <body>
@@ -196,6 +196,7 @@
             <a id="btnLearnPage" href="learn.html" class="tools-link" role="menuitem" title="오선보·낮은음자리표·음표 박자 기초 인터랙티브 학습 페이지 열기">📖 오선보·음표 기초</a>
             <button id="btnTour" type="button" role="menuitem" title="처음 사용자를 위한 단계별 튜토리얼">🧭 튜토리얼</button>
             <button id="btnGuide" type="button" role="menuitem" title="사용 방법 및 판정 기준 설명 열기">❓ 설명</button>
+            <button id="btnFeedback" type="button" role="menuitem" title="버그 제보 · 기능 제안 · 악기/오디오 피드백 보내기">💬 피드백</button>
           </div>
         </div>
         <button id="btnDaily" class="daily-btn" title="오늘의 4/4 데일리 챌린지 (고정 8마디)">🏆 데일리</button>
@@ -597,6 +598,31 @@
     </div>
   </div>
 
+  <!-- Quick In-App Feedback Drawer (Write-Only Supabase RPC, Zero Login) -->
+  <div id="feedbackBar" class="fb-bar hidden">
+    <div class="fb-head">
+      <strong id="lblFbTitle">💬 피드백 보내기</strong>
+      <button id="btnFbClose" type="button" class="cal-close" title="닫기">✕</button>
+    </div>
+    <div class="fb-cats" role="group" aria-label="Feedback category">
+      <button type="button" class="fb-cat-btn" data-fb-cat="bug">🐛 버그 제보</button>
+      <button type="button" class="fb-cat-btn active" data-fb-cat="idea">💡 기능 제안</button>
+      <button type="button" class="fb-cat-btn" data-fb-cat="audio">🎤 악기 · 오디오</button>
+    </div>
+    <textarea id="fbText" class="fb-textarea" rows="3" maxlength="800" placeholder="불편한 점, 원하는 기능, 악기 연결 이슈 등을 자유롭게 남겨주세요 (로그인 불필요 · Ctrl/⌘+Enter 전송)"></textarea>
+    <div class="fb-foot">
+      <div class="fb-foot-left">
+        <input id="fbContact" class="room-input fb-contact-in" type="text" maxlength="80" placeholder="회신받을 이메일 (선택)" />
+        <span id="fbEnvHint" class="fb-env-hint">기기 · 입력모드 자동 첨부</span>
+      </div>
+      <div class="fb-foot-right">
+        <span id="fbCharCount" class="fb-char-count">0 / 800</span>
+        <button id="btnFbSend" type="button" class="primary">📨 보내기</button>
+      </div>
+    </div>
+    <span id="fbMsg" class="fb-msg"></span>
+  </div>
+
   <!-- PDF-Style Vector Sheet Music -->
   <div class="sheet-paper">
     <div class="sheet-header">
@@ -741,7 +767,7 @@
 <!-- Steam-Style Achievement Unlock Toast Stack -->
 <div id="achToastStack" class="ach-toast-stack" aria-live="polite"></div>
 
-<script type="module" src="js/main.js?v=20261128f"></script>
+<script type="module" src="js/main.js?v=20261128g"></script>
 </body>
 </html>
 
