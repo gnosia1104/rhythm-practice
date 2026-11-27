@@ -2731,6 +2731,10 @@ body.has-dock .ach-toast-stack {
     padding: 4px 6px !important;
     font-size: 11px !important;
   }
+  .toolbar-modes .beta-tag {
+    font-size: 8.5px;
+    padding: 1px 4px;
+  }
   .room-active-bar button,
   .room-active-bar select {
     padding: 4px 7px;

@@ -60,7 +60,7 @@
   "description": "Free browser-based rhythm & pitch sight-reading trainer for musicians featuring 6 progressive levels, 5 time signatures, triplets, staccato, ghost notes, gap click metronome, custom score editor, daily challenges, and audio interface onset/sustain/rest grading."
 }
 </script>
-<link rel="stylesheet" href="css/styles.css?v=20261127z" />
+<link rel="stylesheet" href="css/styles.css?v=20261127ab" />
 <script defer src="https://cloud.umami.is/script.js" data-website-id="9070201e-fd1f-4081-ad26-1219def68ba6" data-domains="gnosia1104.github.io"></script>
 </head>
 <body>
@@ -149,7 +149,7 @@
               <button id="btnBeatNums" type="button" title="마디 위 박자 번호 표기 (단축키 b)">박자표기 OFF</button>
               <button id="btnCursor" type="button" title="입문용 악보 진행 커서 표시 ON/OFF (단축키 c)">커서 OFF</button>
               <button id="btnBlindGrade" type="button" title="채점 시점 전환: 즉시 / 완료후 (단축키 g)">채점: 즉시</button>
-              <button id="btnSuddenDeath" type="button" class="diff-span-2" title="3미스 시 즉시 탈락 서든데스 모드 ON/OFF">💀 서든데스 (3미스) OFF</button>
+              <button id="btnSuddenDeath" type="button" class="diff-span-2" title="3미스 시 즉시 탈락 서든데스 모드 ON/OFF"><span id="btnSuddenDeathText">💀 서든데스 (3미스) OFF</span><span class="beta-tag">BETA</span></button>
             </div>
           </div>
         </div>
@@ -195,7 +195,7 @@
         </div>
         <button id="btnDaily" class="daily-btn" title="오늘의 4/4 데일리 챌린지 (고정 8마디)">🏆 데일리</button>
         <button id="btnDailyPlus" class="daily-plus-btn" title="오늘의 변박·고급 데일리+ 챌린지 (3/4·2/4·5/4·6/8)">🔥 데일리+</button>
-        <button id="btnEndless" class="endless-btn" title="2줄 교차 무한 초견 서바이벌 모드 (HP 게이지 · 최고 생존 마디 기록)">♾️ 엔드리스</button>
+        <button id="btnEndless" class="endless-btn" title="2줄 교차 무한 초견 서바이벌 모드 (HP 게이지 · 최고 생존 마디 기록)"><span id="btnEndlessText">♾️ 엔드리스</span><span class="beta-tag">BETA</span></button>
         <button id="btnRoom" class="room-btn" title="실시간 멀티플레이어 방 대결 (4자리 코드 · 초대 링크)">⚔️ 방 대결</button>
       </div>
     </div>
@@ -474,7 +474,10 @@
   <!-- Endless 2-Line Double-Buffered Arcade Survival HUD -->
   <div id="endlessBar" class="endless-bar hidden">
     <div class="endless-head">
-      <strong id="lblEndlessTitle">♾️ 엔드리스 서바이벌</strong>
+      <div class="group">
+        <strong id="lblEndlessTitle">♾️ 엔드리스 서바이벌</strong>
+        <span class="beta-tag">BETA</span>
+      </div>
       <button id="btnEndlessClose" type="button" class="cal-close" title="엔드리스 종료">✕</button>
     </div>
     <div class="endless-row">
@@ -656,7 +659,7 @@
 <!-- Steam-Style Achievement Unlock Toast Stack -->
 <div id="achToastStack" class="ach-toast-stack" aria-live="polite"></div>
 
-<script type="module" src="js/main.js?v=20261127aa"></script>
+<script type="module" src="js/main.js?v=20261127ab"></script>
 </body>
 </html>
 

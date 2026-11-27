@@ -54,7 +54,7 @@ import {
   buildEndlessPreviewPhrase, startEndlessAudioAndState, stepEndlessFrame,
   onEndlessHit, onEndlessMiss, onEndlessRestPassed, onEndlessRestError, onEndlessExtraHit,
   saveEndlessBest,
-} from "./endless.js?v=20261127aa";
+} from "./endless.js?v=20261127ab";
 import {
   initAchievements, syncAchievementsLanguage,
   evaluateStandardRunAchievements, evaluateEndlessAchievements, evaluateRoomWinAchievement,
@@ -1344,7 +1344,9 @@ function updateMeta() {
   const btnSd = document.getElementById("btnSuddenDeath");
   if (btnSd) {
     const sdOn = Boolean(app.suddenDeath);
-    btnSd.textContent = sdOn ? t("sdOn") : t("sdOff");
+    const sdTxt = document.getElementById("btnSuddenDeathText");
+    if (sdTxt) sdTxt.textContent = sdOn ? t("sdOn") : t("sdOff");
+    else btnSd.textContent = sdOn ? t("sdOn") : t("sdOff");
     btnSd.classList.toggle("active", sdOn);
   }
   if (typeof syncAllDropdownBadges === "function") syncAllDropdownBadges();

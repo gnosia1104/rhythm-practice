@@ -550,8 +550,8 @@ export function renderEndlessHud() {
 }
 
 export function syncEndlessLanguage() {
-  const btn = document.getElementById("btnEndless");
-  if (btn) btn.textContent = t("btnEndless");
+  const btnTxt = document.getElementById("btnEndlessText");
+  if (btnTxt) btnTxt.textContent = t("btnEndless");
   const sdMode = Boolean(app.suddenDeath);
   const lbl = document.getElementById("lblEndlessTitle");
   if (lbl) lbl.textContent = sdMode ? t("sdEndlessTitle") : t("endlessTitle");
