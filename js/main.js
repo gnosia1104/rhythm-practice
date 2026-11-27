@@ -1473,7 +1473,7 @@ async function applyInputToggles(nextKey, nextAudio, nextPad) {
 }
 
 async function cycleInputMode() {
-  // Keyboard shortcut 'i' cycles: KEY -> AUDIO -> BOTH -> KEY
+  // Keyboard shortcut '/' cycles: KEY -> AUDIO -> BOTH -> KEY
   if (app.keyOn && !app.audioOn) {
     await applyInputToggles(false, true, app.showTouchDock);
   } else if (!app.keyOn && app.audioOn) {
@@ -2178,7 +2178,7 @@ window.addEventListener("keydown", (e) => {
     } else if (app.state === "READY") {
       if (!isRoomCountingDown()) handleMainStartAction();
     }
-  } else if (code === "Enter" || code === "NumpadEnter" || code === "KeyR") {
+  } else if (code === "Enter" || code === "NumpadEnter" || code === "KeyA") {
     e.preventDefault();
     handleMainStartAction();
   } else if (code === "Escape") {
@@ -2187,7 +2187,7 @@ window.addEventListener("keydown", (e) => {
   } else if (code === "KeyN") {
     e.preventDefault();
     handleMainNewAction();
-  } else if (code === "KeyP") {
+  } else if (code === "KeyH") {
     e.preventDefault();
     handleMainDemoAction();
   } else if (code === "Equal" || code === "NumpadAdd" || e.key === "+" || e.key === "=") {
@@ -2204,17 +2204,17 @@ window.addEventListener("keydown", (e) => {
   } else if (code === "ArrowDown") {
     e.preventDefault();
     if (app.level > 1) setLevel(app.level - 1);
-  } else if (code === "KeyC") {
+  } else if (code === "KeyV") {
     e.preventDefault();
     app.showCursor = !app.showCursor;
     updateMeta();
-  } else if (code === "KeyT") {
+  } else if (code === "KeyZ") {
     e.preventDefault();
     if (tripletsAllowed()) {
       app.tripletMode = (app.tripletMode + 1) % 3;
       newPhrase();
     }
-  } else if (code === "KeyQ") {
+  } else if (code === "KeyC") {
     e.preventDefault();
     app.staccatoOn = !app.staccatoOn;
     newPhrase();
@@ -2248,7 +2248,7 @@ window.addEventListener("keydown", (e) => {
     app.dirtyScore = true;
     if (app.state === "PLAY" && app.blindGrade) setHitBadge(t("badgeBlindPlay"), "");
     updateMeta();
-  } else if (code === "KeyI") {
+  } else if (code === "Slash") {
     e.preventDefault();
     cycleInputMode();
   } else if (code === "BracketLeft") {

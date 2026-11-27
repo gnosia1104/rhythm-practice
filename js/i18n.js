@@ -88,7 +88,7 @@ export const I18N = {
       {
         target: ".sheet-paper",
         title: "🎼 악보를 읽고 바로 연주해 보세요",
-        body: "▶ 시작(Enter 또는 Space)을 누르면 1마디 카운트인 후 연주가 시작됩니다. 음표에 맞춰 Space / J / K(또는 터치 패드 · MIDI · 실제 악기)를 연주하고, 쉼표는 조용히 넘기세요. ♪ 정답 듣기(P)로 먼저 리듬을 들어볼 수도 있습니다.",
+        body: "▶ 시작(Enter 또는 Space)을 누르면 1마디 카운트인 후 연주가 시작됩니다. 음표에 맞춰 Space / J / K(또는 터치 패드 · MIDI · 실제 악기)를 연주하고, 쉼표는 조용히 넘기세요. ♪ 정답 듣기(H)로 먼저 리듬을 들어볼 수도 있습니다.",
       },
       {
         target: ".status-strip",
@@ -320,7 +320,7 @@ export const I18N = {
     statusCountIn: (b, n = 4) => `카운트인  ${b} / ${n}`,
     statusDemo: "정답 가이드 미리듣기 중...",
     statusPlay: "연주 중 — 정박 메트로놈에 맞춰 입력하세요",
-    statusDone: "완료! — Enter 재시도 · N 새 악보 · P 정답 듣기",
+    statusDone: "완료! — Enter/A 재시도 · N 새 악보 · H 정답 듣기",
     badgeWait: "대기 중",
     badgeStopped: "정지됨",
     badgeDemo: "정답 재생 중",
@@ -349,14 +349,14 @@ export const I18N = {
     calMeasuring: "줄을 건드리지 말고 잠시 기다리세요 (바닥 노이즈 측정 중)...",
     calDone: (pct) => `노이즈 보정 완료 — 임계값 ${pct}%로 자동 설정됨`,
     brandTagline: "오디오 인터페이스 직결 · 어택/서스테인/쉼표 뮤트 실시간 채점 · 설치 없는 리듬·음정 초견",
-    tapHintBriefHtml: `<kbd>Space</kbd>/<kbd>J</kbd>/<kbd>K</kbd> 입력 · <kbd>Enter</kbd> 시작 · <kbd>N</kbd> 새 악보 · <kbd>P</kbd> 정답 듣기`,
+    tapHintBriefHtml: `<kbd>Space</kbd>/<kbd>J</kbd>/<kbd>K</kbd> 입력 · <kbd>Enter</kbd>/<kbd>A</kbd> 시작 · <kbd>N</kbd> 새 악보 · <kbd>H</kbd> 정답 듣기`,
     footerToggleOpen: "단축키 · 판정 기준 ▾",
     footerToggleClose: "단축키 · 판정 기준 ▴",
     countinHintKey: "⏳ 카운트인 후 Space / J / K 로 입력하세요 (커서 없음 · 상단 LED 참고)",
     countinHintAudio: "🎤 카운트인 후 악기를 연주하세요 (커서 없음 · 상단 LED 참고)",
     countinHintPad: "👆 카운트인 후 하단 패드를 탭하세요 (커서 없음 · 상단 LED 참고)",
     countinHintPitch: "🎹 카운트인 후 음에 맞춰 연주하세요 (e4r5ty7u8i9op · MIDI · 오디오)",
-    tapHintHtml: `입력: <kbd>Space</kbd>/<kbd>J</kbd>/<kbd>K</kbd> (고스트 <kbd>F</kbd>/<kbd>D</kbd>) 또는 오디오 · <kbd>Enter</kbd> 시작 · <kbd>Esc</kbd> 정지 · <kbd>N</kbd> 새 악보 · <kbd>P</kbd> 정답 · <kbd>1</kbd>~<kbd>6</kbd>/<kbd>↑</kbd><kbd>↓</kbd> 난이도 · <kbd>T</kbd> 3연음 · <kbd>Q</kbd> 스타카토 · <kbd>X</kbd> 고스트 · <kbd>S</kbd> 박자표 · <kbd>L</kbd> 마디수 · <kbd>+</kbd><kbd>−</kbd> BPM · <kbd>M</kbd>/<kbd>B</kbd>/<kbd>C</kbd>/<kbd>G</kbd>/<kbd>I</kbd>`,
+    tapHintHtml: `입력: <kbd>Space</kbd>/<kbd>J</kbd>/<kbd>K</kbd> (고스트 <kbd>F</kbd>/<kbd>D</kbd>) 또는 오디오 · <kbd>Enter</kbd>/<kbd>A</kbd> 시작 · <kbd>Esc</kbd> 정지 · <kbd>N</kbd> 새 악보 · <kbd>H</kbd> 정답 · <kbd>1</kbd>~<kbd>6</kbd>/<kbd>↑</kbd><kbd>↓</kbd> 난이도 · <kbd>Z</kbd> 3연음 · <kbd>X</kbd> 고스트 · <kbd>C</kbd> 스타카토 · <kbd>S</kbd> 박자표 · <kbd>L</kbd> 마디수 · <kbd>+</kbd><kbd>−</kbd> BPM · <kbd>M</kbd>/<kbd>B</kbd>/<kbd>V</kbd>/<kbd>G</kbd>/<kbd>/</kbd>`,
     legendHtml: `판정: <strong style="color:var(--green)">★ ≤35ms/쉼표통과</strong> · <strong style="color:var(--amber)">−/+ ≤80ms</strong> · <strong style="color:var(--red)">&lt;/&gt; &gt;80ms · × miss/쉼표에러</strong> · 서스테인(AUD): <strong style="color:var(--green)">▬ 양호</strong> / <strong style="color:var(--amber)">▬ 짧음</strong> / <strong style="color:var(--red)">▬ 침범</strong>`,
     summaryIdle: "연주를 마치면 타이밍 분포가 표시됩니다.",
     summaryHits: (hits, total, pct, tight, sign, mean, sd, extra, sus, restErrs) => {
@@ -381,10 +381,10 @@ export const I18N = {
       <div class="guide-sec">
         <h3>1. 기본 연습 방법</h3>
         <ul>
-          <li><strong>시작 / 정지</strong>: <kbd>Enter</kbd> 또는 <strong>▶ 시작</strong>을 누르면 1마디 카운트인(1박 초록 LED, 나머지 박 노랑 LED) 후 연주가 시작됩니다. 중간에 멈추려면 <kbd>Esc</kbd> 또는 <strong>■ 정지</strong>를 누르세요.</li>
-          <li><strong>정답 미리듣기</strong>: <kbd>P</kbd> 또는 <strong>♪ 정답 듣기</strong>를 누르면 메트로놈에 맞춰 가이드 음이 재생됩니다.</li>
-          <li><strong>악보 커스터마이즈</strong>: 6단계 리듬 난이도(<kbd>1</kbd>~<kbd>6</kbd>, <kbd>↑</kbd><kbd>↓</kbd>: 정박 기초 → 정박 8분 → 8분 엇박 → 8분 싱코페이션 → 16분 기초 → 16분음표 심화)에 3연음(<kbd>T</kbd>) · 스타카토(<kbd>Q</kbd>) · 고스트(<kbd>X</kbd>)를 자유롭게 조합할 수 있습니다. 박자표(<kbd>S</kbd>), 마디 수(<kbd>L</kbd>, 2~32마디), BPM(<kbd>+</kbd>/<kbd>−</kbd>), <strong>박자표기(<kbd>B</kbd>)</strong>도 지원합니다.</li>
-          <li><strong>시창(초견) · 특수 모드</strong>: 기본은 커서 없이 메트로놈과 LED만 보고 읽습니다. <strong>🔇 메트로놈 OFF(<kbd>M</kbd>)</strong> 시 카운트인 1마디만 울리고 본 연주에서는 소리·LED가 모두 꺼져 순수 내면 박자 훈련이 가능합니다. 입문용 <strong>커서(<kbd>C</kbd>)</strong>, <strong>채점: 완료후(<kbd>G</kbd>)</strong>, <strong>🏆 데일리(4/4) / 🔥 데일리+(변박)</strong>, <strong>✏️ 커스텀 에디터</strong>, 악보 우측 <strong>#시드 클릭·🔗 공유</strong>도 지원합니다.</li>
+          <li><strong>시작 / 정지</strong>: <kbd>Enter</kbd> / <kbd>A</kbd> 또는 <strong>▶ 시작</strong>을 누르면 1마디 카운트인(1박 초록 LED, 나머지 박 노랑 LED) 후 연주가 시작됩니다. 중간에 멈추려면 <kbd>Esc</kbd> 또는 <strong>■ 정지</strong>를 누르세요.</li>
+          <li><strong>정답 미리듣기</strong>: <kbd>H</kbd> 또는 <strong>♪ 정답 듣기</strong>를 누르면 메트로놈에 맞춰 가이드 음이 재생됩니다.</li>
+          <li><strong>악보 커스터마이즈</strong>: 6단계 리듬 난이도(<kbd>1</kbd>~<kbd>6</kbd>, <kbd>↑</kbd><kbd>↓</kbd>: 정박 기초 → 정박 8분 → 8분 엇박 → 8분 싱코페이션 → 16분 기초 → 16분음표 심화)에 3연음(<kbd>Z</kbd>) · 고스트(<kbd>X</kbd>) · 스타카토(<kbd>C</kbd>)를 자유롭게 조합할 수 있습니다. 박자표(<kbd>S</kbd>), 마디 수(<kbd>L</kbd>, 2~32마디), BPM(<kbd>+</kbd>/<kbd>−</kbd>), <strong>박자표기(<kbd>B</kbd>)</strong>도 지원합니다.</li>
+          <li><strong>시창(초견) · 특수 모드</strong>: 기본은 커서 없이 메트로놈과 LED만 보고 읽습니다. <strong>🔇 메트로놈 OFF(<kbd>M</kbd>)</strong> 시 카운트인 1마디만 울리고 본 연주에서는 소리·LED가 모두 꺼져 순수 내면 박자 훈련이 가능합니다. 입문용 <strong>커서(<kbd>V</kbd>)</strong>, <strong>채점: 완료후(<kbd>G</kbd>)</strong>, <strong>🏆 데일리(4/4) / 🔥 데일리+(변박)</strong>, <strong>✏️ 커스텀 에디터</strong>, 악보 우측 <strong>#시드 클릭·🔗 공유</strong>도 지원합니다.</li>
         </ul>
       </div>
       <div class="guide-sec">
@@ -399,14 +399,14 @@ export const I18N = {
             <strong style="color:var(--amber)">▬ 짧음</strong>(표기 길이의 62% 미만으로 빨리 끊음) ·
             <strong style="color:var(--red)">▬ 침범</strong>(뒤 쉼표까지 뮤트가 늦음)
           </li>
-          <li><strong>스타카토(<code>•</code>) &amp; 고스트 노트(<code>×</code>)</strong>: <kbd>Q</kbd>(스타카토)를 켜면 음표 아래 점이 붙어 표기 길이의 <strong>절반(약 50%)만큼 유지한 뒤 깔끔히 끊었는지</strong>(너무 짧으면 노랑, 절반 넘게 길면 빨강) 채점합니다. <kbd>X</kbd>(고스트)를 켜면 <code>×</code> 데드노트가 등장하며, 오디오 모드에서는 퍼커시브 뮤트 여부를 자동 판별하고 키보드에서는 <kbd>F</kbd>/<kbd>D</kbd>(모바일은 <code>× GHOST</code> 패드)로 입력합니다.</li>
+          <li><strong>스타카토(<code>•</code>) &amp; 고스트 노트(<code>×</code>)</strong>: <kbd>C</kbd>(스타카토)를 켜면 음표 아래 점이 붙어 표기 길이의 <strong>절반(약 50%)만큼 유지한 뒤 깔끔히 끊었는지</strong>(너무 짧으면 노랑, 절반 넘게 길면 빨강) 채점합니다. <kbd>X</kbd>(고스트)를 켜면 <code>×</code> 데드노트가 등장하며, 오디오 모드에서는 퍼커시브 뮤트 여부를 자동 판별하고 키보드에서는 <kbd>F</kbd>/<kbd>D</kbd>(모바일은 <code>× GHOST</code> 패드)로 입력합니다.</li>
           <li>기호나 서스테인 바 위에 <strong>마우스를 올리면</strong> 정확한 <code>ms</code> 오차와 서스테인 <code>%</code> 툴팁이 표시됩니다.</li>
         </ul>
       </div>
       <div class="guide-sec">
         <h3>3. 악기 / 오디오 인터페이스 연결 팁</h3>
         <ul>
-          <li><kbd>I</kbd> 키 또는 상단 <strong>🎤 오디오</strong> 토글 버튼을 켜면 오디오 인터페이스/마이크 입력이 활성화됩니다(<strong>⌨️ 키</strong>·<strong>🎹 MIDI</strong>·<strong>👆 패드</strong>와 동시 사용 가능).</li>
+          <li><kbd>/</kbd> 키 또는 상단 <strong>🎤 오디오</strong> 토글 버튼을 켜면 오디오 인터페이스/마이크 입력이 활성화됩니다(<strong>⌨️ 키</strong>·<strong>🎹 MIDI</strong>·<strong>👆 패드</strong>와 동시 사용 가능).</li>
           <li>오디오 바의 장치 목록에서 인터페이스를 고르고, 대기 상태에서 악기를 연주해 미터와 <code>-XXdB (Ch1)</code> 반응을 확인하세요.</li>
           <li><strong>안 칠 때도 노이즈가 잡히면</strong>: 소리를 내지 않은 상태에서 <strong>🔇 노이즈 보정</strong>을 한 번 누르면 0.6초간 바닥 노이즈를 측정해 임계값을 자동 설정합니다.</li>
           <li><strong>미터 선 의미</strong>: 빨간선 = 어택 감지 임계값 / 파란선 = 서스테인 유지 하한선.</li>
@@ -418,15 +418,15 @@ export const I18N = {
         <h3>4. 전체 단축키 (한글 입력 상태에서도 동작)</h3>
         <div class="shortcut-grid">
           <div><kbd>Space</kbd> / <kbd>J</kbd> / <kbd>K</kbd></div><div>리듬 입력 (대기 중엔 바로 시작)</div>
-          <div><kbd>Enter</kbd> / <kbd>R</kbd></div><div>시작 / 같은 악보 재시도</div>
+          <div><kbd>Enter</kbd> / <kbd>A</kbd></div><div>시작 / 같은 악보 재시도</div>
           <div><kbd>Esc</kbd></div><div>즉시 정지</div>
-          <div><kbd>N</kbd> / <kbd>P</kbd></div><div>새 악보 생성 / 정답 미리듣기</div>
-          <div><kbd>1</kbd>~<kbd>6</kbd> / <kbd>↑</kbd> <kbd>↓</kbd> / <kbd>T</kbd></div><div>난이도 6단계 선택 · ±1 조절 · 3연음 순환 (OFF→8분→+2박)</div>
-          <div><kbd>Q</kbd> / <kbd>X</kbd> / <kbd>F</kbd> <kbd>D</kbd></div><div>스타카토 ON/OFF · 고스트 ON/OFF · 고스트 뮤트 입력</div>
+          <div><kbd>N</kbd> / <kbd>H</kbd></div><div>새 악보 생성 / 정답 미리듣기</div>
+          <div><kbd>1</kbd>~<kbd>6</kbd> / <kbd>↑</kbd> <kbd>↓</kbd></div><div>난이도 6단계 선택 · ±1 조절</div>
+          <div><kbd>Z</kbd> / <kbd>X</kbd> / <kbd>C</kbd> / <kbd>F</kbd> <kbd>D</kbd></div><div>3연음 순환 · 고스트 ON/OFF · 스타카토 ON/OFF · 고스트 뮤트 입력</div>
           <div><kbd>S</kbd> / <kbd>L</kbd></div><div>박자표 변경 (4/4·3/4·2/4·5/4·6/8) · 마디 수 변경</div>
           <div><kbd>+</kbd> / <kbd>−</kbd></div><div>BPM ±5 조절</div>
-          <div><kbd>M</kbd> / <kbd>B</kbd> / <kbd>C</kbd> / <kbd>G</kbd></div><div>메트로놈 · 박자표기 · 입문 커서 · 채점시점(즉시/완료후)</div>
-          <div><kbd>I</kbd></div><div>입력 모드 전환 (KEY → AUDIO → BOTH)</div>
+          <div><kbd>M</kbd> / <kbd>B</kbd> / <kbd>V</kbd> / <kbd>G</kbd></div><div>메트로놈 · 박자표기 · 입문 커서 · 채점시점(즉시/완료후)</div>
+          <div><kbd>/</kbd></div><div>입력 모드 전환 (KEY → AUDIO → BOTH)</div>
           <div><kbd>[</kbd> <kbd>]</kbd> / <kbd>,</kbd> <kbd>.</kbd></div><div>오디오 임계값 ±2% / 지연보정 ±5ms</div>
         </div>
       </div>`,
@@ -517,7 +517,7 @@ export const I18N = {
       {
         target: ".sheet-paper",
         title: "🎼 Read & Play Right Away",
-        body: "Press ▶ Start (Enter or Space) for a 1-bar count-in, then tap Space / J / K (or mobile pads / MIDI / real instrument) on every note while staying silent on rests. Hit ♪ Demo (P) anytime to hear the exact rhythm first.",
+        body: "Press ▶ Start (Enter or Space) for a 1-bar count-in, then tap Space / J / K (or mobile pads / MIDI / real instrument) on every note while staying silent on rests. Hit ♪ Demo (H) anytime to hear the exact rhythm first.",
       },
       {
         target: ".status-strip",
@@ -749,7 +749,7 @@ export const I18N = {
     statusCountIn: (b, n = 4) => `Count-in  ${b} / ${n}`,
     statusDemo: "Playing demo guide...",
     statusPlay: "Playing — Follow the metronome click",
-    statusDone: "Done! — Enter Retry · N New · P Demo",
+    statusDone: "Done! — Enter/A Retry · N New · H Demo",
     badgeWait: "Standby",
     badgeStopped: "Stopped",
     badgeDemo: "Demo playing",
@@ -778,14 +778,14 @@ export const I18N = {
     calMeasuring: "Keep strings muted — measuring idle noise floor...",
     calDone: (pct) => `Noise calibrated — threshold auto-set to ${pct}%`,
     brandTagline: "Plug in your instrument, MIDI, or tap keyboard — real-time attack, sustain & rest-mute sight-reading",
-    tapHintBriefHtml: `<kbd>Space</kbd>/<kbd>J</kbd>/<kbd>K</kbd> Play · <kbd>Enter</kbd> Start · <kbd>N</kbd> New · <kbd>P</kbd> Demo`,
+    tapHintBriefHtml: `<kbd>Space</kbd>/<kbd>J</kbd>/<kbd>K</kbd> Play · <kbd>Enter</kbd>/<kbd>A</kbd> Start · <kbd>N</kbd> New · <kbd>H</kbd> Demo`,
     footerToggleOpen: "Shortcuts & Grading ▾",
     footerToggleClose: "Shortcuts & Grading ▴",
     countinHintKey: "⏳ Play Space / J / K after count-in (no cursor · follow top LED)",
     countinHintAudio: "🎤 Play your instrument after count-in (no cursor · follow top LED)",
     countinHintPad: "👆 Tap the pads below after count-in (no cursor · follow top LED)",
     countinHintPitch: "🎹 Play the notated pitches after count-in (e4r5ty7u8i9op · MIDI · Audio)",
-    tapHintHtml: `Play: <kbd>Space</kbd>/<kbd>J</kbd>/<kbd>K</kbd> (Ghost <kbd>F</kbd>/<kbd>D</kbd>) or Audio · <kbd>Enter</kbd> Start · <kbd>Esc</kbd> Stop · <kbd>N</kbd> New · <kbd>P</kbd> Demo · <kbd>1</kbd>–<kbd>6</kbd>/<kbd>↑</kbd><kbd>↓</kbd> Level · <kbd>T</kbd> Triplets · <kbd>Q</kbd> Staccato · <kbd>X</kbd> Ghost · <kbd>S</kbd> Meter · <kbd>L</kbd> Bars · <kbd>+</kbd><kbd>−</kbd> BPM · <kbd>M</kbd>/<kbd>B</kbd>/<kbd>C</kbd>/<kbd>G</kbd>/<kbd>I</kbd>`,
+    tapHintHtml: `Play: <kbd>Space</kbd>/<kbd>J</kbd>/<kbd>K</kbd> (Ghost <kbd>F</kbd>/<kbd>D</kbd>) or Audio · <kbd>Enter</kbd>/<kbd>A</kbd> Start · <kbd>Esc</kbd> Stop · <kbd>N</kbd> New · <kbd>H</kbd> Demo · <kbd>1</kbd>–<kbd>6</kbd>/<kbd>↑</kbd><kbd>↓</kbd> Level · <kbd>Z</kbd> Triplets · <kbd>X</kbd> Ghost · <kbd>C</kbd> Staccato · <kbd>S</kbd> Meter · <kbd>L</kbd> Bars · <kbd>+</kbd><kbd>−</kbd> BPM · <kbd>M</kbd>/<kbd>B</kbd>/<kbd>V</kbd>/<kbd>G</kbd>/<kbd>/</kbd>`,
     legendHtml: `Grade: <strong style="color:var(--green)">★ ≤35ms/Rest OK</strong> · <strong style="color:var(--amber)">−/+ ≤80ms</strong> · <strong style="color:var(--red)">&lt;/&gt; &gt;80ms · × Miss/Rest Err</strong> · Sustain(AUD): <strong style="color:var(--green)">▬ OK</strong> / <strong style="color:var(--amber)">▬ Short</strong> / <strong style="color:var(--red)">▬ Bleed</strong>`,
     summaryIdle: "Finish a take to see your timing distribution.",
     summaryHits: (hits, total, pct, tight, sign, mean, sd, extra, sus, restErrs) => {
@@ -810,10 +810,10 @@ export const I18N = {
       <div class="guide-sec">
         <h3>1. How to Practice</h3>
         <ul>
-          <li><strong>Start / Stop</strong>: Press <kbd>Enter</kbd> or <strong>▶ Start</strong> for a 1-bar count-in (Beat 1 green LED, other beats amber LED). Press <kbd>Esc</kbd> or <strong>■ Stop</strong> anytime to abort while keeping the same sheet.</li>
-          <li><strong>Demo Playback</strong>: Press <kbd>P</kbd> or <strong>♪ Play Demo</strong> to hear the exact rhythm played with the metronome.</li>
-          <li><strong>Customize</strong>: Combine 6 rhythm levels (<kbd>1</kbd>–<kbd>6</kbd>, <kbd>↑</kbd><kbd>↓</kbd>: Quarter Basics → Straight 8ths → 8th Off-beats → Syncopation → 16th Basics → 16th Advanced) with independent Triplets (<kbd>T</kbd>), Staccato (<kbd>Q</kbd>), and Ghost Note (<kbd>X</kbd>) toggles, plus meter (<kbd>S</kbd>), length (<kbd>L</kbd>), BPM (<kbd>+</kbd>/<kbd>−</kbd>), and beat numbers (<kbd>B</kbd>).</li>
-          <li><strong>True Sight-Reading &amp; Modes</strong>: Cursor is off by default. Turning <strong>🔇 Metronome OFF (<kbd>M</kbd>)</strong> plays the 1-bar count-in and then mutes both click and LED during play for pure internal-clock training. Also includes optional <strong>Cursor (<kbd>C</kbd>)</strong>, <strong>Grade: End (<kbd>G</kbd>)</strong>, <strong>🏆 Daily (4/4) / 🔥 Daily+ (odd meters)</strong>, <strong>✏️ Custom Editor</strong>, and clickable <strong>#Seed / 🔗 Share</strong> links.</li>
+          <li><strong>Start / Stop</strong>: Press <kbd>Enter</kbd> / <kbd>A</kbd> or <strong>▶ Start</strong> for a 1-bar count-in (Beat 1 green LED, other beats amber LED). Press <kbd>Esc</kbd> or <strong>■ Stop</strong> anytime to abort while keeping the same sheet.</li>
+          <li><strong>Demo Playback</strong>: Press <kbd>H</kbd> or <strong>♪ Play Demo</strong> to hear the exact rhythm played with the metronome.</li>
+          <li><strong>Customize</strong>: Combine 6 rhythm levels (<kbd>1</kbd>–<kbd>6</kbd>, <kbd>↑</kbd><kbd>↓</kbd>: Quarter Basics → Straight 8ths → 8th Off-beats → Syncopation → 16th Basics → 16th Advanced) with independent Triplets (<kbd>Z</kbd>), Ghost Note (<kbd>X</kbd>), and Staccato (<kbd>C</kbd>) toggles, plus meter (<kbd>S</kbd>), length (<kbd>L</kbd>), BPM (<kbd>+</kbd>/<kbd>−</kbd>), and beat numbers (<kbd>B</kbd>).</li>
+          <li><strong>True Sight-Reading &amp; Modes</strong>: Cursor is off by default. Turning <strong>🔇 Metronome OFF (<kbd>M</kbd>)</strong> plays the 1-bar count-in and then mutes both click and LED during play for pure internal-clock training. Also includes optional <strong>Cursor (<kbd>V</kbd>)</strong>, <strong>Grade: End (<kbd>G</kbd>)</strong>, <strong>🏆 Daily (4/4) / 🔥 Daily+ (odd meters)</strong>, <strong>✏️ Custom Editor</strong>, and clickable <strong>#Seed / 🔗 Share</strong> links.</li>
         </ul>
       </div>
       <div class="guide-sec">
@@ -828,14 +828,14 @@ export const I18N = {
             <strong style="color:var(--amber)">▬ Short</strong> (cut off under 62% of written value) ·
             <strong style="color:var(--red)">▬ Bleed</strong> (rang past the note into a rest)
           </li>
-          <li><strong>Staccato (<code>•</code>) &amp; Ghost Notes (<code>×</code>)</strong>: Enable <strong>Staccato (<kbd>Q</kbd>)</strong> to grade half-value articulation (hold ~<strong>50%</strong> of written duration, then mute cleanly—amber if too dead/short, red if held past half). Enable <strong>Ghost Notes (<kbd>X</kbd>)</strong> for percussive dead-notes (<code>×</code>)—auto-detected via fast percussive decay in Audio mode, or played with <kbd>F</kbd>/<kbd>D</kbd> (or the <code>× GHOST</code> touch pad) in Key mode.</li>
+          <li><strong>Staccato (<code>•</code>) &amp; Ghost Notes (<code>×</code>)</strong>: Enable <strong>Staccato (<kbd>C</kbd>)</strong> to grade half-value articulation (hold ~<strong>50%</strong> of written duration, then mute cleanly—amber if too dead/short, red if held past half). Enable <strong>Ghost Notes (<kbd>X</kbd>)</strong> for percussive dead-notes (<code>×</code>)—auto-detected via fast percussive decay in Audio mode, or played with <kbd>F</kbd>/<kbd>D</kbd> (or the <code>× GHOST</code> touch pad) in Key mode.</li>
           <li><strong>Hover</strong> over any symbol or sustain bar for exact <code>ms</code> error and sustain <code>%</code> tooltips.</li>
         </ul>
       </div>
       <div class="guide-sec">
         <h3>3. Instrument &amp; Audio Interface Setup</h3>
         <ul>
-          <li>Press <kbd>I</kbd> or toggle <strong>🎤 Audio</strong> in the input bar to enable your audio interface or mic (can be combined with <strong>⌨️ Key</strong>, <strong>🎹 MIDI</strong>, or <strong>👆 Pad</strong>).</li>
+          <li>Press <kbd>/</kbd> or toggle <strong>🎤 Audio</strong> in the input bar to enable your audio interface or mic (can be combined with <strong>⌨️ Key</strong>, <strong>🎹 MIDI</strong>, or <strong>👆 Pad</strong>).</li>
           <li>Choose your interface in the device dropdown and play a note while idle to verify the meter and <code>-XXdB (Ch1)</code> readout.</li>
           <li><strong>If idle noise triggers hits</strong>: Keep quiet and click <strong>🔇 Noise Cal</strong> (measures 0.6s noise floor and sets threshold automatically).</li>
           <li><strong>Meter markers</strong>: Red line = attack threshold / Blue line = sustain hold floor.</li>
@@ -847,15 +847,15 @@ export const I18N = {
         <h3>4. Keyboard Shortcuts (IME-Independent)</h3>
         <div class="shortcut-grid">
           <div><kbd>Space</kbd> / <kbd>J</kbd> / <kbd>K</kbd></div><div>Tap rhythm (starts take if ready)</div>
-          <div><kbd>Enter</kbd> / <kbd>R</kbd></div><div>Start / Retry current score</div>
+          <div><kbd>Enter</kbd> / <kbd>A</kbd></div><div>Start / Retry current score</div>
           <div><kbd>Esc</kbd></div><div>Stop immediately</div>
-          <div><kbd>N</kbd> / <kbd>P</kbd></div><div>New score / Play demo guide</div>
-          <div><kbd>1</kbd>–<kbd>6</kbd> / <kbd>↑</kbd> <kbd>↓</kbd> / <kbd>T</kbd></div><div>6 difficulty levels (±1) · Triplets (OFF→8th→+2-Beat)</div>
-          <div><kbd>Q</kbd> / <kbd>X</kbd> / <kbd>F</kbd> <kbd>D</kbd></div><div>Staccato ON/OFF · Ghost Notes ON/OFF · Ghost mute hit</div>
+          <div><kbd>N</kbd> / <kbd>H</kbd></div><div>New score / Play demo guide</div>
+          <div><kbd>1</kbd>–<kbd>6</kbd> / <kbd>↑</kbd> <kbd>↓</kbd></div><div>6 difficulty levels (±1)</div>
+          <div><kbd>Z</kbd> / <kbd>X</kbd> / <kbd>C</kbd> / <kbd>F</kbd> <kbd>D</kbd></div><div>Triplets · Ghost Notes ON/OFF · Staccato ON/OFF · Ghost mute hit</div>
           <div><kbd>S</kbd> / <kbd>L</kbd></div><div>Cycle time signature (4/4..6/8) · Cycle bar count</div>
           <div><kbd>+</kbd> / <kbd>−</kbd></div><div>BPM ±5</div>
-          <div><kbd>M</kbd> / <kbd>B</kbd> / <kbd>C</kbd> / <kbd>G</kbd></div><div>Metronome · Beat numbers · Guide cursor · Grading (Live/End)</div>
-          <div><kbd>I</kbd></div><div>Cycle input mode (KEY → AUDIO → BOTH)</div>
+          <div><kbd>M</kbd> / <kbd>B</kbd> / <kbd>V</kbd> / <kbd>G</kbd></div><div>Metronome · Beat numbers · Guide cursor · Grading (Live/End)</div>
+          <div><kbd>/</kbd></div><div>Cycle input mode (KEY → AUDIO → BOTH)</div>
           <div><kbd>[</kbd> <kbd>]</kbd> / <kbd>,</kbd> <kbd>.</kbd></div><div>Audio threshold ±2% / Latency ±5ms</div>
         </div>
       </div>`,
@@ -946,7 +946,7 @@ export const I18N = {
       {
         target: ".sheet-paper",
         title: "🎼 譜面を読んでそのまま演奏",
-        body: "▶ スタート（Enter / Space）で1小節カウントイン後に演奏開始。音符に合わせて Space / J / K（またはタッチパッド・MIDI・楽器）を弾き、休符はしっかりミュート！♪ 正解を聴く（P）で先にリズムを確認できます。",
+        body: "▶ スタート（Enter / Space）で1小節カウントイン後に演奏開始。音符に合わせて Space / J / K（またはタッチパッド・MIDI・楽器）を弾き、休符はしっかりミュート！♪ 正解を聴く（H）で先にリズムを確認できます。",
       },
       {
         target: ".status-strip",
@@ -1178,7 +1178,7 @@ export const I18N = {
     statusCountIn: (b, n = 4) => `カウントイン  ${b} / ${n}`,
     statusDemo: "お手本ガイド再生中...",
     statusPlay: "演奏中 — メトロノームに合わせて演奏してください",
-    statusDone: "完了! — Enter 再挑戦 · N 新しい譜面 · P お手本",
+    statusDone: "完了! — Enter/A 再挑戦 · N 新しい譜面 · H お手本",
     badgeWait: "待機中",
     badgeStopped: "停止",
     badgeDemo: "お手本再生中",
@@ -1207,14 +1207,14 @@ export const I18N = {
     calMeasuring: "弦に触れずにお待ちください（フロアノイズ測定中）...",
     calDone: (pct) => `ノイズ補正完了 — しきい値を ${pct}% に自動設定しました`,
     brandTagline: "オーディオI/F直結・アタック／サステイン／休符ミュートをリアルタイム採点するリズム＆音程初見トレーナー",
-    tapHintBriefHtml: `<kbd>Space</kbd>/<kbd>J</kbd>/<kbd>K</kbd> 入力 · <kbd>Enter</kbd> 開始 · <kbd>N</kbd> 新規 · <kbd>P</kbd> お手本`,
+    tapHintBriefHtml: `<kbd>Space</kbd>/<kbd>J</kbd>/<kbd>K</kbd> 入力 · <kbd>Enter</kbd>/<kbd>A</kbd> 開始 · <kbd>N</kbd> 新規 · <kbd>H</kbd> お手本`,
     footerToggleOpen: "ショートカット・判定基準 ▾",
     footerToggleClose: "ショートカット・判定基準 ▴",
     countinHintKey: "⏳ カウントイン後に Space / J / K で入力（カーソルなし・上部LED参照）",
     countinHintAudio: "🎤 カウントイン後に楽器を演奏（カーソルなし・上部LED参照）",
     countinHintPad: "👆 カウントイン後に下のパッドをタップ（カーソルなし・上部LED参照）",
     countinHintPitch: "🎹 カウントイン後に音程に合わせて演奏（e4r5ty7u8i9op・MIDI・音声）",
-    tapHintHtml: `入力: <kbd>Space</kbd>/<kbd>J</kbd>/<kbd>K</kbd>（ゴースト <kbd>F</kbd>/<kbd>D</kbd>）またはオーディオ · <kbd>Enter</kbd> 開始 · <kbd>Esc</kbd> 停止 · <kbd>N</kbd> 新規 · <kbd>P</kbd> お手本 · <kbd>1</kbd>〜<kbd>6</kbd>/<kbd>↑</kbd><kbd>↓</kbd> 難易度 · <kbd>T</kbd> 3連符 · <kbd>Q</kbd> スタッカート · <kbd>X</kbd> ゴースト · <kbd>S</kbd> 拍子 · <kbd>L</kbd> 小節数 · <kbd>+</kbd><kbd>−</kbd> BPM · <kbd>M</kbd>/<kbd>B</kbd>/<kbd>C</kbd>/<kbd>G</kbd>/<kbd>I</kbd>`,
+    tapHintHtml: `入力: <kbd>Space</kbd>/<kbd>J</kbd>/<kbd>K</kbd>（ゴースト <kbd>F</kbd>/<kbd>D</kbd>）またはオーディオ · <kbd>Enter</kbd>/<kbd>A</kbd> 開始 · <kbd>Esc</kbd> 停止 · <kbd>N</kbd> 新規 · <kbd>H</kbd> お手本 · <kbd>1</kbd>〜<kbd>6</kbd>/<kbd>↑</kbd><kbd>↓</kbd> 難易度 · <kbd>Z</kbd> 3連符 · <kbd>X</kbd> ゴースト · <kbd>C</kbd> スタッカート · <kbd>S</kbd> 拍子 · <kbd>L</kbd> 小節数 · <kbd>+</kbd><kbd>−</kbd> BPM · <kbd>M</kbd>/<kbd>B</kbd>/<kbd>V</kbd>/<kbd>G</kbd>/<kbd>/</kbd>`,
     legendHtml: `判定: <strong style="color:var(--green)">★ ≤35ms/休符OK</strong> · <strong style="color:var(--amber)">−/+ ≤80ms</strong> · <strong style="color:var(--red)">&lt;/&gt; &gt;80ms · × ミス/休符エラー</strong> · サステイン(AUD): <strong style="color:var(--green)">▬ 良好</strong> / <strong style="color:var(--amber)">▬ 短い</strong> / <strong style="color:var(--red)">▬ はみ出し</strong>`,
     summaryIdle: "演奏を終えるとタイミング分布が表示されます。",
     summaryHits: (hits, total, pct, tight, sign, mean, sd, extra, sus, restErrs) => {
@@ -1239,10 +1239,10 @@ export const I18N = {
       <div class="guide-sec">
         <h3>1. 基本的な練習方法</h3>
         <ul>
-          <li><strong>開始 / 停止</strong>: <kbd>Enter</kbd> または <strong>▶ 開始</strong> で1小節カウントイン（1拍目 緑LED、その他の拍 黄LED）のあと演奏が始まります。途中で止めるには <kbd>Esc</kbd> または <strong>■ 停止</strong> を押してください。</li>
-          <li><strong>お手本再生</strong>: <kbd>P</kbd> または <strong>♪ お手本再生</strong> でメトロノームに合わせたガイド音を確認できます。</li>
-          <li><strong>譜面設定</strong>: 6段階のリズム難易度（<kbd>1</kbd>〜<kbd>6</kbd>・<kbd>↑</kbd><kbd>↓</kbd>：4分基礎→表拍8分→8分裏拍→シンコペ→16分基礎→16分音符応用）に3連符（<kbd>T</kbd>）・スタッカート（<kbd>Q</kbd>）・ゴースト（<kbd>X</kbd>）を自由に組み合わせられます。拍子（<kbd>S</kbd>）・小節数（<kbd>L</kbd>）・BPM（<kbd>+</kbd>/<kbd>−</kbd>）・拍番号（<kbd>B</kbd>）も調整可能です。</li>
-          <li><strong>初見（サイトリーディング）＆各種モード</strong>: 既定はカーソルなし。<strong>🔇 メトロノーム OFF（<kbd>M</kbd>）</strong>ではカウントイン1小節だけ鳴り、演奏中は音もLEDも消えて体内リズム訓練ができます。入門用<strong>カーソル（<kbd>C</kbd>）</strong>・<strong>採点: 終了後（<kbd>G</kbd>）</strong>・<strong>🏆 デイリー(4/4)／🔥 デイリー+(変拍子)</strong>・<strong>✏️ カスタム編集</strong>・<strong>#シード入力／🔗 共有</strong>も利用できます。</li>
+          <li><strong>開始 / 停止</strong>: <kbd>Enter</kbd> / <kbd>A</kbd> または <strong>▶ 開始</strong> で1小節カウントイン（1拍目 緑LED、その他の拍 黄LED）のあと演奏が始まります。途中で止めるには <kbd>Esc</kbd> または <strong>■ 停止</strong> を押してください。</li>
+          <li><strong>お手本再生</strong>: <kbd>H</kbd> または <strong>♪ お手本再生</strong> でメトロノームに合わせたガイド音を確認できます。</li>
+          <li><strong>譜面設定</strong>: 6段階のリズム難易度（<kbd>1</kbd>〜<kbd>6</kbd>・<kbd>↑</kbd><kbd>↓</kbd>：4分基礎→表拍8分→8分裏拍→シンコペ→16分基礎→16分音符応用）に3連符（<kbd>Z</kbd>）・ゴースト（<kbd>X</kbd>）・スタッカート（<kbd>C</kbd>）を自由に組み合わせられます。拍子（<kbd>S</kbd>）・小節数（<kbd>L</kbd>）・BPM（<kbd>+</kbd>/<kbd>−</kbd>）・拍番号（<kbd>B</kbd>）も調整可能です。</li>
+          <li><strong>初見（サイトリーディング）＆各種モード</strong>: 既定はカーソルなし。<strong>🔇 メトロノーム OFF（<kbd>M</kbd>）</strong>ではカウントイン1小節だけ鳴り、演奏中は音もLEDも消えて体内リズム訓練ができます。入門用<strong>カーソル（<kbd>V</kbd>）</strong>・<strong>採点: 終了後（<kbd>G</kbd>）</strong>・<strong>🏆 デイリー(4/4)／🔥 デイリー+(変拍子)</strong>・<strong>✏️ カスタム編集</strong>・<strong>#シード入力／🔗 共有</strong>も利用できます。</li>
         </ul>
       </div>
       <div class="guide-sec">
@@ -1257,14 +1257,14 @@ export const I18N = {
             <strong style="color:var(--amber)">▬ 短い</strong>（音価の62%未満で早く途切れた） ·
             <strong style="color:var(--red)">▬ はみ出し</strong>（次の休符までミュートが遅れた）
           </li>
-          <li><strong>スタッカート（<code>•</code>）＆ゴーストノート（<code>×</code>）</strong>: <kbd>Q</kbd> でスタッカートをオンにすると音価の <strong>半分（約50%）伸ばしてから綺麗に切ったか</strong>（短すぎると黄、半分超えで赤）を判定します。<kbd>X</kbd> でゴーストノート（<code>×</code>）をオンにすると、オーディオではパーカッシブなミュート減衰を自動判別し、キーボードでは <kbd>F</kbd>/<kbd>D</kbd>（モバイルは <code>× GHOST</code> パッド）で入力します。</li>
+          <li><strong>スタッカート（<code>•</code>）＆ゴーストノート（<code>×</code>）</strong>: <kbd>C</kbd> でスタッカートをオンにすると音価の <strong>半分（約50%）伸ばしてから綺麗に切ったか</strong>（短すぎると黄、半分超えで赤）を判定します。<kbd>X</kbd> でゴーストノート（<code>×</code>）をオンにすると、オーディオではパーカッシブなミュート減衰を自動判別し、キーボードでは <kbd>F</kbd>/<kbd>D</kbd>（モバイルは <code>× GHOST</code> パッド）で入力します。</li>
           <li>記号やバーに <strong>マウスを合わせる</strong> と正確な <code>ms</code> 誤差やサステイン <code>%</code> が表示されます。</li>
         </ul>
       </div>
       <div class="guide-sec">
         <h3>3. 楽器／オーディオインターフェース接続のコツ</h3>
         <ul>
-          <li><kbd>I</kbd> キーまたは上部の <strong>🎤 音声</strong> トグルをオンにするとオーディオI/F・マイク入力が有効になります（<strong>⌨️ キー</strong>・<strong>🎹 MIDI</strong>・<strong>👆 パッド</strong>との同時使用も可能）。</li>
+          <li><kbd>/</kbd> キーまたは上部の <strong>🎤 音声</strong> トグルをオンにするとオーディオI/F・マイク入力が有効になります（<strong>⌨️ キー</strong>・<strong>🎹 MIDI</strong>・<strong>👆 パッド</strong>との同時使用も可能）。</li>
           <li>機器プルダウンからインターフェースを選び、待機中に音を鳴らしてメーターと <code>-XXdB (Ch1)</code> の反応を確認してください。</li>
           <li><strong>弾いていないのにノイズが反応する場合</strong>: 無音状態で <strong>🔇 ノイズ補正</strong> を押すと、0.6秒間ノイズを測定してしきい値を自動設定します。</li>
           <li><strong>メーターの基準線</strong>: 赤線 = アタック検出しきい値 / 青線 = サステイン維持ライン。</li>
@@ -1276,15 +1276,15 @@ export const I18N = {
         <h3>4. ショートカット一覧（日本語・韓国語IMEオンでも動作）</h3>
         <div class="shortcut-grid">
           <div><kbd>Space</kbd> / <kbd>J</kbd> / <kbd>K</kbd></div><div>リズム入力（待機中はそのまま開始）</div>
-          <div><kbd>Enter</kbd> / <kbd>R</kbd></div><div>開始 / 同じ譜面で再挑戦</div>
+          <div><kbd>Enter</kbd> / <kbd>A</kbd></div><div>開始 / 同じ譜面で再挑戦</div>
           <div><kbd>Esc</kbd></div><div>即座に停止</div>
-          <div><kbd>N</kbd> / <kbd>P</kbd></div><div>新しい譜面 / お手本ガイド再生</div>
-          <div><kbd>1</kbd>〜<kbd>6</kbd> / <kbd>↑</kbd> <kbd>↓</kbd> / <kbd>T</kbd></div><div>難易度6段階選択 · ±1調整 · 3連符（OFF→8分→+2拍）</div>
-          <div><kbd>Q</kbd> / <kbd>X</kbd> / <kbd>F</kbd> <kbd>D</kbd></div><div>スタッカート ON/OFF · ゴースト ON/OFF · ゴーストミュート入力</div>
+          <div><kbd>N</kbd> / <kbd>H</kbd></div><div>新しい譜面 / お手本ガイド再生</div>
+          <div><kbd>1</kbd>〜<kbd>6</kbd> / <kbd>↑</kbd> <kbd>↓</kbd></div><div>難易度6段階選択 · ±1調整</div>
+          <div><kbd>Z</kbd> / <kbd>X</kbd> / <kbd>C</kbd> / <kbd>F</kbd> <kbd>D</kbd></div><div>3連符 · ゴースト ON/OFF · スタッカート ON/OFF · ゴーストミュート入力</div>
           <div><kbd>S</kbd> / <kbd>L</kbd></div><div>拍子切替（4/4·3/4·2/4·5/4·6/8）· 小節数切替</div>
           <div><kbd>+</kbd> / <kbd>−</kbd></div><div>BPM ±5 調整</div>
-          <div><kbd>M</kbd> / <kbd>B</kbd> / <kbd>C</kbd> / <kbd>G</kbd></div><div>メトロノーム · 拍番号 · 入門カーソル · 採点表示（即時/終了後）</div>
-          <div><kbd>I</kbd></div><div>入力モード切替（KEY → AUDIO → BOTH）</div>
+          <div><kbd>M</kbd> / <kbd>B</kbd> / <kbd>V</kbd> / <kbd>G</kbd></div><div>メトロノーム · 拍番号 · 入門カーソル · 採点表示（即時/終了後）</div>
+          <div><kbd>/</kbd></div><div>入力モード切替（KEY → AUDIO → BOTH）</div>
           <div><kbd>[</kbd> <kbd>]</kbd> / <kbd>,</kbd> <kbd>.</kbd></div><div>しきい値 ±2% / 遅延補正 ±5ms</div>
         </div>
       </div>`,
