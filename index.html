@@ -467,7 +467,7 @@
       </div>
       <span class="room-sep-or">or</span>
       <div class="room-entry-pair">
-        <input id="roomCodeInput" class="room-input room-code-in" type="text" maxlength="6" placeholder="방 코드" />
+        <input id="roomCodeInput" class="room-input room-code-in" type="text" maxlength="6" pattern="[A-Za-z0-9]{3,6}" autocomplete="off" spellcheck="false" autocapitalize="characters" placeholder="방 코드" />
         <button id="btnRoomJoin" type="button">🚪 입장</button>
       </div>
     </div>
@@ -825,7 +825,7 @@
 <!-- Steam-Style Achievement Unlock Toast Stack -->
 <div id="achToastStack" class="ach-toast-stack" aria-live="polite"></div>
 
-<script type="module" src="js/main.js?v=20261128m"></script>
+<script type="module" src="js/main.js?v=20261128n"></script>
 </body>
 </html>
 

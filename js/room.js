@@ -66,6 +66,12 @@ function sanitizeRoomCode(raw) {
   return String(raw || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
 }
 
+function parseStrictRoomCode(raw) {
+  const trimmed = String(raw || "").trim();
+  if (!/^#?[A-Za-z0-9]{3,6}$/.test(trimmed)) return "";
+  return trimmed.replace(/^#/, "").toUpperCase();
+}
+
 function sanitizeNick(raw) {
   const clean = String(raw || "").trim().replace(/\s+/g, " ").slice(0, 16);
   return clean || `Player-${randomId(3)}`;
@@ -1960,12 +1966,13 @@ export function initRoom(callbacks) {
 
   const doJoin = async () => {
     cbs.unlockAudio();
-    const code = sanitizeRoomCode(codeIn ? codeIn.value : "");
-    if (code.length < 3) {
+    const code = parseStrictRoomCode(codeIn ? codeIn.value : "");
+    if (!code) {
       setRoomStatusMsg(t("roomCodeInvalid"), "var(--red)");
       if (codeIn) codeIn.focus();
       return;
     }
+    if (codeIn) codeIn.value = code;
     const nick = nickIn ? nickIn.value : "";
     await connectRoom({ code, name: nick, createAsHost: false });
   };
@@ -1975,6 +1982,15 @@ export function initRoom(callbacks) {
     doJoin();
   });
   if (codeIn) {
+    const cleanCodeInput = () => {
+      const cleaned = sanitizeRoomCode(codeIn.value);
+      if (codeIn.value !== cleaned) codeIn.value = cleaned;
+    };
+    codeIn.addEventListener("input", (e) => {
+      if (e.isComposing) return;
+      cleanCodeInput();
+    });
+    codeIn.addEventListener("compositionend", cleanCodeInput);
     codeIn.addEventListener("keydown", (e) => {
       if (e.key === "Enter") { e.preventDefault(); doJoin(); }
     });
@@ -2093,7 +2109,7 @@ export function initRoom(callbacks) {
 
   // Auto-open or auto-rejoin when URL has ?room=XXXX (supports host refresh recovery!)
   const params = new URLSearchParams(location.search || "");
-  const roomParam = sanitizeRoomCode(params.get("room"));
+  const roomParam = parseStrictRoomCode(params.get("room"));
   if (roomParam) {
     toggleRoomBar(true);
     if (codeIn) codeIn.value = roomParam;

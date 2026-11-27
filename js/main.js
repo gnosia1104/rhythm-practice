@@ -42,7 +42,7 @@ import {
   refreshRoomAudioBanner, tryStartRoomRoundFromMain, notifyRoomStopped,
   notifyRoomChartChanged, notifyRoomLiveProgress, notifyRoomFinish,
   notifyRoomEndlessProgress, notifyRoomEndlessOut,
-} from "./room.js?v=20261128m";
+} from "./room.js?v=20261128n";
 import {
   endlessState, isSdEndless, initEndless, setEndlessMode, setEndlessStreamSeed, syncEndlessLanguage, renderEndlessHud,
   buildEndlessPreviewPhrase, startEndlessAudioAndState, stepEndlessFrame,
