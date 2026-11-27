@@ -88,6 +88,8 @@ export const roomState = {
   name: "",
   isHost: false,
   hostToken: "",
+  hostSince: 0,
+  joinedAt: 0,
   rule: "score", // "score" (Score Attack) | "sd3" (Sudden Death: 3 misses) | "endless" (Endless Survival)
   phase: "LOBBY", // "LOBBY" | "COUNTDOWN" | "PLAYING" | "PODIUM"
   roundId: 0,
@@ -112,13 +114,15 @@ export const roomState = {
   eliminatedInRound: false,
 };
 
-function makePlayerRecord(id, name, isHost = false, isBot = false) {
+function makePlayerRecord(id, name, isHost = false, isBot = false, hostSince = null, joinedAt = null) {
+  const hostFlag = Boolean(isHost) && !isBot;
   return {
     id,
     name,
-    isHost: Boolean(isHost),
+    isHost: hostFlag,
     isBot: Boolean(isBot),
-    joinedAt: Date.now(),
+    hostSince: hostFlag ? (Number.isFinite(Number(hostSince)) && Number(hostSince) > 0 ? Number(hostSince) : Date.now()) : Infinity,
+    joinedAt: Number.isFinite(Number(joinedAt)) && Number(joinedAt) > 0 ? Number(joinedAt) : Date.now(),
     status: "READY", // READY | PLAYING | DONE | OUT
     score: 0,
     maxScore: 0,
@@ -212,6 +216,7 @@ function persistHostSession() {
         JSON.stringify({
           clientId: roomState.clientId,
           hostToken: roomState.hostToken,
+          hostSince: roomState.hostSince || Date.now(),
           name: roomState.name,
           rule: roomState.rule,
         })
@@ -322,7 +327,8 @@ async function createSupabaseTransport(code, onMessage, onPresenceSync) {
             id: roomState.clientId,
             name: roomState.name,
             isHost: roomState.isHost,
-            joinedAt: Date.now(),
+            hostSince: roomState.isHost ? (roomState.hostSince || Date.now()) : 0,
+            joinedAt: roomState.joinedAt || Date.now(),
           });
         } catch (_) {}
         resolve();
@@ -338,14 +344,26 @@ async function createSupabaseTransport(code, onMessage, onPresenceSync) {
     mode: "supabase",
     send(payload) {
       try {
-        channel.send({
+        return channel.send({
           type: "broadcast",
           event: "room_msg",
           payload: { ...payload, senderId: roomState.clientId },
         });
       } catch (_) {}
     },
+    updatePresence() {
+      try {
+        return channel.track({
+          id: roomState.clientId,
+          name: roomState.name,
+          isHost: roomState.isHost,
+          hostSince: roomState.isHost ? (roomState.hostSince || Date.now()) : 0,
+          joinedAt: roomState.joinedAt || Date.now(),
+        });
+      } catch (_) {}
+    },
     async close() {
+      try { await channel.untrack(); } catch (_) {}
       try { await sb.removeChannel(channel); } catch (_) {}
     },
   };
@@ -354,6 +372,12 @@ async function createSupabaseTransport(code, onMessage, onPresenceSync) {
 function sendMsg(payload) {
   if (roomState.transport) {
     roomState.transport.send(payload);
+  }
+}
+
+function syncPresenceMeta() {
+  if (roomState.transport && typeof roomState.transport.updatePresence === "function") {
+    roomState.transport.updatePresence();
   }
 }
 
@@ -454,9 +478,10 @@ function syncChatMuteUi() {
 // Message Protocol Handler
 // =========================================================================
 function buildHostSyncPayload() {
+  reconcileSingleHost();
   const playersArr = [];
   for (const p of roomState.players.values()) {
-    playersArr.push({ ...p });
+    playersArr.push({ ...p, hostSince: p.isHost && Number.isFinite(p.hostSince) ? p.hostSince : 0 });
   }
   return {
     type: "room_state",
@@ -468,26 +493,91 @@ function buildHostSyncPayload() {
   };
 }
 
+// Enforces the strict single-host invariant across all peers (prevents dual-host split-brain).
+// Every peer deterministically picks the exact same single host: earliest valid hostSince, tie-break by id.
+function reconcileSingleHost() {
+  if (!roomState.joined) return;
+  const humans = [...roomState.players.values()].filter((p) => !p.isBot);
+  const hosts = humans.filter((p) => p.isHost);
+  if (hosts.length > 0 && roomState.hostCheckTimerId) {
+    window.clearTimeout(roomState.hostCheckTimerId);
+    roomState.hostCheckTimerId = null;
+  }
+  if (hosts.length <= 1) {
+    const soloHost = hosts[0] || null;
+    if (soloHost) {
+      const shouldBeHost = soloHost.id === roomState.clientId;
+      if (roomState.isHost !== shouldBeHost) {
+        roomState.isHost = shouldBeHost;
+        if (!shouldBeHost) {
+          roomState.hostToken = "";
+          roomState.hostSince = 0;
+        }
+        syncPresenceMeta();
+        cbs.onRoomStateChange();
+      }
+    }
+    return;
+  }
+
+  hosts.sort((a, b) => {
+    const ha = (Number.isFinite(a.hostSince) && a.hostSince > 0) ? a.hostSince : Number.MAX_SAFE_INTEGER;
+    const hb = (Number.isFinite(b.hostSince) && b.hostSince > 0) ? b.hostSince : Number.MAX_SAFE_INTEGER;
+    if (ha !== hb) return ha - hb;
+    return String(a.id).localeCompare(String(b.id));
+  });
+  const winner = hosts[0];
+  const wasHost = roomState.isHost;
+  for (const p of roomState.players.values()) {
+    const isWin = !p.isBot && p.id === winner.id;
+    p.isHost = isWin;
+    if (!isWin) p.hostSince = Infinity;
+  }
+  roomState.isHost = (winner.id === roomState.clientId);
+  if (wasHost && !roomState.isHost) {
+    roomState.hostToken = "";
+    roomState.hostSince = 0;
+    syncPresenceMeta();
+    cbs.onRoomStateChange();
+  } else if (!wasHost && roomState.isHost) {
+    if (!roomState.hostToken) roomState.hostToken = randomId(16);
+    roomState.hostSince = Number.isFinite(winner.hostSince) ? winner.hostSince : Date.now();
+    persistHostSession();
+    syncPresenceMeta();
+    cbs.onRoomStateChange();
+  }
+}
+
 function ensureRoomHasHost() {
   if (!roomState.joined) return;
+  reconcileSingleHost();
   const humans = [...roomState.players.values()].filter((p) => !p.isBot);
   if (!humans.length) return;
   if (humans.some((p) => p.isHost)) return;
-  // Elect earliest-joined human (tie-break by id) so an empty room or host-left room NEVER loses host controls!
+  // Elect earliest-joined human (tie-break by id) so a host-left or empty room elects exactly ONE host.
   humans.sort((a, b) => (a.joinedAt - b.joinedAt) || String(a.id).localeCompare(String(b.id)));
   const elected = humans[0];
   if (elected.id === roomState.clientId) {
+    const nowTs = Date.now();
     roomState.isHost = true;
+    roomState.hostSince = nowTs;
     if (!roomState.hostToken) roomState.hostToken = randomId(16);
-    elected.isHost = true;
+    for (const p of roomState.players.values()) {
+      p.isHost = (p.id === roomState.clientId);
+      p.hostSince = p.isHost ? nowTs : Infinity;
+    }
     persistHostSession();
+    syncPresenceMeta();
     sendMsg({
       type: "host_reclaim",
       id: roomState.clientId,
       name: roomState.name,
       isHost: true,
+      hostSince: nowTs,
+      joinedAt: roomState.joinedAt,
     });
     sendMsg(buildHostSyncPayload());
+    cbs.onRoomStateChange();
     renderRoomUi();
   }
 }
@@ -499,35 +589,50 @@ function handleRemotePresenceSync(presenceState) {
     for (const m of metas) {
       if (!m || !m.id) continue;
       presentIds.add(m.id);
+      if (m.id === roomState.clientId) continue;
       if (!roomState.players.has(m.id)) {
         if (roomState.players.size >= MAX_ROOM_PLAYERS) continue;
-        roomState.players.set(m.id, makePlayerRecord(m.id, m.name || "Player", Boolean(m.isHost), false));
+        roomState.players.set(
+          m.id,
+          makePlayerRecord(m.id, m.name || "Player", Boolean(m.isHost), false, m.hostSince, m.joinedAt)
+        );
       } else {
         const cur = roomState.players.get(m.id);
         if (m.name) cur.name = m.name;
-        if (m.isHost) cur.isHost = true;
+        cur.isHost = Boolean(m.isHost);
+        cur.hostSince = cur.isHost
+          ? (Number.isFinite(Number(m.hostSince)) && Number(m.hostSince) > 0 ? Number(m.hostSince) : (Number.isFinite(cur.hostSince) ? cur.hostSince : Date.now()))
+          : Infinity;
+        if (Number.isFinite(Number(m.joinedAt)) && Number(m.joinedAt) > 0) cur.joinedAt = Number(m.joinedAt);
       }
     }
   }
   // Remove disconnected non-bot players who aren't ourselves
   let removedAny = false;
+  let removedHost = false;
   for (const [id, p] of roomState.players.entries()) {
     if (id !== roomState.clientId && !p.isBot && !presentIds.has(id)) {
+      if (p.isHost) removedHost = true;
       roomState.players.delete(id);
       removedAny = true;
     }
   }
-  ensureRoomHasHost();
+  reconcileSingleHost();
+  // Only run immediate host election when a host actually disconnected!
+  // On initial join sync, wait for the discovery timer so a joining guest never self-promotes before seeing the real host.
+  if (removedHost) {
+    ensureRoomHasHost();
+  }
   if (removedAny) checkRoundCompletion();
   if (roomState.isHost) {
     sendMsg(buildHostSyncPayload());
-  } else {
-    // If joining an empty/hostless room, auto-promote to host after brief discovery window
-    if (roomState.hostCheckTimerId) window.clearTimeout(roomState.hostCheckTimerId);
-    roomState.hostCheckTimerId = window.setTimeout(() => {
-      roomState.hostCheckTimerId = null;
-      ensureRoomHasHost();
-    }, 1100);
+  } else if (![...roomState.players.values()].some((p) => !p.isBot && p.isHost)) {
+    if (!roomState.hostCheckTimerId) {
+      roomState.hostCheckTimerId = window.setTimeout(() => {
+        roomState.hostCheckTimerId = null;
+        ensureRoomHasHost();
+      }, 1800);
+    }
   }
   renderRoomUi();
 }
@@ -543,10 +648,16 @@ function handleIncomingMessage(msg) {
       }
       return;
     }
-    const p = roomState.players.get(msg.id) || makePlayerRecord(msg.id, msg.name, Boolean(msg.isHost), false);
+    const p = roomState.players.get(msg.id)
+      || makePlayerRecord(msg.id, msg.name, Boolean(msg.isHost), false, msg.hostSince, msg.joinedAt);
     p.name = msg.name || p.name;
-    if (msg.isHost) p.isHost = true;
+    p.isHost = Boolean(msg.isHost);
+    p.hostSince = p.isHost
+      ? (Number.isFinite(Number(msg.hostSince)) && Number(msg.hostSince) > 0 ? Number(msg.hostSince) : Date.now())
+      : Infinity;
+    if (Number.isFinite(Number(msg.joinedAt)) && Number(msg.joinedAt) > 0) p.joinedAt = Number(msg.joinedAt);
     roomState.players.set(msg.id, p);
+    reconcileSingleHost();
     if (isNew) appendChatMessage({ sys: true, text: t("roomSysJoin", p.name) });
     // Reply with our own presence (so local multi-tab discovery works instantaneously!)
     sendMsg({
@@ -554,6 +665,8 @@ function handleIncomingMessage(msg) {
       id: roomState.clientId,
       name: roomState.name,
       isHost: roomState.isHost,
+      hostSince: roomState.isHost ? roomState.hostSince : 0,
+      joinedAt: roomState.joinedAt,
     });
     if (roomState.isHost) {
       sendMsg(buildHostSyncPayload());
@@ -574,10 +687,16 @@ function handleIncomingMessage(msg) {
 
   if (msg.type === "hello_ack") {
     if (!roomState.players.has(msg.id) && roomState.players.size >= MAX_ROOM_PLAYERS) return;
-    const p = roomState.players.get(msg.id) || makePlayerRecord(msg.id, msg.name, Boolean(msg.isHost), false);
+    const p = roomState.players.get(msg.id)
+      || makePlayerRecord(msg.id, msg.name, Boolean(msg.isHost), false, msg.hostSince, msg.joinedAt);
     p.name = msg.name || p.name;
-    if (msg.isHost) p.isHost = true;
+    p.isHost = Boolean(msg.isHost);
+    p.hostSince = p.isHost
+      ? (Number.isFinite(Number(msg.hostSince)) && Number(msg.hostSince) > 0 ? Number(msg.hostSince) : Date.now())
+      : Infinity;
+    if (Number.isFinite(Number(msg.joinedAt)) && Number(msg.joinedAt) > 0) p.joinedAt = Number(msg.joinedAt);
     roomState.players.set(msg.id, p);
+    reconcileSingleHost();
     renderRoomUi();
     return;
   }
@@ -603,12 +722,15 @@ function handleIncomingMessage(msg) {
   }
 
   if (msg.type === "host_reclaim") {
-    for (const p of roomState.players.values()) {
-      p.isHost = (p.id === msg.id);
-    }
-    const hostP = roomState.players.get(msg.id) || makePlayerRecord(msg.id, msg.name, true, false);
+    const hostP = roomState.players.get(msg.id)
+      || makePlayerRecord(msg.id, msg.name, true, false, msg.hostSince, msg.joinedAt);
+    hostP.name = msg.name || hostP.name;
     hostP.isHost = true;
+    hostP.hostSince = (Number.isFinite(Number(msg.hostSince)) && Number(msg.hostSince) > 0)
+      ? Number(msg.hostSince)
+      : Date.now();
     roomState.players.set(msg.id, hostP);
+    reconcileSingleHost();
     renderRoomUi();
     return;
   }
@@ -635,7 +757,7 @@ function handleIncomingMessage(msg) {
             const me = roomState.players.get(roomState.clientId);
             if (me) me.isHost = Boolean(rp.isHost);
           } else {
-            roomState.players.set(rp.id, { ...makePlayerRecord(rp.id, rp.name, rp.isHost, rp.isBot), ...rp });
+            roomState.players.set(rp.id, { ...makePlayerRecord(rp.id, rp.name, rp.isHost, rp.isBot, rp.hostSince, rp.joinedAt), ...rp });
           }
         }
         // Keep self even if host hasn't added us yet; remove bots deleted by host
@@ -647,6 +769,7 @@ function handleIncomingMessage(msg) {
         roomState.phase = "LOBBY";
       }
     }
+    reconcileSingleHost();
     renderRoomUi();
     return;
   }
@@ -1404,22 +1527,32 @@ async function connectRoom({ code, name, createAsHost = false, restoreHost = nul
   roomState.players.clear();
   roomState.phase = "LOBBY";
 
+  const nowTs = Date.now();
+  roomState.joinedAt = nowTs;
   const savedHost = restoreHost || loadHostSession(cleanCode);
   if (createAsHost) {
     roomState.isHost = true;
     roomState.hostToken = randomId(16);
+    roomState.hostSince = nowTs;
   } else if (savedHost && savedHost.hostToken) {
     roomState.isHost = true;
     roomState.clientId = savedHost.clientId || roomState.clientId;
     roomState.hostToken = savedHost.hostToken;
+    roomState.hostSince = Number.isFinite(Number(savedHost.hostSince)) && Number(savedHost.hostSince) > 0
+      ? Number(savedHost.hostSince)
+      : (nowTs - 1000);
     roomState.rule = savedHost.rule || "score";
   } else {
     roomState.isHost = false;
     roomState.hostToken = "";
+    roomState.hostSince = 0;
   }
 
   roomState.chart = getCurrentChartPayload();
-  roomState.players.set(roomState.clientId, makePlayerRecord(roomState.clientId, roomState.name, roomState.isHost, false));
+  roomState.players.set(
+    roomState.clientId,
+    makePlayerRecord(roomState.clientId, roomState.name, roomState.isHost, false, roomState.hostSince, roomState.joinedAt)
+  );
 
   setRoomStatusMsg(t("roomConnecting"), "var(--accent)");
   let transport = null;
@@ -1445,6 +1578,8 @@ async function connectRoom({ code, name, createAsHost = false, restoreHost = nul
     id: roomState.clientId,
     name: roomState.name,
     isHost: roomState.isHost,
+    hostSince: roomState.isHost ? roomState.hostSince : 0,
+    joinedAt: roomState.joinedAt,
   });
   if (roomState.isHost) {
     sendMsg(buildHostSyncPayload());
@@ -1454,7 +1589,7 @@ async function connectRoom({ code, name, createAsHost = false, restoreHost = nul
     roomState.hostCheckTimerId = window.setTimeout(() => {
       roomState.hostCheckTimerId = null;
       ensureRoomHasHost();
-    }, 1100);
+    }, 1800);
   }
 
   trackEvent(createAsHost ? "room_create" : "room_join", {
@@ -1477,7 +1612,7 @@ export async function leaveRoom(clearUrl = true) {
     roomState.hostCheckTimerId = null;
   }
   if (roomState.joined) {
-    sendMsg({ type: "leave", id: roomState.clientId });
+    try { await roomState.transport?.send({ type: "leave", id: roomState.clientId }); } catch (_) {}
     if (roomState.transport) {
       await roomState.transport.close();
       roomState.transport = null;
@@ -1486,6 +1621,8 @@ export async function leaveRoom(clearUrl = true) {
   roomState.joined = false;
   roomState.code = "";
   roomState.isHost = false;
+  roomState.hostToken = "";
+  roomState.hostSince = 0;
   roomState.phase = "LOBBY";
   roomState.players.clear();
   roomState.bots = [];
