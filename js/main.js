@@ -47,7 +47,7 @@ import {
   initRoom, syncRoomLanguage, isRoomPlaying, isRoomCountingDown, getRoomCountdownText,
   tryStartRoomRoundFromMain, notifyRoomStopped,
   notifyRoomChartChanged, notifyRoomLiveProgress, notifyRoomFinish,
-} from "./room.js?v=20261127m";
+} from "./room.js?v=20261127n";
 
 function resetTargets() {
   const ts = getTimeSig(app.phrase ? app.phrase.timeSig : app.timeSig);
@@ -2664,17 +2664,26 @@ applyLanguage(getCurLang());
 initRoom({
   applyRoomChart: (chart) => {
     if (!chart) return;
+    if (chart.opts && typeof chart.opts === "object") {
+      if (typeof chart.opts.soundOn === "boolean") app.soundOn = chart.opts.soundOn;
+      if (typeof chart.opts.showBeatNums === "boolean") app.showBeatNums = chart.opts.showBeatNums;
+      if (typeof chart.opts.showCursor === "boolean") app.showCursor = chart.opts.showCursor;
+      if (typeof chart.opts.blindGrade === "boolean") app.blindGrade = chart.opts.blindGrade;
+      if (typeof chart.opts.gapClick === "string") app.gapClick = chart.opts.gapClick;
+      if (Number.isFinite(Number(chart.opts.fadeBeats))) app.fadeBeats = Number(chart.opts.fadeBeats);
+    }
     if (chart.customCode) {
       if (Number.isFinite(Number(chart.bpm))) {
         app.bpm = Math.max(40, Math.min(180, Math.round(Number(chart.bpm))));
       }
       loadCustomFromInput(chart.customCode);
-      return;
-    }
-    if (chart.seedCode) {
+    } else if (chart.seedCode) {
       const cfg = decodeFullSeedCode(chart.seedCode);
       if (cfg) applyFullSeedObj(cfg);
     }
+    app.dirtyScore = true;
+    syncDrillUi();
+    updateMeta();
   },
   triggerRoomStart: () => startRun(false),
   unlockAudio: () => ensureAudioCtx(),

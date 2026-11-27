@@ -2,7 +2,7 @@
 // Supports Supabase Realtime (Broadcast + Presence) when SUPABASE_URL & SUPABASE_ANON_KEY are set,
 // and seamlessly falls back to Local Multi-Tab Mode (BroadcastChannel) for instant zero-config testing!
 import { t } from "./i18n.js";
-import { app, currentFullSeedCode, hitWindowSec } from "./state.js";
+import { app, currentFullSeedCode, hitWindowSec, tripletsAllowed } from "./state.js";
 import { computeDetailedScore, computeScoreRank, getTimingThresholds } from "./scoring.js";
 import { copyToClipboard, flashBtnText } from "./share-card.js";
 import { trackEvent } from "./analytics.js";
@@ -171,15 +171,40 @@ function getCurrentChartPayload() {
   const isCustom = Boolean(app.customMode && app.phrase && app.phrase.customCode);
   const seedCode = isCustom ? "" : currentFullSeedCode();
   const customCode = isCustom ? app.phrase.customCode : "";
-  const pitchTag = app.pitchMode ? ` · ${app.pitchClef === "treble" ? "𝄞" : "𝄢"} Pitch` : "";
+  const effTri = tripletsAllowed() ? app.tripletMode : 0;
+  const tTag = effTri === 2 ? "T2" : (effTri === 1 ? "T1" : "");
+  const lvFlags = `${tTag}${app.staccatoOn ? "S" : ""}${app.ghostOn ? "G" : ""}`;
+  const pitchKeyLbl = (app.phrase && app.phrase.pitchMeta && app.phrase.pitchMeta.key) || app.pitchKey || "Bb";
+  const pitchTag = app.pitchMode ? ` · ${app.pitchClef === "treble" ? "𝄞" : "𝄢"} ${pitchKeyLbl}` : "";
+
+  const opts = {
+    soundOn: Boolean(app.soundOn),
+    showBeatNums: Boolean(app.showBeatNums),
+    showCursor: Boolean(app.showCursor),
+    blindGrade: Boolean(app.blindGrade),
+    gapClick: app.gapClick || "OFF",
+    fadeBeats: Number(app.fadeBeats) || 0,
+  };
+  const optTags = [];
+  if (!opts.soundOn) optTags.push("M×");
+  else if (opts.gapClick !== "OFF") optTags.push(`Gap${opts.gapClick}`);
+  if (opts.fadeBeats > 0) optTags.push(`Fade${opts.fadeBeats}b`);
+  if (opts.blindGrade) optTags.push("Blind");
+  if (opts.showBeatNums) optTags.push("+B");
+  if (opts.showCursor) optTags.push("+C");
+  const optStr = optTags.length ? ` · [${optTags.join(" ")}]` : "";
+
   const label = isCustom
-    ? `Custom · ${app.timeSig} · ${app.numBars}B · ${app.bpm} BPM`
-    : `Lv${app.level} · ${app.timeSig} · ${app.numBars}B · ${app.bpm} BPM${pitchTag}`;
+    ? `Custom · ${app.timeSig} · ${app.numBars}B · ${app.bpm} BPM${pitchTag}${optStr}`
+    : `Lv${app.level}${lvFlags} · ${app.timeSig} · ${app.numBars}B · ${app.bpm} BPM${pitchTag}${optStr}`;
+  const sig = `${seedCode}|${customCode}|${app.bpm}|${label}|${JSON.stringify(opts)}`;
   return {
     seedCode,
     customCode,
     bpm: app.bpm,
+    opts,
     label,
+    sig,
   };
 }
 
@@ -550,6 +575,7 @@ function handleIncomingMessage(msg) {
       roomState.rule = msg.rule || "score";
       if (msg.chart) {
         const changed = !roomState.chart
+          || roomState.chart.sig !== msg.chart.sig
           || roomState.chart.seedCode !== msg.chart.seedCode
           || roomState.chart.customCode !== msg.chart.customCode
           || roomState.chart.bpm !== msg.chart.bpm;
@@ -925,10 +951,7 @@ export function notifyRoomChartChanged() {
   if (!roomState.joined || !roomState.isHost || roomState.applyingRemoteChart) return;
   if (roomState.phase === "PLAYING" || roomState.phase === "COUNTDOWN") return;
   const next = getCurrentChartPayload();
-  if (roomState.chart
-    && roomState.chart.seedCode === next.seedCode
-    && roomState.chart.customCode === next.customCode
-    && roomState.chart.bpm === next.bpm) {
+  if (roomState.chart && roomState.chart.sig === next.sig) {
     return;
   }
   roomState.chart = next;
