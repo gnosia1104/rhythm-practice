@@ -921,6 +921,26 @@ export function notifyRoomChartChanged() {
   renderRoomUi();
 }
 
+function getAdaptiveProgressIntervalMs() {
+  const n = Math.max(1, roomState.players.size);
+  if (n <= 6) return 250;
+  if (n <= 12) return 650;
+  if (n <= 25) return 1500;
+  return Infinity; // 26+ players: final score broadcast only (protects Supabase 100 msg/s quota)
+}
+
+function sendFinishWithCrowdJitter(payload) {
+  const n = roomState.players.size;
+  if (n >= 20 && roomState.transportMode === "supabase") {
+    const jitter = Math.floor(Math.random() * Math.min(1200, n * 15));
+    window.setTimeout(() => {
+      if (roomState.joined) sendMsg(payload);
+    }, jitter);
+  } else {
+    sendMsg(payload);
+  }
+}
+
 export function notifyRoomLiveProgress({ score, maxScore, hits, total, doneNotes, misses, acc, tight }) {
   if (!roomState.joined || roomState.phase !== "PLAYING" || roomState.eliminatedInRound) return;
   const me = roomState.players.get(roomState.clientId);
@@ -943,7 +963,7 @@ export function notifyRoomLiveProgress({ score, maxScore, hits, total, doneNotes
     me.rankCls = "rank-c";
     cbs.stopRun();
     cbs.setHitBadge(t("roomEliminatedBadge"), "err");
-    sendMsg({
+    sendFinishWithCrowdJitter({
       type: "finish",
       roundId: roomState.roundId,
       id: me.id,
@@ -965,8 +985,12 @@ export function notifyRoomLiveProgress({ score, maxScore, hits, total, doneNotes
     return;
   }
 
+  // Always update own local UI immediately; adapt network broadcast rate to room size
+  renderRoomUi();
+  const minInterval = getAdaptiveProgressIntervalMs();
+  if (!Number.isFinite(minInterval)) return;
   const now = performance.now();
-  if (now - roomState.lastProgressSentMs < 240) return;
+  if (now - roomState.lastProgressSentMs < minInterval) return;
   roomState.lastProgressSentMs = now;
   sendMsg({
     type: "progress",
@@ -983,7 +1007,6 @@ export function notifyRoomLiveProgress({ score, maxScore, hits, total, doneNotes
     tight: me.tight,
     eliminated: false,
   });
-  renderRoomUi();
 }
 
 export function notifyRoomFinish({ score, maxScore, acc, hits, total, misses, tight, mean, sd, rank, rankCls }) {
@@ -1004,7 +1027,7 @@ export function notifyRoomFinish({ score, maxScore, acc, hits, total, misses, ti
   me.rankCls = rankCls || "rank-b";
   me.status = "DONE";
 
-  sendMsg({
+  sendFinishWithCrowdJitter({
     type: "finish",
     roundId: roomState.roundId,
     id: me.id,
