@@ -1108,6 +1108,10 @@ export function isRoomGuest() {
   return roomState.joined && !roomState.isHost;
 }
 
+export function isRoomSuddenDeath() {
+  return roomState.joined && roomState.rule === "sd3";
+}
+
 export function isRoomPlaying() {
   return roomState.joined && (roomState.phase === "PLAYING" || roomState.phase === "COUNTDOWN");
 }

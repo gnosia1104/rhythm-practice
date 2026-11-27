@@ -25,6 +25,9 @@ export const app = {
   rushMinAcc: 90,   // 85 | 90 | 95
   rushRound: 0,
   rushTimerId: null,
+  suddenDeath: false,   // Solo 3-miss Sudden Death elimination mode
+  suddenDeathMax: 3,
+  suddenDeathOut: false,
   endlessMode: false,   // Endless 2-line double-buffered infinite survival sight-reading
   pitchMode: false,     // Pitch Sight-Reading BETA (flat-key jazz 5-line bass/treble clef)
   pitchClef: "bass",    // "bass" (F-clef) | "treble" (G-clef)

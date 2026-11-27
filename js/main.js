@@ -44,11 +44,11 @@ import {
   trackPracticeStart, trackPracticeComplete, trackPracticeStop, trackShare, trackRefVisit,
 } from "./analytics.js";
 import {
-  initRoom, syncRoomLanguage, isRoomActive, isRoomGuest, isRoomPlaying, isRoomCountingDown, getRoomCountdownText,
+  initRoom, syncRoomLanguage, isRoomActive, isRoomGuest, isRoomSuddenDeath, isRoomPlaying, isRoomCountingDown, getRoomCountdownText,
   refreshRoomAudioBanner, tryStartRoomRoundFromMain, notifyRoomStopped,
   notifyRoomChartChanged, notifyRoomLiveProgress, notifyRoomFinish,
   notifyRoomEndlessProgress, notifyRoomEndlessOut,
-} from "./room.js?v=20261127x";
+} from "./room.js?v=20261127y";
 import {
   endlessState, initEndless, setEndlessMode, setEndlessStreamSeed, syncEndlessLanguage, renderEndlessHud,
   buildEndlessPreviewPhrase, startEndlessAudioAndState, stepEndlessFrame,
@@ -115,7 +115,10 @@ function resetTargets() {
   app.extraHits = 0;
   app.keyExtraHits = 0;
   app.audioExtraHits = 0;
+  app.suddenDeathOut = false;
+  lastSdMisses = 0;
   app.dirtyScore = true;
+  if (typeof renderSdLivesHud === "function") renderSdLivesHud(false);
 }
 
 
@@ -519,6 +522,145 @@ function pushLiveRoomProgress() {
   });
 }
 
+let lastSdMisses = 0;
+
+function isSuddenDeathActive() {
+  if (app.endlessMode) return false;
+  if (isRoomActive()) return isRoomSuddenDeath();
+  return Boolean(app.suddenDeath);
+}
+
+function countCurrentMisses() {
+  if (!app.phrase) return 0;
+  const missedNotes = (app.phrase.targets || []).filter(tg => tg.missed).length;
+  const restErrs = (app.phrase.rests || []).filter(r => r.error).length;
+  return missedNotes + restErrs;
+}
+
+function renderSdLivesHud(shake = false) {
+  const el = document.getElementById("metaSdLives");
+  if (!el) return;
+  const active = isSuddenDeathActive();
+  el.classList.toggle("hidden", !active);
+  if (!active) return;
+
+  const maxLives = app.suddenDeathMax || 3;
+  const misses = countCurrentMisses();
+  const left = app.suddenDeathOut ? 0 : Math.max(0, maxLives - misses);
+  if (left <= 0) {
+    el.textContent = "💀 OUT";
+  } else {
+    const hearts = "❤️".repeat(left) + "🖤".repeat(Math.max(0, maxLives - left));
+    el.textContent = `💀 ${hearts}`;
+  }
+  el.classList.toggle("warn", left === 1);
+  el.classList.toggle("out", left === 0);
+  if (shake) {
+    el.classList.remove("shake");
+    void el.offsetWidth;
+    el.classList.add("shake");
+  }
+}
+
+function playSuddenDeathFailSfx() {
+  const ctx = ensureAudioCtx();
+  if (!ctx || app.clickVol <= 0) return;
+  const t0 = ctx.currentTime + 0.01;
+  scheduleBassNote(ctx, t0, 0.16, 220.0);
+  scheduleBassNote(ctx, t0 + 0.16, 0.28, 146.83);
+}
+
+function triggerSoloSuddenDeathOut(misses) {
+  if (app.suddenDeathOut || isRoomPlaying()) return;
+  app.suddenDeathOut = true;
+  cancelRushTimer(true);
+  stopScheduledAudio();
+  clearFadeOutClasses();
+  app.state = "DONE";
+  abortActiveRunTracking("sd_out");
+  playSuddenDeathFailSfx();
+  renderSdLivesHud(true);
+
+  const tgts = (app.phrase && app.phrase.targets) || [];
+  const total = tgts.length;
+  const hitTgts = tgts.filter(tg => tg.hit);
+  const hits = hitTgts.length;
+  const errs = hitTgts.map(tg => tg.errMs).filter(e => e !== null);
+  const tw = getTimingThresholds(app.bpm);
+  const tight = errs.filter(e => Math.abs(e) <= tw.tight).length;
+  const acc = total ? (hits / total) * 100 : 0;
+  let mean = 0, sd = 0;
+  if (errs.length) {
+    mean = errs.reduce((a, b) => a + b, 0) / errs.length;
+    sd = Math.sqrt(errs.reduce((s, e) => s + (e - mean) ** 2, 0) / errs.length);
+  }
+  const restErrs = (app.phrase && app.phrase.rests ? app.phrase.rests : []).filter(r => r.error).length;
+  const scoreDetail = computeDetailedScore(app.phrase, hits, total, sd, app.extraHits, restErrs, app.keyExtraHits, app.audioExtraHits);
+  app.history.unshift({
+    take: app.takeId++,
+    tsIso: new Date().toISOString(),
+    seed: app.phrase.seed.toString(16).toUpperCase().padStart(4, "0"),
+    fullSeed: app.customMode ? (app.phrase.customCode || "Custom") : currentFullSeedCode(),
+    bpm: app.bpm,
+    bars: app.numBars,
+    lv: app.level,
+    tripletMode: tripletsAllowed() ? app.tripletMode : 0,
+    staccato: app.staccatoOn,
+    ghost: app.ghostOn,
+    daily: Boolean(app.dailyDate),
+    dailyPlus: Boolean(app.dailyDate && app.dailyPlus),
+    dailyDate: app.dailyDate || null,
+    custom: app.customMode,
+    ts: app.timeSig,
+    mode: app.inputMode,
+    soundOn: app.soundOn,
+    showBeatNums: app.showBeatNums,
+    showCursor: app.showCursor,
+    blindGrade: app.blindGrade,
+    gapClick: app.gapClick,
+    fadeBeats: app.fadeBeats,
+    rushOn: app.rushOn,
+    rank: "💀 OUT",
+    rankCls: "rank-c",
+    score: scoreDetail.score,
+    maxScore: scoreDetail.maxScore,
+    ptsPerBar: Math.round(scoreDetail.score / Math.max(1, app.numBars)),
+    hits, total, acc, tight, mean, sd, extra: app.extraHits, restErrs,
+    susTotal: 0, susOk: 0,
+  });
+  if (app.history.length > 12) app.history.pop();
+  try { localStorage.setItem("rhythm_practice_history_v1", JSON.stringify(app.history)); } catch (_) {}
+
+  drawDistribution(errs, hits, total, mean, sd, tight, { total: 0, ok: 0, short: 0, long: 0, restErrs }, app.extraHits);
+  const rankEl = document.getElementById("rankBadge");
+  if (rankEl) {
+    rankEl.textContent = "💀 OUT";
+    rankEl.className = "rank-pill rank-c";
+  }
+  const scoreEl = document.getElementById("scoreBadge");
+  if (scoreEl) {
+    scoreEl.textContent = `${scoreDetail.score.toLocaleString()} / ${scoreDetail.maxScore.toLocaleString()}`;
+  }
+  renderLog();
+  setHitBadge(t("sdOutBadge"), "err");
+  syncTransportButtons();
+  app.dirtyScore = true;
+}
+
+function checkSuddenDeathProgress() {
+  if (!isSuddenDeathActive()) return;
+  if (app.state !== "COUNTIN" && app.state !== "PLAY") return;
+  const misses = countCurrentMisses();
+  if (misses !== lastSdMisses) {
+    const increased = misses > lastSdMisses;
+    lastSdMisses = misses;
+    renderSdLivesHud(increased);
+    if (!isRoomPlaying() && misses >= (app.suddenDeathMax || 3)) {
+      triggerSoloSuddenDeathOut(misses);
+    }
+  }
+}
+
 function handleHit(hitAudioT, source, hitKind = "NORMAL", keyCode = null, playedMidi = null) {
   if (app.state !== "COUNTIN" && app.state !== "PLAY") return;
   const ts = getTimeSig();
@@ -649,6 +791,8 @@ function handleHit(hitAudioT, source, hitKind = "NORMAL", keyCode = null, played
         onEndlessRestError();
       }
       if (!app.blindGrade) app.dirtyScore = true;
+      pushLiveRoomProgress();
+      checkSuddenDeathProgress();
     } else {
       onEndlessExtraHit();
     }
@@ -871,10 +1015,14 @@ function finalizeRun() {
       setHitBadge(`💥 RUSH ${app.rushRound}R · ${peakBpm}BPM`, "err");
       app.rushRound = 0;
     }
+  } else if (app.suddenDeath && !app.endlessMode && !isRoomPlaying() && !app.suddenDeathOut) {
+    const left = Math.max(1, (app.suddenDeathMax || 3) - ((total - hits) + restErrs));
+    setHitBadge(t("sdClearBadge", left), "tight");
   } else if (app.blindGrade) {
     const cls = acc >= 90 ? "tight" : (acc >= 70 ? "warn" : "err");
     setHitBadge(t("badgeDone", hits, total), cls);
   }
+  renderSdLivesHud(false);
   syncTransportButtons();
   app.dirtyScore = true;
 }
@@ -1170,10 +1318,19 @@ function updateMeta() {
   btnCursor.textContent = app.showCursor ? t("cursorOn") : t("cursorOff");
   btnCursor.classList.toggle("active", app.showCursor);
 
+  if (app.endlessMode && app.suddenDeath) {
+    app.suddenDeath = false;
+  }
   const btnBlind = document.getElementById("btnBlindGrade");
   btnBlind.textContent = app.blindGrade ? t("gradeEnd") : t("gradeLive");
-  if (typeof syncAllDropdownBadges === "function") syncAllDropdownBadges();
   btnBlind.classList.toggle("active", app.blindGrade);
+  const btnSd = document.getElementById("btnSuddenDeath");
+  if (btnSd) {
+    btnSd.textContent = app.suddenDeath ? t("sdOn") : t("sdOff");
+    btnSd.classList.toggle("active", app.suddenDeath);
+  }
+  if (typeof syncAllDropdownBadges === "function") syncAllDropdownBadges();
+  renderSdLivesHud(false);
 
   document.getElementById("btnInKey").classList.toggle("active", app.keyOn);
   document.getElementById("btnInAudio").classList.toggle("active", app.audioOn);
@@ -1498,6 +1655,7 @@ function frame() {
         if (!app.blindGrade) app.dirtyScore = true;
         pushLiveRoomProgress();
       }
+      checkSuddenDeathProgress();
     }
 
     const clickIdxNow = elapsed >= 0 ? Math.floor(elapsed / clickSec) : -1;
@@ -1552,7 +1710,7 @@ function frame() {
   } else if (app.state === "READY") {
     statusMain.textContent = t("statusReady");
   } else if (app.state === "DONE") {
-    statusMain.textContent = t("statusDone");
+    statusMain.textContent = app.suddenDeathOut ? t("sdStatusOut") : t("statusDone");
   }
 
   if (ledCore.className !== ledClass) ledCore.className = ledClass;
@@ -1756,6 +1914,17 @@ document.getElementById("btnBlindGrade").addEventListener("click", () => {
   app.dirtyScore = true;
   if (app.state === "PLAY" && app.blindGrade) setHitBadge(t("badgeBlindPlay"), "");
   updateMeta();
+});
+
+document.getElementById("btnSuddenDeath").addEventListener("click", () => {
+  app.suddenDeath = !app.suddenDeath;
+  if (app.suddenDeath && app.endlessMode) {
+    setEndlessMode(false);
+  }
+  app.suddenDeathOut = false;
+  lastSdMisses = 0;
+  updateMeta();
+  renderSdLivesHud(false);
 });
 
 document.getElementById("btnInKey").addEventListener("click", (e) => {
@@ -2734,6 +2903,7 @@ function syncAllDropdownBadges() {
   if (app.blindGrade) diffParts.push("Blind");
   if (app.showBeatNums) diffParts.push("+B");
   if (app.showCursor) diffParts.push("+C");
+  if (app.suddenDeath && !app.endlessMode) diffParts.push("💀");
   const diffDropOpen = !document.getElementById("diffDropdown").classList.contains("hidden");
   document.getElementById("diffSummaryBadge").textContent = diffParts.join(" · ");
   document.getElementById("btnDiffMenu").classList.toggle("active", diffDropOpen);
@@ -2938,7 +3108,10 @@ initRoom({
     }
   },
   onRoomWin: (playerCount) => evaluateRoomWinAchievement(playerCount),
-  onRoomStateChange: () => syncTransportButtons(),
+  onRoomStateChange: () => {
+    syncTransportButtons();
+    renderSdLivesHud(false);
+  },
   stopRun: () => stopRun(true),
   newPhrase,
   setHitBadge,
