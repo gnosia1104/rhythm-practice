@@ -2,8 +2,8 @@
 // Supports Supabase Realtime (Broadcast + Presence) when SUPABASE_URL & SUPABASE_ANON_KEY are set,
 // and seamlessly falls back to Local Multi-Tab Mode (BroadcastChannel) for instant zero-config testing!
 import { t } from "./i18n.js";
-import { app, currentFullSeedCode } from "./state.js";
-import { computeChartMaxInfo, getTimingThresholds } from "./scoring.js";
+import { app, currentFullSeedCode, hitWindowSec } from "./state.js";
+import { computeDetailedScore, computeScoreRank, getTimingThresholds } from "./scoring.js";
 import { copyToClipboard, flashBtnText } from "./share-card.js";
 import { trackEvent } from "./analytics.js";
 
@@ -20,10 +20,17 @@ const NICK_STORAGE_KEY = "rhythm_room_nick_v1";
 const HOST_SESSION_PREFIX = "rhythm_room_host_";
 const LAST_ROOM_SESSION_KEY = "rhythm_room_last_v1";
 const BOT_PROFILES = [
-  { name: "ChillRookie", skill: 0.78, meanBias: 14, sd: 48 }, // Easy (C~B) — fun warm-up opponent
-  { name: "GrooveCat",   skill: 0.86, meanBias: -10, sd: 36 }, // Normal (B~A) — balanced rival
-  { name: "PocketFox",   skill: 0.92, meanBias: 5, sd: 26 },   // Hard (A~S) — beatable boss
+  { name: "ChillRookie", skill: 0.80, restErrProb: 0.12, meanBias: 14,  sd: 44 }, // Easy (C~B) — fun warm-up opponent
+  { name: "GrooveCat",   skill: 0.88, restErrProb: 0.07, meanBias: -10, sd: 32 }, // Normal (B~A) — balanced rival
+  { name: "PocketFox",   skill: 0.93, restErrProb: 0.03, meanBias: 5,   sd: 22 }, // Hard (A~S) — beatable boss
 ];
+
+function gaussianRand() {
+  let u = 0, v = 0;
+  while (u === 0) u = Math.random();
+  while (v === 0) v = Math.random();
+  return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+}
 
 let cbs = {
   applyRoomChart: () => {},
@@ -564,117 +571,172 @@ function beginSyncedRound(msg) {
 function startBotSimulations(roundId) {
   clearBotTimers();
   if (!app.phrase || !app.phrase.targets || !app.phrase.targets.length) return;
-  const targets = app.phrase.targets;
-  const total = targets.length;
-  const chartInfo = computeChartMaxInfo(app.phrase);
-  const realMaxScore = chartInfo.maxScore || (total * 1000);
-  const perNotePts = (chartInfo.noteMax || realMaxScore) / Math.max(1, total);
+  const srcTargets = app.phrase.targets;
+  const srcRests = app.phrase.rests || [];
+  const total = srcTargets.length;
   const tw = getTimingThresholds(app.bpm);
+  const winMs = hitWindowSec() * 1000;
 
   for (const botId of roomState.bots) {
     const p = roomState.players.get(botId);
     if (!p) continue;
     const prof = BOT_PROFILES[p.botProfileIdx % BOT_PROFILES.length];
+
+    // Give each bot its own virtual phrase clone graded by the EXACT same engine as humans!
+    const botPhrase = {
+      ...app.phrase,
+      targets: srcTargets.map((tgt) => ({
+        ...tgt,
+        hit: false,
+        missed: false,
+        errMs: null,
+        sustainStatus: null,
+        sustainRatio: null,
+      })),
+      rests: srcRests.map((rst) => ({
+        ...rst,
+        error: false,
+        errorKind: null,
+      })),
+    };
+
     let hits = 0;
-    let misses = 0;
+    let missedNotes = 0;
+    let extraHits = 0;
     let tight = 0;
-    let score = 0;
+    let doneNotes = 0;
     let eliminated = false;
     const errs = [];
 
-    targets.forEach((tgt, idx) => {
-      const fireMs = Math.max(200, Math.round((tgt.timeSec + 0.25) * 1000));
+    const recalcAndBroadcast = (isFinal = false) => {
+      const restErrs = botPhrase.rests.filter((r) => r.error).length;
+      const misses = missedNotes + restErrs;
+      let mean = 0, sd = 0;
+      if (errs.length > 0) {
+        mean = errs.reduce((a, b) => a + b, 0) / errs.length;
+        sd = Math.sqrt(errs.reduce((s, e) => s + (e - mean) ** 2, 0) / errs.length);
+      }
+      const detail = computeDetailedScore(botPhrase, hits, total, sd, extraHits, restErrs, extraHits, 0);
+      const susTargets = botPhrase.targets.filter((tg) => tg.hit && tg.sustainStatus);
+      const sustainStats = {
+        total: susTargets.length,
+        ok: susTargets.filter((tg) => tg.sustainStatus === "OK").length,
+        short: susTargets.filter((tg) => tg.sustainStatus === "SHORT").length,
+        long: susTargets.filter((tg) => tg.sustainStatus === "LONG").length,
+        restErrs,
+      };
+      const rankObj = computeScoreRank({
+        hits, total, tight, extra: extraHits,
+        keyExtra: extraHits, audioExtra: 0, inputMode: app.inputMode,
+        sustainStats, score: detail.score, maxScore: detail.maxScore,
+      });
+
+      p.score = detail.score;
+      p.maxScore = detail.maxScore;
+      p.hits = hits;
+      p.total = total;
+      p.doneNotes = doneNotes;
+      p.misses = misses;
+      p.acc = doneNotes > 0 ? (hits / doneNotes) * 100 : 100;
+      p.tight = tight;
+      p.mean = mean;
+      p.sd = sd;
+
+      if (roomState.rule === "sd3" && misses >= 3) {
+        eliminated = true;
+        p.status = "OUT";
+        p.rank = "OUT";
+        p.rankCls = "rank-c";
+      } else if (isFinal) {
+        p.status = "DONE";
+        p.rank = rankObj.grade;
+        p.rankCls = rankObj.cls;
+      } else {
+        p.status = "PLAYING";
+      }
+
+      sendMsg({
+        type: (isFinal || eliminated) ? "finish" : "progress",
+        roundId,
+        id: p.id,
+        name: p.name,
+        isBot: true,
+        score: p.score,
+        maxScore: p.maxScore,
+        acc: p.acc,
+        hits: p.hits,
+        total: p.total,
+        doneNotes: p.doneNotes,
+        misses: p.misses,
+        tight: p.tight,
+        mean: p.mean,
+        sd: p.sd,
+        rank: p.rank,
+        rankCls: p.rankCls,
+        eliminated,
+      });
+      if (isFinal || eliminated) checkRoundCompletion();
+      renderRoomUi();
+    };
+
+    // Schedule probabilistic rest mistakes on real rest timestamps
+    botPhrase.rests.forEach((botRst) => {
+      const fireMs = Math.max(200, Math.round((botRst.timeSec + 0.16) * 1000));
       const tid = window.setTimeout(() => {
         if (!roomState.joined || roomState.roundId !== roundId || roomState.phase !== "PLAYING" || eliminated) return;
-        const isHit = Math.random() < prof.skill;
-        if (isHit) {
-          // Box-Muller-ish bell curve so timing feels human rather than uniform
-          const u = ((Math.random() + Math.random() + Math.random()) / 3 - 0.5) * 3.2;
-          const e = prof.meanBias + u * prof.sd;
-          errs.push(e);
-          hits += 1;
-          const ae = Math.abs(e);
-          if (ae <= tw.tight) { tight += 1; score += perNotePts; }
-          else if (ae <= tw.ok) score += perNotePts * 0.72;
-          else score += perNotePts * 0.35;
+        if (Math.random() < prof.restErrProb) {
+          botRst.error = true;
+          botRst.errorKind = "HIT";
+          extraHits += 1;
+          recalcAndBroadcast(false);
+        }
+      }, fireMs);
+      roomState.botTimers.push(tid);
+    });
+
+    // Schedule realistic note-by-note execution
+    botPhrase.targets.forEach((botTgt, idx) => {
+      const fireMs = Math.max(200, Math.round((botTgt.timeSec + 0.18) * 1000));
+      const tid = window.setTimeout(() => {
+        if (!roomState.joined || roomState.roundId !== roundId || roomState.phase !== "PLAYING" || eliminated) return;
+        // Harder subdivisions/articulations slightly lower bot hit probability just like human players
+        const offbeat = (botTgt.globalSlot % 12) !== 0;
+        const hardArt = botTgt.art === "staccato" || botTgt.art === "ghost";
+        const effSkill = Math.max(0.55, prof.skill - (offbeat ? 0.04 : 0) - (hardArt ? 0.04 : 0));
+
+        if (Math.random() < effSkill) {
+          const e = prof.meanBias + gaussianRand() * prof.sd;
+          if (Math.abs(e) <= winMs) {
+            botTgt.hit = true;
+            botTgt.errMs = e;
+            errs.push(e);
+            hits += 1;
+            if (Math.abs(e) <= tw.tight) tight += 1;
+            // Realistic articulation & sustain simulation
+            if (botTgt.art === "staccato") {
+              const r = Math.random();
+              botTgt.sustainStatus = r < prof.skill ? "OK" : (r < 0.94 ? "LONG" : "SHORT");
+              botTgt.sustainRatio = botTgt.sustainStatus === "OK" ? 0.46 : (botTgt.sustainStatus === "SHORT" ? 0.18 : 0.72);
+            } else if (botTgt.art === "ghost") {
+              botTgt.sustainStatus = Math.random() < prof.skill ? "OK" : "LONG";
+              botTgt.sustainRatio = botTgt.sustainStatus === "OK" ? 0.22 : 0.85;
+            } else if (app.audioOn && botTgt.durSec >= 0.30) {
+              const r = Math.random();
+              botTgt.sustainStatus = r < prof.skill ? "OK" : "SHORT";
+              botTgt.sustainRatio = botTgt.sustainStatus === "OK" ? (0.80 + Math.random() * 0.18) : (0.42 + Math.random() * 0.18);
+            }
+          } else {
+            // Way off timing -> real miss
+            botTgt.missed = true;
+            missedNotes += 1;
+          }
         } else {
-          misses += 1;
+          botTgt.missed = true;
+          missedNotes += 1;
         }
 
-        const doneNotes = idx + 1;
-        const acc = (hits / doneNotes) * 100;
-        p.score = Math.round(score);
-        p.maxScore = realMaxScore;
-        p.hits = hits;
-        p.total = total;
-        p.doneNotes = doneNotes;
-        p.misses = misses;
-        p.acc = acc;
-        p.tight = tight;
-
-        if (roomState.rule === "sd3" && misses >= 3) {
-          eliminated = true;
-          p.status = "OUT";
-          p.rank = "OUT";
-          p.rankCls = "rank-c";
-          sendMsg({
-            type: "finish",
-            roundId,
-            id: p.id,
-            name: p.name,
-            isBot: true,
-            score: p.score,
-            maxScore: p.maxScore,
-            acc: p.acc,
-            hits: p.hits,
-            total: p.total,
-            doneNotes: p.doneNotes,
-            misses: p.misses,
-            rank: p.rank,
-            rankCls: p.rankCls,
-            eliminated: true,
-          });
-          checkRoundCompletion();
-          renderRoomUi();
-          return;
-        }
-
-        const isLast = doneNotes === total;
-        if (isLast) {
-          const mean = errs.length ? errs.reduce((a, b) => a + b, 0) / errs.length : 0;
-          const sd = errs.length ? Math.sqrt(errs.reduce((a, b) => a + (b - mean) ** 2, 0) / errs.length) : 0;
-          p.mean = mean;
-          p.sd = sd;
-          const pct = (p.score / Math.max(1, p.maxScore)) * 100;
-          if (pct >= 96 && hits === total) { p.rank = "S+"; p.rankCls = "rank-sp"; }
-          else if (pct >= 88) { p.rank = "S"; p.rankCls = "rank-s"; }
-          else if (pct >= 76) { p.rank = "A"; p.rankCls = "rank-a"; }
-          else if (pct >= 60) { p.rank = "B"; p.rankCls = "rank-b"; }
-          else { p.rank = "C"; p.rankCls = "rank-c"; }
-          p.status = "DONE";
-        }
-        sendMsg({
-          type: isLast ? "finish" : "progress",
-          roundId,
-          id: p.id,
-          name: p.name,
-          isBot: true,
-          score: p.score,
-          maxScore: p.maxScore,
-          acc: p.acc,
-          hits: p.hits,
-          total: p.total,
-          doneNotes: p.doneNotes,
-          misses: p.misses,
-          tight: p.tight,
-          mean: p.mean,
-          sd: p.sd,
-          rank: p.rank,
-          rankCls: p.rankCls,
-          eliminated: false,
-        });
-        if (isLast) checkRoundCompletion();
-        renderRoomUi();
+        doneNotes = idx + 1;
+        recalcAndBroadcast(doneNotes === total);
       }, fireMs);
       roomState.botTimers.push(tid);
     });
