@@ -101,6 +101,7 @@ const ACH_MAP = new Map(ACHIEVEMENTS.map((a) => [a.id, a]));
 let achCbs = {
   playUnlockChime: () => {},
   onDataRestored: () => {},
+  onUiChange: () => {},
 };
 
 export const achState = {
@@ -245,12 +246,32 @@ export function evaluateRoomWinAchievement(playerCount) {
   }
 }
 
+export function formatLocalizedTitle(raw) {
+  const s = String(raw || "").trim();
+  if (!s) return "";
+  // Direct achievement ID match (preferred universal global format)
+  if (ACH_MAP.has(s)) {
+    const a = ACH_MAP.get(s);
+    return `${a.icon} ${loc(a.title)}`;
+  }
+  // Backwards-compatible fallback for any legacy localized title strings stored locally
+  for (const a of ACHIEVEMENTS) {
+    for (const lang of ["ko", "en", "ja"]) {
+      if (s === a.title[lang] || s === `${a.icon} ${a.title[lang]}`) {
+        return `${a.icon} ${loc(a.title)}`;
+      }
+    }
+  }
+  return s;
+}
+
 export function getEquippedTitleAndBadges() {
   const unlockedList = ACHIEVEMENTS.filter((a) => Boolean(achState.unlocked[a.id]));
   const eq = achState.equippedTitleId && achState.unlocked[achState.equippedTitleId]
     ? ACH_MAP.get(achState.equippedTitleId)
     : (unlockedList[unlockedList.length - 1] || null);
   return {
+    titleId: eq ? eq.id : "",
     title: eq ? `${eq.icon} ${loc(eq.title)}` : "",
     badges: unlockedList.slice(-6).map((a) => a.icon),
     unlockedCount: unlockedList.length,
@@ -368,6 +389,7 @@ export function toggleAchBar(forceOpen = null) {
   const btn = document.getElementById("btnAchievements");
   if (btn) btn.classList.toggle("active", willOpen);
   if (willOpen) renderAchievementsUi();
+  achCbs.onUiChange();
 }
 
 export function initAchievements(callbacks = {}) {

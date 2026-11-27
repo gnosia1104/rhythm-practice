@@ -10,10 +10,10 @@
 // never exposes user_id/client_id in queries, and gracefully falls back to local personal bests.
 import { t } from "./i18n.js";
 import { getTodayDateStr } from "./rhythm.js";
-import { getEquippedTitleAndBadges } from "./achievements.js";
+import { getEquippedTitleAndBadges, formatLocalizedTitle } from "./achievements.js";
 import { trackEvent } from "./analytics.js";
 import {
-  isSupabaseConfigured, getSupabaseClient, ensureSupabaseAuth,
+  isSupabaseConfigured, getSupabaseClient, getExistingSupabaseUser, ensureSupabaseAuth,
   getPersistentClientId, loadSavedNickname, saveNickname,
 } from "./supabase-client.js";
 
@@ -132,8 +132,8 @@ export async function fetchLeaderboardTab(tab = lbState.tab, inputFilter = lbSta
   if (isSupabaseConfigured()) {
     try {
       const sb = await getSupabaseClient();
-      // Best-effort anonymous auth so get_leaderboard computes server-side `is_me`
-      await ensureSupabaseAuth();
+      // Read-only session check (NEVER creates a new anonymous user on passive browsing — saves Supabase MAU)
+      await getExistingSupabaseUser();
       const { data, error } = await sb.rpc("get_leaderboard", {
         p_board_key: boardKey,
         p_input_mode: filter,
@@ -175,7 +175,7 @@ async function submitEntryToSupabase(entry) {
     if (!user || !user.id) {
       return { ok: false, reason: "auth_required" };
     }
-    const { error } = await sb.rpc("submit_leaderboard_score", {
+    const { data, error } = await sb.rpc("submit_leaderboard_score", {
       p_board_key: entry.board_key,
       p_nickname: entry.nickname,
       p_title: entry.title || "",
@@ -193,10 +193,11 @@ async function submitEntryToSupabase(entry) {
       lbState.mode = "online";
       lbState.lastSubmittedByBoard.set(entry.board_key, Date.now());
       trackEvent("leaderboard_submit", { board: entry.board_key.split(":")[0], mode: entry.input_mode });
-      return { ok: true, reason: null };
+      const sanitized = Boolean(data && data.nickname_sanitized);
+      const savedNick = (data && data.nickname) || entry.nickname;
+      return { ok: true, reason: null, nicknameSanitized: sanitized, savedNick };
     }
     const msg = String(error.message || "");
-    if (msg.includes("nickname_not_allowed")) return { ok: false, reason: "nickname_not_allowed" };
     if (msg.includes("rate_limited")) return { ok: false, reason: "rate_limited" };
     if (msg.includes("auth_required")) return { ok: false, reason: "auth_required" };
     return { ok: false, reason: msg || "rpc_error" };
@@ -227,7 +228,7 @@ export async function recordLeaderboardRun({
   const boardKey = survival
     ? boardKeyForTab(tab)
     : `${tab}:${dateStr || getTodayDateStr()}`;
-  const { title } = getEquippedTitleAndBadges();
+  const { titleId } = getEquippedTitleAndBadges();
   const cleanMode = ["KEY", "AUDIO", "MIDI", "PAD", "BOTH"].includes(String(inputMode || "").toUpperCase())
     ? String(inputMode).toUpperCase()
     : "KEY";
@@ -238,7 +239,7 @@ export async function recordLeaderboardRun({
   const entry = {
     board_key: boardKey,
     nickname: getEffectiveNickname(),
-    title: title ? String(title).slice(0, 24) : "",
+    title: titleId ? String(titleId).slice(0, 24) : "",
     score: Math.max(0, Math.round(score)),
     max_score: Math.max(0, Math.round(maxScore)),
     bars: Math.max(0, Math.round(bars)),
@@ -259,13 +260,13 @@ export async function recordLeaderboardRun({
   persistLocalBests();
 
   const res = await submitEntryToSupabase(entry);
-  if (res.reason === "nickname_not_allowed") {
-    setLbMsg(t("lbNickRejected"), "var(--red)");
-    cbs.setHitBadge(t("lbNickRejected"), "err");
+  if (res.ok && res.nicknameSanitized) {
+    setLbMsg(t("lbNickSanitized", res.savedNick), "var(--amber)");
   }
   if (lbState.open) {
     if (res.ok) {
       await fetchLeaderboardTab(lbState.tab, lbState.inputFilter);
+      if (res.nicknameSanitized) setLbMsg(t("lbNickSanitized", res.savedNick), "var(--amber)");
     } else if (!res.reason || res.reason === "unconfigured" || res.reason === "network_error") {
       const cKey = cacheKeyFor(boardKey, lbState.inputFilter);
       const localRows = matchesInputFilter(entry.input_mode, lbState.inputFilter)
@@ -327,7 +328,8 @@ export function renderLeaderboardUi() {
   listEl.innerHTML = rows.map((r, idx) => {
     const isMe = Boolean(r.is_me);
     const medal = idx === 0 ? "🥇" : (idx === 1 ? "🥈" : (idx === 2 ? "🥉" : `#${idx + 1}`));
-    const titlePill = r.title ? `<span class="lb-title-pill">${escapeHtml(r.title)}</span>` : "";
+    const localizedTitle = formatLocalizedTitle(r.title);
+    const titlePill = localizedTitle ? `<span class="lb-title-pill">${escapeHtml(localizedTitle)}</span>` : "";
     const meTag = isMe ? `<span class="room-me-tag">YOU</span>` : "";
     const mainVal = survival
       ? `${r.bars}B`
@@ -444,16 +446,10 @@ export function initLeaderboard(callbacks = {}) {
     const boardKey = boardKeyForTab(lbState.tab);
     const mine = lbState.localBestByBoard[boardKey];
     if (mine) {
-      const { title } = getEquippedTitleAndBadges();
-      const prevNick = mine.nickname;
+      const { titleId } = getEquippedTitleAndBadges();
       mine.nickname = saved;
-      mine.title = title ? String(title).slice(0, 24) : "";
+      mine.title = titleId ? String(titleId).slice(0, 24) : "";
       const res = await submitEntryToSupabase(mine);
-      if (res.reason === "nickname_not_allowed") {
-        mine.nickname = prevNick;
-        setLbMsg(t("lbNickRejected"), "var(--red)");
-        return;
-      }
       if (res.reason === "rate_limited") {
         setLbMsg(t("lbRateLimited"), "var(--amber)");
         return;
@@ -461,6 +457,13 @@ export function initLeaderboard(callbacks = {}) {
       if (res.reason === "auth_required") {
         persistLocalBests();
         setLbMsg(t("lbAuthNeeded"), "var(--amber)");
+        return;
+      }
+      if (res.ok && res.nicknameSanitized) {
+        mine.nickname = res.savedNick;
+        persistLocalBests();
+        await fetchLeaderboardTab(lbState.tab, lbState.inputFilter);
+        setLbMsg(t("lbNickSanitized", res.savedNick), "var(--amber)");
         return;
       }
       persistLocalBests();

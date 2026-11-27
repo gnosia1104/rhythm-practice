@@ -62,8 +62,24 @@ export async function getSupabaseClient() {
   return supabaseClientPromise;
 }
 
+// Checks for an existing Supabase Auth session WITHOUT creating a new anonymous account.
+// Used when merely browsing the leaderboard so lurkers do not consume Free Plan MAU.
+export async function getExistingSupabaseUser() {
+  if (!isSupabaseConfigured()) return null;
+  try {
+    const sb = await getSupabaseClient();
+    if (!sb) return null;
+    const { data } = await sb.auth.getSession();
+    return (data && data.session && data.session.user && data.session.user.id)
+      ? data.session.user
+      : null;
+  } catch (_) {
+    return null;
+  }
+}
+
 // Ensures a persistent cryptographic Supabase Anonymous Auth session (auth.uid())
-// so leaderboard identity is verified server-side without requiring user sign-up.
+// Called ONLY when actually submitting a score (never on passive page views).
 export async function ensureSupabaseAuth() {
   if (!isSupabaseConfigured()) return null;
   if (supabaseAuthPromise) return supabaseAuthPromise;

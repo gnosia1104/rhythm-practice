@@ -58,7 +58,7 @@ import {
 } from "./sudden-death.js";
 import {
   initLeaderboard, syncLeaderboardLanguage, recordLeaderboardRun, toggleLeaderboardBar,
-} from "./leaderboard.js?v=20261128c";
+} from "./leaderboard.js?v=20261128e";
 import {
   initJuice, syncJuiceUi, resetJuiceCombo, onJuiceHit, onJuiceMiss, onJuiceExtraHit,
   animateScoreRollup, celebrateRankReveal,
@@ -1996,6 +1996,7 @@ initEndless({
   newPhrase,
 });
 initAchievements({
+  onUiChange: () => syncToolsMenuBadge(),
   playUnlockChime: () => {
     const ctx = ensureAudioCtx();
     if (ctx && app.clickVol > 0) {

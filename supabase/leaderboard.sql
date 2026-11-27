@@ -13,15 +13,17 @@
 --   5. Input-mode filtering (ALL / KEY / AUDIO / MIDI / PAD) supported at index & RPC level.
 -- =============================================================================
 
--- Clean up v1 objects if migrating from initial table
+-- Clean up old RPC signatures (idempotent; preserves existing leaderboard_scores rows!)
 drop function if exists public.submit_leaderboard_score(
   text, text, text, text, integer, integer, integer, numeric, numeric, text, integer, integer, text
 );
+drop function if exists public.submit_leaderboard_score(
+  text, text, text, integer, integer, integer, numeric, numeric, text, integer, integer, text
+);
 drop function if exists public.get_leaderboard(text, text, integer);
-drop table if exists public.leaderboard_scores;
 
 -- 1) Table keyed by cryptographic Supabase auth.uid()
-create table public.leaderboard_scores (
+create table if not exists public.leaderboard_scores (
   board_key   text         not null,
   user_id     uuid         not null,
   nickname    text         not null,
@@ -46,16 +48,16 @@ create table public.leaderboard_scores (
 );
 
 -- 2) Indexes for fast global + input-mode filtered leaderboards
-create index idx_lb_daily_rank
+create index if not exists idx_lb_daily_rank
   on public.leaderboard_scores (board_key, score desc, sd_ms asc, acc desc);
 
-create index idx_lb_survival_rank
+create index if not exists idx_lb_survival_rank
   on public.leaderboard_scores (board_key, bars desc, acc desc, bpm desc);
 
-create index idx_lb_daily_mode_rank
+create index if not exists idx_lb_daily_mode_rank
   on public.leaderboard_scores (board_key, input_mode, score desc, sd_ms asc, acc desc);
 
-create index idx_lb_survival_mode_rank
+create index if not exists idx_lb_survival_mode_rank
   on public.leaderboard_scores (board_key, input_mode, bars desc, acc desc, bpm desc);
 
 -- 3) Strict RLS & zero direct table exposure (prevents user_id scraping or direct writes)
@@ -63,6 +65,8 @@ alter table public.leaderboard_scores enable row level security;
 revoke all on public.leaderboard_scores from public, anon, authenticated;
 
 -- 4) Internal KO/EN/JA nickname moderation helper (not directly callable by clients)
+-- Uses word boundaries (\m...\M) for short/substring-prone English words so normal names
+-- like "grape", "peacock", "Dickens", "보지마", "꺼져가는" are NOT false-flagged.
 create or replace function public.is_clean_nickname(p_nick text, p_max_len integer default 16)
 returns boolean
 language plpgsql
@@ -71,6 +75,7 @@ set search_path = public
 as $$
 declare
   v_raw   text;
+  v_words text;
   v_norm  text;
   v_ascii text;
 begin
@@ -84,23 +89,33 @@ begin
     return false;
   end if;
 
-  -- Strip spaces, punctuation, underscores, zero-width chars for bypass-resistant matching
+  -- Word-boundary preserving lowercased form (replaces separators with spaces)
+  v_words := regexp_replace(lower(v_raw), '[\._\-~@#$%^&*()+=\[\]{}|\\/:;''"`<>?·•​‌‍]+', ' ', 'g');
+
+  -- Fully stripped form for bypass-resistant severe slur matching
   v_norm := regexp_replace(lower(v_raw), '[\s\.\-_,~!@#$%^&*()+=\[\]{}|\\/:;''"`<>?·•​‌‍]+', '', 'g');
-  -- Also map common leetspeak digits for English profanity checks
   v_ascii := translate(v_norm, '013457@$', 'oieastas');
 
-  -- Korean profanity / slurs / jamo abbreviations
-  if v_norm ~ '(시발|씨발|씨팔|시팔|ㅅㅂ|ㅆㅂ|병신|ㅂㅅ|개새|새끼|색기|좆|존나|졸라|지랄|ㅈㄹ|보지|자지|창녀|창남|느금|애미|애비|니미|니애미|엠창|미친놈|미친년|꺼져|ㄲㅈ|뒤져|장애인|한남|한녀|일베|메갈|워마드|씹새|씹년|씹놈|걸레|호로|쌍년|쌍놈|엿먹|닥쳐)' then
+  -- Korean unambiguous profanity / slurs (avoids false positives like 보지마, 자지마, 꺼져가는)
+  if v_norm ~ '(시발|씨발|씨팔|시팔|ㅅㅂ|ㅆㅂ|병신|ㅂㅅ|개새끼|새끼|색기|좆|존나|지랄|ㅈㄹ|창녀|창남|느금마|니애미|엠창|미친놈|미친년|씹새|씹년|씹놈|호로새끼|쌍년|쌍놈|엿먹어)' then
+    return false;
+  end if;
+  -- Standalone Korean words only when exact match
+  if v_norm in ('보지', '자지', '꺼져', '뒤져', '걸레') then
     return false;
   end if;
 
-  -- English profanity / hate speech
-  if v_ascii ~ '(fuck|fuk|phuck|shit|bitch|cunt|nigg|faggot|fag|whore|slut|dick|cock|pussy|asshole|bastard|retard|nazi|hitler|porn|rape|kys)' then
+  -- English short / substring-prone words: word-boundary ONLY (allows grape, peacock, Dickens, Scunthorpe)
+  if v_words ~ '\m(rape|cock|dick|fag|faggot|kys|porn|slut|whore|cunt|pussy|nazi|hitler|asshole|bastard|retard|shit|bitch|fuck|fuk|phuck)\M' then
+    return false;
+  end if;
+  -- English unambiguous severe slurs even when obfuscated without spaces
+  if v_ascii ~ '(fuck|fuk|phuck|nigg|faggot|asshole|bitch|shit)' then
     return false;
   end if;
 
   -- Japanese profanity / slurs
-  if v_norm ~ '(死ね|しね|シネ|くそ|クソ|ちんこ|チンコ|まんこ|マンコ|きちがい|キチガイ|がいじ|ガイジ|ぶす|ブス|ばかやろう|ファック|セックス)' then
+  if v_norm ~ '(死ね|しね|シネ|ちんこ|チンコ|まんこ|マンコ|きちがい|キチガイ|がいじ|ガイジ|ばかやろう|ファック|セックス)' then
     return false;
   end if;
 
@@ -192,7 +207,7 @@ $$;
 
 grant execute on function public.get_leaderboard(text, text, integer) to anon, authenticated;
 
--- 6) Authenticated Write RPC — uses auth.uid() ONLY, full anti-cheat + rate limit + profanity filter
+-- 6) Authenticated Write RPC — uses auth.uid() ONLY, full anti-cheat + rate limit + non-destructive nickname fallback
 create or replace function public.submit_leaderboard_score(
   p_board_key   text,
   p_nickname    text,
@@ -207,23 +222,24 @@ create or replace function public.submit_leaderboard_score(
   p_level       integer default 1,
   p_input_mode  text    default 'KEY'
 )
-returns void
+returns jsonb
 language plpgsql
 security definer
 set search_path = public
 as $$
 declare
-  v_uid        uuid;
-  v_survival   boolean;
-  v_board_date date;
-  v_max_cap    integer;
-  v_nick       text;
-  v_title      text;
-  v_rank       text;
-  v_mode       text;
-  v_acc        numeric(5,1);
-  v_sd         numeric(6,1);
-  v_last_upd   timestamptz;
+  v_uid            uuid;
+  v_survival       boolean;
+  v_board_date     date;
+  v_max_cap        integer;
+  v_nick           text;
+  v_nick_sanitized boolean := false;
+  v_title          text;
+  v_rank           text;
+  v_mode           text;
+  v_acc            numeric(5,1);
+  v_sd             numeric(6,1);
+  v_last_upd       timestamptz;
 begin
   -- Cryptographic identity from Supabase Anonymous Auth (cannot be spoofed by client)
   v_uid := auth.uid();
@@ -254,18 +270,23 @@ begin
     raise exception 'rate_limited';
   end if;
 
-  -- Nickname sanitization & server-side profanity check
+  -- Nickname sanitization: if flagged, fall back to Player-XXXX so the player NEVER loses their score!
   v_nick := regexp_replace(btrim(coalesce(p_nickname, '')), '\s+', ' ', 'g');
   v_nick := left(v_nick, 16);
-  if v_nick = '' then
-    v_nick := 'Player';
-  end if;
-  if not public.is_clean_nickname(v_nick) then
-    raise exception 'nickname_not_allowed';
+  if v_nick = '' or not public.is_clean_nickname(v_nick, 16) then
+    if v_nick <> '' then
+      v_nick_sanitized := true;
+    end if;
+    v_nick := 'Player-' || upper(left(replace(v_uid::text, '-', ''), 4));
   end if;
 
+  -- Title whitelist: only accept official achievement IDs so viewers see titles in their own language (KO/EN/JA)
   v_title := left(btrim(coalesce(p_title, '')), 24);
-  if v_title <> '' and not public.is_clean_nickname(v_title, 24) then
+  if v_title not in (
+    'first_take', 'notes_100', 'notes_1000', 'streak_3', 'streak_7',
+    'clean_rest', 's_plus', 'human_metro', 'syncopation_16',
+    'endless_20', 'endless_50', 'room_win'
+  ) then
     v_title := '';
   end if;
 
@@ -436,6 +457,12 @@ begin
         or (excluded.score = leaderboard_scores.score and excluded.sd_ms = leaderboard_scores.sd_ms and excluded.acc > leaderboard_scores.acc)
       ))
     ) then excluded.input_mode else leaderboard_scores.input_mode end;
+
+  return jsonb_build_object(
+    'ok', true,
+    'nickname', v_nick,
+    'nickname_sanitized', v_nick_sanitized
+  );
 end;
 $$;
 
