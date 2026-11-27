@@ -3,6 +3,7 @@
 // and seamlessly falls back to Local Multi-Tab Mode (BroadcastChannel) for instant zero-config testing!
 import { t } from "./i18n.js";
 import { app, currentFullSeedCode } from "./state.js";
+import { computeChartMaxInfo, getTimingThresholds } from "./scoring.js";
 import { copyToClipboard, flashBtnText } from "./share-card.js";
 import { trackEvent } from "./analytics.js";
 
@@ -19,9 +20,9 @@ const NICK_STORAGE_KEY = "rhythm_room_nick_v1";
 const HOST_SESSION_PREFIX = "rhythm_room_host_";
 const LAST_ROOM_SESSION_KEY = "rhythm_room_last_v1";
 const BOT_PROFILES = [
-  { name: "GrooveBot", skill: 0.94, meanBias: 3, sd: 19 },
-  { name: "PocketCat", skill: 0.87, meanBias: -8, sd: 28 },
-  { name: "TempoFox", skill: 0.97, meanBias: 1, sd: 13 },
+  { name: "ChillRookie", skill: 0.78, meanBias: 14, sd: 48 }, // Easy (C~B) — fun warm-up opponent
+  { name: "GrooveCat",   skill: 0.86, meanBias: -10, sd: 36 }, // Normal (B~A) — balanced rival
+  { name: "PocketFox",   skill: 0.92, meanBias: 5, sd: 26 },   // Hard (A~S) — beatable boss
 ];
 
 let cbs = {
@@ -565,7 +566,10 @@ function startBotSimulations(roundId) {
   if (!app.phrase || !app.phrase.targets || !app.phrase.targets.length) return;
   const targets = app.phrase.targets;
   const total = targets.length;
-  const maxPerNote = 1000;
+  const chartInfo = computeChartMaxInfo(app.phrase);
+  const realMaxScore = chartInfo.maxScore || (total * 1000);
+  const perNotePts = (chartInfo.noteMax || realMaxScore) / Math.max(1, total);
+  const tw = getTimingThresholds(app.bpm);
 
   for (const botId of roomState.bots) {
     const p = roomState.players.get(botId);
@@ -584,21 +588,23 @@ function startBotSimulations(roundId) {
         if (!roomState.joined || roomState.roundId !== roundId || roomState.phase !== "PLAYING" || eliminated) return;
         const isHit = Math.random() < prof.skill;
         if (isHit) {
-          const e = prof.meanBias + (Math.random() * 2 - 1) * prof.sd * 1.4;
+          // Box-Muller-ish bell curve so timing feels human rather than uniform
+          const u = ((Math.random() + Math.random() + Math.random()) / 3 - 0.5) * 3.2;
+          const e = prof.meanBias + u * prof.sd;
           errs.push(e);
           hits += 1;
           const ae = Math.abs(e);
-          if (ae <= 35) { tight += 1; score += maxPerNote; }
-          else if (ae <= 80) score += Math.round(maxPerNote * 0.72);
-          else score += Math.round(maxPerNote * 0.35);
+          if (ae <= tw.tight) { tight += 1; score += perNotePts; }
+          else if (ae <= tw.ok) score += perNotePts * 0.72;
+          else score += perNotePts * 0.35;
         } else {
           misses += 1;
         }
 
         const doneNotes = idx + 1;
         const acc = (hits / doneNotes) * 100;
-        p.score = score;
-        p.maxScore = total * maxPerNote;
+        p.score = Math.round(score);
+        p.maxScore = realMaxScore;
         p.hits = hits;
         p.total = total;
         p.doneNotes = doneNotes;
@@ -639,7 +645,7 @@ function startBotSimulations(roundId) {
           const sd = errs.length ? Math.sqrt(errs.reduce((a, b) => a + (b - mean) ** 2, 0) / errs.length) : 0;
           p.mean = mean;
           p.sd = sd;
-          const pct = (score / Math.max(1, p.maxScore)) * 100;
+          const pct = (p.score / Math.max(1, p.maxScore)) * 100;
           if (pct >= 96 && hits === total) { p.rank = "S+"; p.rankCls = "rank-sp"; }
           else if (pct >= 88) { p.rank = "S"; p.rankCls = "rank-s"; }
           else if (pct >= 76) { p.rank = "A"; p.rankCls = "rank-a"; }
