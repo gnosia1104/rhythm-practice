@@ -195,6 +195,7 @@ function getCurrentChartPayload() {
     showBeatNums: Boolean(app.showBeatNums),
     showCursor: Boolean(app.showCursor),
     blindGrade: Boolean(app.blindGrade),
+    suddenDeath: Boolean(app.suddenDeath),
     gapClick: app.gapClick || "OFF",
     fadeBeats: Number(app.fadeBeats) || 0,
   };
@@ -203,6 +204,7 @@ function getCurrentChartPayload() {
   else if (opts.gapClick !== "OFF") optTags.push(`Gap${opts.gapClick}`);
   if (opts.fadeBeats > 0) optTags.push(`Fade${opts.fadeBeats}b`);
   if (opts.blindGrade) optTags.push("Blind");
+  if (opts.suddenDeath && roomState.rule === "endless") optTags.push("💀3M");
   if (opts.showBeatNums) optTags.push("+B");
   if (opts.showCursor) optTags.push("+C");
   const optStr = optTags.length ? ` · [${optTags.join(" ")}]` : "";
@@ -724,7 +726,7 @@ function applyChartQuietly(chart) {
 }
 
 function isInfiniteRule(rule = roomState.rule) {
-  return rule === "endless" || rule === "sd3";
+  return rule === "endless";
 }
 
 function beginSyncedRound(msg) {
@@ -737,9 +739,9 @@ function beginSyncedRound(msg) {
   try {
     if (isInfiniteRule(roomState.rule)) {
       cbs.applyRoomChart(msg.chart);
-      cbs.setRoomEndlessMode(true, roomState.endlessSeed, roomState.rule === "sd3" ? "sd3" : "hp");
+      cbs.setRoomEndlessMode(true, roomState.endlessSeed);
     } else {
-      cbs.setRoomEndlessMode(false, null, "hp");
+      cbs.setRoomEndlessMode(false, null);
       cbs.applyRoomChart(msg.chart);
     }
   } finally {
@@ -775,7 +777,7 @@ function beginSyncedRound(msg) {
     renderRoomUi();
     cbs.triggerRoomStart(isInfiniteRule(roomState.rule) ? roomState.endlessSeed : null);
     if (roomState.isHost && roomState.bots.length) {
-      if (isInfiniteRule(roomState.rule)) startEndlessBotSimulations(msg.roundId, roomState.rule === "sd3");
+      if (isInfiniteRule(roomState.rule)) startEndlessBotSimulations(msg.roundId, Boolean(app.suddenDeath));
       else startBotSimulations(msg.roundId);
     }
   }, totalSec * 1000);
@@ -1678,8 +1680,9 @@ export function renderRoomUi() {
       if (!p) return `<div class="podium-slot empty"></div>`;
       const isMe = p.id === roomState.clientId;
       const mainStat = isInfiniteRule() ? `${p.survivedBars || 0}B` : p.score.toLocaleString();
+      const isEndlessSd = isInfiniteRule() && Boolean(app.suddenDeath);
       const subStat = isInfiniteRule()
-        ? (p.status === "OUT" ? `💀 OUT · ${p.acc.toFixed(0)}%` : (roomState.rule === "sd3" ? `❤️×${Math.max(1, Math.round((p.hp || 100) / 33.4))} · 👑` : `❤️ ${Math.round(p.hp || 0)}% · 👑`))
+        ? (p.status === "OUT" ? `💀 OUT · ${p.acc.toFixed(0)}%` : (isEndlessSd ? `❤️×${Math.max(1, Math.round((p.hp || 100) / 33.4))} · 👑` : `❤️ ${Math.round(p.hp || 0)}% · 👑`))
         : `${p.rank || "—"} · ${p.acc.toFixed(0)}%${p.status === "OUT" ? " · 💀" : ""}`;
       return `<div class="podium-slot ${m.cls}${isMe ? " is-me" : ""}">
         <div class="podium-medal">${m.icon}</div>
@@ -1698,7 +1701,7 @@ export function renderRoomUi() {
   boardEl.innerHTML = list.map((p, idx) => {
     const isMe = p.id === roomState.clientId;
     const isEndlessRule = isInfiniteRule();
-    const isSd3Rule = roomState.rule === "sd3";
+    const isSd3Rule = isEndlessRule && Boolean(app.suddenDeath);
     const pct = isEndlessRule
       ? Math.max(0, Math.min(100, Math.round(p.hp ?? 100)))
       : (p.total > 0 ? Math.min(100, Math.round((p.doneNotes / p.total) * 100)) : 0);
@@ -1859,7 +1862,7 @@ export function initRoom(callbacks) {
     roomState.rule = (v === "sd3" || v === "endless") ? v : "score";
     roomState.applyingRemoteChart = true;
     try {
-      cbs.setRoomEndlessMode(isInfiniteRule(roomState.rule), null, roomState.rule === "sd3" ? "sd3" : "hp");
+      cbs.setRoomEndlessMode(isInfiniteRule(roomState.rule), null);
     } finally {
       roomState.applyingRemoteChart = false;
     }

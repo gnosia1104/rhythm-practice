@@ -48,13 +48,13 @@ import {
   refreshRoomAudioBanner, tryStartRoomRoundFromMain, notifyRoomStopped,
   notifyRoomChartChanged, notifyRoomLiveProgress, notifyRoomFinish,
   notifyRoomEndlessProgress, notifyRoomEndlessOut,
-} from "./room.js?v=20261127z";
+} from "./room.js?v=20261127aa";
 import {
   endlessState, isSdEndless, initEndless, setEndlessMode, setEndlessStreamSeed, syncEndlessLanguage, renderEndlessHud,
   buildEndlessPreviewPhrase, startEndlessAudioAndState, stepEndlessFrame,
   onEndlessHit, onEndlessMiss, onEndlessRestPassed, onEndlessRestError, onEndlessExtraHit,
   saveEndlessBest,
-} from "./endless.js?v=20261127z";
+} from "./endless.js?v=20261127aa";
 import {
   initAchievements, syncAchievementsLanguage,
   evaluateStandardRunAchievements, evaluateEndlessAchievements, evaluateRoomWinAchievement,
@@ -1343,12 +1343,13 @@ function updateMeta() {
   btnBlind.classList.toggle("active", app.blindGrade);
   const btnSd = document.getElementById("btnSuddenDeath");
   if (btnSd) {
-    const sdOn = isSdEndless();
+    const sdOn = Boolean(app.suddenDeath);
     btnSd.textContent = sdOn ? t("sdOn") : t("sdOff");
     btnSd.classList.toggle("active", sdOn);
   }
   if (typeof syncAllDropdownBadges === "function") syncAllDropdownBadges();
   renderSdLivesHud(false);
+  if (app.endlessMode) renderEndlessHud();
 
   document.getElementById("btnInKey").classList.toggle("active", app.keyOn);
   document.getElementById("btnInAudio").classList.toggle("active", app.audioOn);
@@ -1935,8 +1936,19 @@ document.getElementById("btnBlindGrade").addEventListener("click", () => {
 });
 
 document.getElementById("btnSuddenDeath").addEventListener("click", () => {
-  const nextOn = !isSdEndless();
-  setEndlessMode(nextOn, "sd3");
+  app.suddenDeath = !app.suddenDeath;
+  app.suddenDeathOut = false;
+  lastSdMisses = 0;
+  if (app.endlessMode) {
+    if (app.state === "READY" || app.state === "DONE") buildEndlessPreviewPhrase();
+    const msg = document.getElementById("endlessMsg");
+    if (msg) {
+      msg.style.color = "var(--muted)";
+      msg.textContent = app.suddenDeath ? t("sdEndlessIdleMsg") : t("endlessIdleMsg");
+    }
+    renderEndlessHud();
+  }
+  updateMeta();
   renderSdLivesHud(false);
 });
 
@@ -2916,7 +2928,7 @@ function syncAllDropdownBadges() {
   if (app.blindGrade) diffParts.push("Blind");
   if (app.showBeatNums) diffParts.push("+B");
   if (app.showCursor) diffParts.push("+C");
-  if (isSdEndless()) diffParts.push("💀");
+  if (app.suddenDeath) diffParts.push("💀");
   const diffDropOpen = !document.getElementById("diffDropdown").classList.contains("hidden");
   document.getElementById("diffSummaryBadge").textContent = diffParts.join(" · ");
   document.getElementById("btnDiffMenu").classList.toggle("active", diffDropOpen);
@@ -3084,6 +3096,7 @@ initRoom({
       if (typeof chart.opts.showBeatNums === "boolean") app.showBeatNums = chart.opts.showBeatNums;
       if (typeof chart.opts.showCursor === "boolean") app.showCursor = chart.opts.showCursor;
       if (typeof chart.opts.blindGrade === "boolean") app.blindGrade = chart.opts.blindGrade;
+      if (typeof chart.opts.suddenDeath === "boolean") app.suddenDeath = chart.opts.suddenDeath;
       if (typeof chart.opts.gapClick === "string") app.gapClick = chart.opts.gapClick;
       if (Number.isFinite(Number(chart.opts.fadeBeats))) app.fadeBeats = Number(chart.opts.fadeBeats);
     }
@@ -3100,11 +3113,10 @@ initRoom({
     syncDrillUi();
     updateMeta();
   },
-  setRoomEndlessMode: (enabled, streamSeed, variant = "hp") => {
+  setRoomEndlessMode: (enabled, streamSeed) => {
     setEndlessStreamSeed(streamSeed);
-    const nextVar = variant === "sd3" ? "sd3" : "hp";
-    if (Boolean(enabled) !== app.endlessMode || (enabled && endlessState.variant !== nextVar)) {
-      setEndlessMode(Boolean(enabled), nextVar);
+    if (Boolean(enabled) !== app.endlessMode) {
+      setEndlessMode(Boolean(enabled));
     } else if (enabled) {
       buildEndlessPreviewPhrase();
     }

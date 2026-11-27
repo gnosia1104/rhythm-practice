@@ -55,7 +55,7 @@ export const endlessState = {
 };
 
 export function isSdEndless() {
-  return Boolean(app.endlessMode && endlessState.variant === "sd3");
+  return Boolean(app.endlessMode && app.suddenDeath);
 }
 
 function loadBestByKey(key) {
@@ -69,7 +69,7 @@ function loadBestByKey(key) {
 
 export function saveEndlessBest(bars) {
   const b = Math.max(0, Math.floor(Number(bars) || 0));
-  if (endlessState.variant === "sd3") {
+  if (app.suddenDeath) {
     if (b > endlessState.sdBestBars) {
       endlessState.sdBestBars = b;
       try { localStorage.setItem(SD_BEST_KEY, String(b)); } catch (_) {}
@@ -335,12 +335,13 @@ function swapSlot(slotToReplace) {
 function triggerEndlessGameOver() {
   if (endlessState.gameOverTriggered) return;
   endlessState.gameOverTriggered = true;
+  const sdMode = Boolean(app.suddenDeath);
   const isNewBest = saveEndlessBest(endlessState.survivedBars);
   renderEndlessHud();
   cbs.onGameOver({
-    variant: endlessState.variant,
+    variant: sdMode ? "sd3" : "hp",
     survivedBars: endlessState.survivedBars,
-    bestBars: endlessState.variant === "sd3" ? endlessState.sdBestBars : endlessState.bestBars,
+    bestBars: sdMode ? endlessState.sdBestBars : endlessState.bestBars,
     isNewBest,
     maxCombo: endlessState.maxCombo,
     hits: endlessState.totalHits,
@@ -366,7 +367,7 @@ function loseSdLife() {
 
 function adjustHp(delta) {
   if (!app.endlessMode || endlessState.gameOverTriggered) return;
-  if (endlessState.variant === "sd3") return;
+  if (app.suddenDeath) return;
   endlessState.hp = Math.max(0, Math.min(100, endlessState.hp + delta));
   renderEndlessHud();
   cbs.onHudUpdate(endlessState);
@@ -384,7 +385,7 @@ export function onEndlessHit(tgt) {
 
   if (tgt.pitchOk === false) {
     endlessState.combo = 0;
-    if (endlessState.variant === "sd3") loseSdLife();
+    if (app.suddenDeath) loseSdLife();
     else adjustHp(-7);
     return;
   }
@@ -392,16 +393,16 @@ export function onEndlessHit(tgt) {
     endlessState.totalTight += 1;
     endlessState.combo += 1;
     if (endlessState.combo > endlessState.maxCombo) endlessState.maxCombo = endlessState.combo;
-    if (endlessState.variant === "sd3") { renderEndlessHud(); cbs.onHudUpdate(endlessState); }
+    if (app.suddenDeath) { renderEndlessHud(); cbs.onHudUpdate(endlessState); }
     else adjustHp(3.5);
   } else if (ae <= tw.ok) {
     endlessState.combo += 1;
     if (endlessState.combo > endlessState.maxCombo) endlessState.maxCombo = endlessState.combo;
-    if (endlessState.variant === "sd3") { renderEndlessHud(); cbs.onHudUpdate(endlessState); }
+    if (app.suddenDeath) { renderEndlessHud(); cbs.onHudUpdate(endlessState); }
     else adjustHp(1.5);
   } else {
     endlessState.combo = 0;
-    if (endlessState.variant === "sd3") { renderEndlessHud(); cbs.onHudUpdate(endlessState); }
+    if (app.suddenDeath) { renderEndlessHud(); cbs.onHudUpdate(endlessState); }
     else adjustHp(-3);
   }
 }
@@ -410,13 +411,13 @@ export function onEndlessMiss() {
   if (!app.endlessMode) return;
   endlessState.totalMissed += 1;
   endlessState.combo = 0;
-  if (endlessState.variant === "sd3") loseSdLife();
+  if (app.suddenDeath) loseSdLife();
   else adjustHp(-14);
 }
 
 export function onEndlessRestPassed() {
   if (!app.endlessMode) return;
-  if (endlessState.variant === "sd3") return; // Sudden Death: zero HP healing!
+  if (app.suddenDeath) return; // Sudden Death: zero HP healing!
   adjustHp(1.0);
 }
 
@@ -424,7 +425,7 @@ export function onEndlessRestError() {
   if (!app.endlessMode) return;
   endlessState.totalRestErrs += 1;
   endlessState.combo = 0;
-  if (endlessState.variant === "sd3") loseSdLife();
+  if (app.suddenDeath) loseSdLife();
   else adjustHp(-10);
 }
 
@@ -432,7 +433,7 @@ export function onEndlessExtraHit() {
   if (!app.endlessMode) return;
   endlessState.totalExtra += 1;
   endlessState.combo = 0;
-  if (endlessState.variant === "sd3") { renderEndlessHud(); return; }
+  if (app.suddenDeath) { renderEndlessHud(); return; }
   adjustHp(-4);
 }
 
@@ -511,8 +512,8 @@ export function stepEndlessFrame(elapsedSec) {
 export function renderEndlessHud() {
   const btn = document.getElementById("btnEndless");
   const bar = document.getElementById("endlessBar");
-  const sdMode = endlessState.variant === "sd3";
-  if (btn) btn.classList.toggle("active", app.endlessMode && !sdMode);
+  const sdMode = Boolean(app.suddenDeath);
+  if (btn) btn.classList.toggle("active", app.endlessMode);
   if (!bar) return;
   bar.classList.toggle("hidden", !app.endlessMode);
   bar.classList.toggle("is-sd", app.endlessMode && sdMode);
@@ -551,7 +552,7 @@ export function renderEndlessHud() {
 export function syncEndlessLanguage() {
   const btn = document.getElementById("btnEndless");
   if (btn) btn.textContent = t("btnEndless");
-  const sdMode = endlessState.variant === "sd3";
+  const sdMode = Boolean(app.suddenDeath);
   const lbl = document.getElementById("lblEndlessTitle");
   if (lbl) lbl.textContent = sdMode ? t("sdEndlessTitle") : t("endlessTitle");
   const msg = document.getElementById("endlessMsg");
@@ -562,16 +563,12 @@ export function syncEndlessLanguage() {
   renderEndlessHud();
 }
 
-export function setEndlessMode(enabled, variant = "hp") {
+export function setEndlessMode(enabled) {
   const next = Boolean(enabled);
-  const nextVar = variant === "sd3" ? "sd3" : "hp";
-  if (next && app.endlessMode && endlessState.variant === nextVar) return;
-  if (!next && !app.endlessMode && !app.suddenDeath) return;
+  if (app.endlessMode === next) return;
   cbs.stopRun();
   app.endlessMode = next;
-  app.suddenDeath = next && nextVar === "sd3";
   app.suddenDeathOut = false;
-  endlessState.variant = next ? nextVar : "hp";
   if (next) {
     app.dailyDate = null;
     app.dailyPlus = false;
@@ -581,9 +578,9 @@ export function setEndlessMode(enabled, variant = "hp") {
     const msg = document.getElementById("endlessMsg");
     if (msg) {
       msg.style.color = "var(--muted)";
-      msg.textContent = nextVar === "sd3" ? t("sdEndlessIdleMsg") : t("endlessIdleMsg");
+      msg.textContent = app.suddenDeath ? t("sdEndlessIdleMsg") : t("endlessIdleMsg");
     }
-    cbs.setHitBadge(nextVar === "sd3" ? t("sdReadyBadge") : t("endlessReadyBadge"), nextVar === "sd3" ? "warn" : "tight");
+    cbs.setHitBadge(app.suddenDeath ? t("sdReadyBadge") : t("endlessReadyBadge"), app.suddenDeath ? "warn" : "tight");
   } else {
     endlessState.streamSeed = null;
     if (endlessState.freshClearTimerId) {
@@ -603,8 +600,7 @@ export function initEndless(callbacks) {
 
   document.getElementById("btnEndless").addEventListener("click", (e) => {
     e.currentTarget.blur();
-    const isHpActive = app.endlessMode && endlessState.variant === "hp";
-    setEndlessMode(!isHpActive, "hp");
+    setEndlessMode(!app.endlessMode);
   });
   document.getElementById("btnEndlessClose").addEventListener("click", () => {
     setEndlessMode(false);
