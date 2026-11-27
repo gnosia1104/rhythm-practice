@@ -124,6 +124,7 @@ export const roomState = {
   lastChatBySender: new Map(),
   botTimers: [],
   botIntervals: [],
+  hostCheckTimerId: null,
   podiumCheckTimerId: null,
   applyingRemoteChart: false,
   eliminatedInRound: false,
@@ -474,6 +475,30 @@ function buildHostSyncPayload() {
   };
 }
 
+function ensureRoomHasHost() {
+  if (!roomState.joined) return;
+  const humans = [...roomState.players.values()].filter((p) => !p.isBot);
+  if (!humans.length) return;
+  if (humans.some((p) => p.isHost)) return;
+  // Elect earliest-joined human (tie-break by id) so an empty room or host-left room NEVER loses host controls!
+  humans.sort((a, b) => (a.joinedAt - b.joinedAt) || String(a.id).localeCompare(String(b.id)));
+  const elected = humans[0];
+  if (elected.id === roomState.clientId) {
+    roomState.isHost = true;
+    if (!roomState.hostToken) roomState.hostToken = randomId(16);
+    elected.isHost = true;
+    persistHostSession();
+    sendMsg({
+      type: "host_reclaim",
+      id: roomState.clientId,
+      name: roomState.name,
+      isHost: true,
+    });
+    sendMsg(buildHostSyncPayload());
+    renderRoomUi();
+  }
+}
+
 function handleRemotePresenceSync(presenceState) {
   const presentIds = new Set();
   for (const key of Object.keys(presenceState || {})) {
@@ -497,8 +522,16 @@ function handleRemotePresenceSync(presenceState) {
       roomState.players.delete(id);
     }
   }
+  ensureRoomHasHost();
   if (roomState.isHost) {
     sendMsg(buildHostSyncPayload());
+  } else {
+    // If joining an empty/hostless room, auto-promote to host after brief discovery window
+    if (roomState.hostCheckTimerId) window.clearTimeout(roomState.hostCheckTimerId);
+    roomState.hostCheckTimerId = window.setTimeout(() => {
+      roomState.hostCheckTimerId = null;
+      ensureRoomHasHost();
+    }, 1100);
   }
   renderRoomUi();
 }
@@ -557,6 +590,7 @@ function handleIncomingMessage(msg) {
     const left = roomState.players.get(msg.id);
     roomState.players.delete(msg.id);
     if (left) appendChatMessage({ sys: true, text: t("roomSysLeave", left.name) });
+    ensureRoomHasHost();
     renderRoomUi();
     return;
   }
@@ -1381,6 +1415,13 @@ async function connectRoom({ code, name, createAsHost = false, restoreHost = nul
   });
   if (roomState.isHost) {
     sendMsg(buildHostSyncPayload());
+  } else {
+    // If joining an empty/hostless room, auto-promote to host after brief discovery window
+    if (roomState.hostCheckTimerId) window.clearTimeout(roomState.hostCheckTimerId);
+    roomState.hostCheckTimerId = window.setTimeout(() => {
+      roomState.hostCheckTimerId = null;
+      ensureRoomHasHost();
+    }, 1100);
   }
 
   trackEvent(createAsHost ? "room_create" : "room_join", {
@@ -1397,6 +1438,10 @@ async function connectRoom({ code, name, createAsHost = false, restoreHost = nul
 
 export async function leaveRoom(clearUrl = true) {
   clearRoundTimers();
+  if (roomState.hostCheckTimerId) {
+    window.clearTimeout(roomState.hostCheckTimerId);
+    roomState.hostCheckTimerId = null;
+  }
   if (roomState.joined) {
     sendMsg({ type: "leave", id: roomState.clientId });
     if (roomState.transport) {
