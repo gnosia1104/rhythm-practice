@@ -47,13 +47,14 @@ import {
   initRoom, syncRoomLanguage, isRoomPlaying, isRoomCountingDown, getRoomCountdownText,
   tryStartRoomRoundFromMain, notifyRoomStopped,
   notifyRoomChartChanged, notifyRoomLiveProgress, notifyRoomFinish,
-} from "./room.js?v=20261127n";
+  notifyRoomEndlessProgress, notifyRoomEndlessOut,
+} from "./room.js?v=20261127q";
 import {
-  endlessState, initEndless, syncEndlessLanguage, renderEndlessHud,
+  endlessState, initEndless, setEndlessMode, setEndlessStreamSeed, syncEndlessLanguage, renderEndlessHud,
   buildEndlessPreviewPhrase, startEndlessAudioAndState, stepEndlessFrame,
   onEndlessHit, onEndlessMiss, onEndlessRestPassed, onEndlessRestError, onEndlessExtraHit,
   saveEndlessBest,
-} from "./endless.js?v=20261127p";
+} from "./endless.js?v=20261127q";
 
 function resetTargets() {
   const ts = getTimeSig(app.phrase ? app.phrase.timeSig : app.timeSig);
@@ -916,6 +917,14 @@ function finalizeEndlessGameOver(stats) {
     msgEl.textContent = goText;
   }
   setHitBadge(`💀 ${bars}B${stats.isNewBest ? " 🏆 NEW BEST!" : ""}`, stats.isNewBest ? "tight" : "err");
+  notifyRoomEndlessOut({
+    survivedBars: bars,
+    maxCombo: stats.maxCombo,
+    hits: stats.hits,
+    total,
+    acc,
+    tight: stats.tight,
+  });
   const tsTrack = getTimeSig();
   trackPracticeComplete(app, { rank: rk.grade, acc, durationSec: Math.max(1, bars * tsTrack.clicksPerBar * tsTrack.clickSec(app.bpm)) });
   syncTransportButtons();
@@ -2840,7 +2849,18 @@ initRoom({
     syncDrillUi();
     updateMeta();
   },
-  triggerRoomStart: () => startRun(false),
+  setRoomEndlessMode: (enabled, streamSeed) => {
+    setEndlessStreamSeed(streamSeed);
+    if (Boolean(enabled) !== app.endlessMode) {
+      setEndlessMode(Boolean(enabled));
+    } else if (enabled) {
+      buildEndlessPreviewPhrase();
+    }
+  },
+  triggerRoomStart: (endlessSeed = null) => {
+    setEndlessStreamSeed(endlessSeed);
+    startRun(false);
+  },
   unlockAudio: () => ensureAudioCtx(),
   playCountdownBeep: (sec) => {
     const ctx = ensureAudioCtx();
@@ -2855,6 +2875,18 @@ initRoom({
 });
 initEndless({
   onGameOver: finalizeEndlessGameOver,
+  onHudUpdate: (es) => {
+    const tot = es.totalHits + es.totalMissed;
+    notifyRoomEndlessProgress({
+      survivedBars: es.survivedBars,
+      hp: es.hp,
+      combo: es.combo,
+      hits: es.totalHits,
+      total: tot,
+      acc: tot ? (es.totalHits / tot) * 100 : 100,
+      tight: es.totalTight,
+    });
+  },
   setHitBadge,
   updateMeta,
   stopRun,

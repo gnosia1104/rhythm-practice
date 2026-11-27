@@ -12,6 +12,7 @@ const ENDLESS_BEST_KEY = "rhythm_practice_endless_best_v1";
 
 let cbs = {
   onGameOver: () => {},
+  onHudUpdate: () => {},
   setHitBadge: () => {},
   updateMeta: () => {},
   stopRun: () => {},
@@ -20,6 +21,7 @@ let cbs = {
 
 export const endlessState = {
   slotBars: 4,              // 4 bars per line on desktop (2 on narrow/5/4) -> always 2 lines on screen
+  streamSeed: null,         // optional deterministic seed for synced Multiplayer Room Endless Survival
   hp: 100,
   combo: 0,
   maxCombo: 0,
@@ -78,7 +80,9 @@ function buildLineChunk(slotIdx, startGlobalBar, startSec, bpmForLine, effLevel)
   const clickSec = ts.clickSec(bpmForLine);
   const tickSec = clickSec / ts.clickTicks;
   const barSec = ts.clicksPerBar * clickSec;
-  const seed = (Math.floor(Math.random() * 0xEFFF) + 0x1000) & 0xFFFF;
+  const seed = Number.isFinite(endlessState.streamSeed)
+    ? ((((endlessState.streamSeed * 2654435761) ^ ((startGlobalBar + 1) * 2246822519)) >>> 0) % 0xEFFF) + 0x1000
+    : ((Math.floor(Math.random() * 0xEFFF) + 0x1000) & 0xFFFF);
   const chunk = generatePhrase(slotBars, effLevel, app.tripletMode, app.timeSig, seed, app.staccatoOn, app.ghostOn, app.pitchMode);
   if (app.pitchMode) {
     assignPitchesToPhrase(chunk, app.pitchKey, app.pitchProg, app.pitchClef);
@@ -242,7 +246,14 @@ function scheduleEndlessClicksAhead(elapsedSec) {
   }
 }
 
-export function startEndlessAudioAndState(startAudioT) {
+export function setEndlessStreamSeed(seed = null) {
+  endlessState.streamSeed = Number.isFinite(Number(seed)) ? (Number(seed) & 0xFFFF) : null;
+}
+
+export function startEndlessAudioAndState(startAudioT, forcedStreamSeed = undefined) {
+  if (forcedStreamSeed !== undefined) {
+    setEndlessStreamSeed(forcedStreamSeed);
+  }
   buildEndlessPreviewPhrase();
   const ctx = ensureAudioCtx();
   const ts = getTimeSig();
@@ -307,6 +318,7 @@ function adjustHp(delta) {
   if (!app.endlessMode || endlessState.gameOverTriggered) return;
   endlessState.hp = Math.max(0, Math.min(100, endlessState.hp + delta));
   renderEndlessHud();
+  cbs.onHudUpdate(endlessState);
   if (endlessState.hp <= 0 && !endlessState.gameOverTriggered) {
     endlessState.gameOverTriggered = true;
     const isNewBest = saveEndlessBest(endlessState.survivedBars);
@@ -400,6 +412,7 @@ export function stepEndlessFrame(elapsedSec) {
     endlessState.survivedBars = curBar.globalBar;
     saveEndlessBest(endlessState.survivedBars);
     renderEndlessHud();
+    cbs.onHudUpdate(endlessState);
   }
 
   // Update live BPM display when escalation steps up into a new bar
@@ -499,6 +512,7 @@ export function setEndlessMode(enabled) {
     buildEndlessPreviewPhrase();
     cbs.setHitBadge(t("endlessReadyBadge"), "tight");
   } else {
+    endlessState.streamSeed = null;
     if (endlessState.freshClearTimerId) {
       window.clearTimeout(endlessState.freshClearTimerId);
       endlessState.freshClearTimerId = null;
