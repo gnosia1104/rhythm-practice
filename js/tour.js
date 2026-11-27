@@ -1,4 +1,4 @@
-// First-Visit Interactive 6-Step Spotlight Onboarding Tour
+// First-Visit Interactive 8-Step Spotlight Onboarding Tour
 import { app, tourState } from "./state.js";
 import { t, getCurLang } from "./i18n.js";
 
