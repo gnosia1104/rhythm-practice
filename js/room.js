@@ -501,12 +501,15 @@ function handleRemotePresenceSync(presenceState) {
     }
   }
   // Remove disconnected non-bot players who aren't ourselves
+  let removedAny = false;
   for (const [id, p] of roomState.players.entries()) {
     if (id !== roomState.clientId && !p.isBot && !presentIds.has(id)) {
       roomState.players.delete(id);
+      removedAny = true;
     }
   }
   ensureRoomHasHost();
+  if (removedAny) checkRoundCompletion();
   if (roomState.isHost) {
     sendMsg(buildHostSyncPayload());
   } else {
@@ -575,6 +578,7 @@ function handleIncomingMessage(msg) {
     roomState.players.delete(msg.id);
     if (left) appendChatMessage({ sys: true, text: t("roomSysLeave", left.name) });
     ensureRoomHasHost();
+    checkRoundCompletion();
     renderRoomUi();
     return;
   }
@@ -1139,26 +1143,20 @@ export function tryStartRoomRoundFromMain() {
   if (!roomState.joined) return false;
   cbs.unlockAudio();
   refreshRoomAudioBanner();
+  if (roomState.phase === "COUNTDOWN" || roomState.phase === "PLAYING") {
+    cbs.setHitBadge(t("roomLockedPlaying"), "warn");
+    return true; // Never allow mid-round restart in competitive rooms!
+  }
   if (!roomState.isHost) {
     cbs.setHitBadge(t("roomHostOnlyStart"), "warn");
     return true; // Block guest solo start while inside a room!
   }
-  if (roomState.phase === "COUNTDOWN") return true; // already counting down
   hostStartRound();
   return true;
 }
 
 export function notifyRoomStopped() {
-  if (!roomState.joined) return;
-  if (roomState.phase === "COUNTDOWN" || roomState.phase === "PLAYING") {
-    if (roomState.isHost) {
-      clearRoundTimers();
-      roomState.phase = "LOBBY";
-      for (const p of roomState.players.values()) p.status = "READY";
-      sendMsg({ type: "round_abort", roundId: roomState.roundId });
-      renderRoomUi();
-    }
-  }
+  // Competitive room rounds cannot be aborted mid-match; players can only finish or leave the room.
 }
 
 export function notifyRoomChartChanged() {
@@ -1463,6 +1461,7 @@ async function connectRoom({ code, name, createAsHost = false, restoreHost = nul
 }
 
 export async function leaveRoom(clearUrl = true) {
+  const wasActiveRound = roomState.joined && (roomState.phase === "COUNTDOWN" || roomState.phase === "PLAYING");
   clearRoundTimers();
   if (roomState.hostCheckTimerId) {
     window.clearTimeout(roomState.hostCheckTimerId);
@@ -1483,11 +1482,13 @@ export async function leaveRoom(clearUrl = true) {
   roomState.bots = [];
   clearLastRoomSession();
   if (clearUrl) syncRoomUrlParam("");
+  if (wasActiveRound) cbs.stopRun();
   renderRoomUi();
 }
 
 function hostStartRound() {
   if (!roomState.joined || !roomState.isHost) return;
+  if (roomState.phase === "COUNTDOWN" || roomState.phase === "PLAYING") return;
   cbs.unlockAudio(); // Synchronously unlock Web Audio on user gesture before countdown setTimeout!
   const chart = getCurrentChartPayload();
   roomState.chart = chart;
@@ -1506,6 +1507,7 @@ function hostStartRound() {
 
 function hostNextScore() {
   if (!roomState.joined || !roomState.isHost) return;
+  if (roomState.phase === "COUNTDOWN" || roomState.phase === "PLAYING") return;
   clearRoundTimers();
   cbs.newPhrase();
   roomState.phase = "LOBBY";
@@ -1525,6 +1527,7 @@ function hostForcePodium() {
 
 function hostAddBot() {
   if (!roomState.joined || !roomState.isHost) return;
+  if (roomState.phase === "COUNTDOWN" || roomState.phase === "PLAYING") return;
   if (roomState.bots.length >= 3) {
     // Cycle: remove all bots when already at 3 so user can toggle cleanly
     for (const id of roomState.bots) roomState.players.delete(id);
@@ -1601,29 +1604,39 @@ export function renderRoomUi() {
   const hostCtrls = document.getElementById("roomHostControls");
   hostCtrls.classList.toggle("hidden", !roomState.isHost);
 
+  const liveLocked = roomState.phase === "COUNTDOWN" || roomState.phase === "PLAYING";
+
   const ruleSel = document.getElementById("roomRuleSelect");
-  if (ruleSel) ruleSel.value = roomState.rule;
+  if (ruleSel) {
+    ruleSel.value = roomState.rule;
+    ruleSel.disabled = liveLocked;
+  }
 
   const botBtn = document.getElementById("btnRoomAddBot");
   if (botBtn) {
     const canAddBot = roomState.bots.length >= 3 || roomState.players.size < MAX_ROOM_PLAYERS;
-    botBtn.disabled = !canAddBot;
+    botBtn.disabled = liveLocked || !canAddBot;
     botBtn.textContent = roomState.bots.length >= 3
       ? t("roomClearBots")
       : t("roomAddBot", roomState.bots.length);
   }
 
+  const newScoreBtn = document.getElementById("btnRoomNewScore");
+  if (newScoreBtn) {
+    newScoreBtn.disabled = liveLocked;
+  }
+
   const startBtn = document.getElementById("btnRoomStart");
   if (startBtn) {
-    startBtn.disabled = roomState.phase === "COUNTDOWN";
+    startBtn.disabled = liveLocked;
     startBtn.textContent = roomState.phase === "PODIUM"
       ? t("roomRematch")
-      : (roomState.phase === "PLAYING" ? t("roomRestart") : t("roomStartRound"));
+      : (liveLocked ? t("roomPhasePlaying") : t("roomStartRound"));
   }
 
   const endNowBtn = document.getElementById("btnRoomEndNow");
   if (endNowBtn) {
-    endNowBtn.classList.toggle("hidden", roomState.phase !== "PLAYING");
+    endNowBtn.classList.add("hidden");
   }
 
   const chartLabel = (roomState.chart && roomState.chart.label) || getCurrentChartPayload().label;
@@ -1837,7 +1850,10 @@ export function initRoom(callbacks) {
 
   document.getElementById("roomRuleSelect").addEventListener("change", (e) => {
     e.target.blur();
-    if (!roomState.isHost) return;
+    if (!roomState.isHost || roomState.phase === "COUNTDOWN" || roomState.phase === "PLAYING") {
+      e.target.value = roomState.rule;
+      return;
+    }
     const v = e.target.value;
     roomState.rule = (v === "sd3" || v === "endless") ? v : "score";
     roomState.applyingRemoteChart = true;

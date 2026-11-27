@@ -48,7 +48,7 @@ import {
   refreshRoomAudioBanner, tryStartRoomRoundFromMain, notifyRoomStopped,
   notifyRoomChartChanged, notifyRoomLiveProgress, notifyRoomFinish,
   notifyRoomEndlessProgress, notifyRoomEndlessOut,
-} from "./room.js?v=20261127ac";
+} from "./room.js?v=20261127ad";
 import {
   endlessState, isSdEndless, initEndless, setEndlessMode, setEndlessStreamSeed, syncEndlessLanguage, renderEndlessHud,
   buildEndlessPreviewPhrase, startEndlessAudioAndState, stepEndlessFrame,
@@ -436,23 +436,24 @@ function syncTransportButtons() {
   const btnDemo = document.getElementById("btnDemo");
 
   if (btnStart) {
-    btnStart.disabled = guestInRoom;
-    btnStart.title = guestInRoom ? t("roomHostOnlyStart") : "Enter";
+    btnStart.disabled = guestInRoom || roomBusy;
+    btnStart.title = roomBusy ? t("roomLockedPlaying") : (guestInRoom ? t("roomHostOnlyStart") : "Enter");
   }
   if (btnDockStart) {
-    btnDockStart.disabled = guestInRoom;
-    btnDockStart.title = guestInRoom ? t("roomHostOnlyStart") : "Enter";
+    btnDockStart.disabled = guestInRoom || roomBusy;
+    btnDockStart.title = roomBusy ? t("roomLockedPlaying") : (guestInRoom ? t("roomHostOnlyStart") : "Enter");
   }
   if (btnNew) {
     btnNew.disabled = guestInRoom || roomBusy;
-    btnNew.title = guestInRoom ? t("roomHostOnlyStart") : "n";
+    btnNew.title = roomBusy ? t("roomLockedPlaying") : (guestInRoom ? t("roomHostOnlyStart") : "n");
   }
   if (btnDockNew) {
     btnDockNew.disabled = guestInRoom || roomBusy;
   }
-  const canStop = (running || isRoomCountingDown()) && !guestInRoom;
+  const canStop = running && !roomBusy && !guestInRoom;
   btnStop.disabled = !canStop;
   btnStop.classList.toggle("danger", canStop);
+  btnStop.title = roomBusy ? t("roomLockedPlaying") : "Esc";
   if (btnDockStop) {
     btnDockStop.disabled = !canStop;
     btnDockStop.classList.toggle("danger", canStop);
@@ -1722,6 +1723,10 @@ function handleMainStartAction() {
   startRun(false);
 }
 function handleMainStopAction() {
+  if (isRoomPlaying()) {
+    setHitBadge(t("roomLockedPlaying"), "warn");
+    return;
+  }
   if (isRoomGuest()) {
     setHitBadge(t("roomHostOnlyStart"), "warn");
     return;
