@@ -2063,6 +2063,9 @@ button.active .tools-badge {
   gap: 10px;
   align-items: stretch;
 }
+.room-split.chat-muted {
+  grid-template-columns: 1fr;
+}
 @media (max-width: 780px) {
   .room-split {
     grid-template-columns: 1fr;
@@ -2084,8 +2087,47 @@ button.active .tools-badge {
   border-radius: 10px;
   background: #f8fafc;
   overflow: hidden;
-  min-height: 150px;
+  min-height: 155px;
   max-height: 220px;
+}
+
+.room-chat-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 5px 9px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #ffffff;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.room-unblock-btn {
+  padding: 2px 7px;
+  font-size: 10.5px;
+  border-radius: 999px;
+  background: #fef2f2;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
+.chat-block-btn {
+  margin-left: 5px;
+  padding: 0 4px;
+  font-size: 10px;
+  line-height: 1.3;
+  border-radius: 4px;
+  background: transparent;
+  border-color: transparent;
+  color: #9ca3af;
+  opacity: 0.55;
+}
+.room-chat-msg:hover .chat-block-btn {
+  opacity: 1;
+  color: #dc2626;
+  background: #fee2e2;
 }
 
 .room-chat-log {

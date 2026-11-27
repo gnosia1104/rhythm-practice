@@ -47,7 +47,7 @@ import {
   initRoom, syncRoomLanguage, isRoomPlaying, isRoomCountingDown, getRoomCountdownText,
   tryStartRoomRoundFromMain, notifyRoomStopped,
   notifyRoomChartChanged, notifyRoomLiveProgress, notifyRoomFinish,
-} from "./room.js?v=20261127i";
+} from "./room.js?v=20261127j";
 
 function resetTargets() {
   const ts = getTimeSig(app.phrase ? app.phrase.timeSig : app.timeSig);

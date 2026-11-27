@@ -60,7 +60,7 @@
   "description": "Free browser-based rhythm & pitch sight-reading trainer for musicians featuring 6 progressive levels, 5 time signatures, triplets, staccato, ghost notes, gap click metronome, custom score editor, daily challenges, and audio interface onset/sustain/rest grading."
 }
 </script>
-<link rel="stylesheet" href="css/styles.css?v=20261127i" />
+<link rel="stylesheet" href="css/styles.css?v=20261127j" />
 <script defer src="https://cloud.umami.is/script.js" data-website-id="9070201e-fd1f-4081-ad26-1219def68ba6" data-domains="gnosia1104.github.io"></script>
 </head>
 <body>
@@ -417,6 +417,7 @@
           <span id="roomCodeBadge" class="room-code-badge">#0000</span>
           <span id="roomModeBadge" class="room-mode-pill local">LOCAL TAB</span>
           <button id="btnRoomCopyLink" type="button">🔗 초대 링크</button>
+          <button id="btnRoomMuteChat" type="button" title="채팅 전체 끄기/켜기">💬 채팅 ON</button>
         </div>
         <div id="roomHostControls" class="group">
           <select id="roomRuleSelect" title="대전 룰 선택">
@@ -434,9 +435,13 @@
       <div id="roomChartSummary" class="room-chart-summary"></div>
       <div id="roomCountdownBanner" class="room-countdown-banner hidden" aria-live="assertive"></div>
       <div id="roomPodium" class="room-podium hidden"></div>
-      <div class="room-split">
+      <div id="roomSplit" class="room-split">
         <div id="roomLeaderboard" class="room-leaderboard"></div>
-        <div class="room-chat">
+        <div id="roomChatPanel" class="room-chat">
+          <div class="room-chat-head">
+            <span id="lblRoomChatTitle">💬 방 채팅</span>
+            <button id="btnRoomUnblockAll" type="button" class="room-unblock-btn hidden">차단 해제 (0)</button>
+          </div>
           <div id="roomChatLog" class="room-chat-log" aria-live="polite"></div>
           <div class="room-chat-bar">
             <div class="room-reacts">
@@ -589,7 +594,7 @@
   </div>
 </div>
 
-<script type="module" src="js/main.js?v=20261127i"></script>
+<script type="module" src="js/main.js?v=20261127j"></script>
 </body>
 </html>
 

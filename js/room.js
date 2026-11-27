@@ -17,6 +17,7 @@ export const SUPABASE_ANON_KEY = "";
 
 const ROOM_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // Excludes confusing I/O/0/1
 const NICK_STORAGE_KEY = "rhythm_room_nick_v1";
+const CHAT_MUTE_STORAGE_KEY = "rhythm_room_chat_muted_v1";
 const HOST_SESSION_PREFIX = "rhythm_room_host_";
 const LAST_ROOM_SESSION_KEY = "rhythm_room_last_v1";
 const BOT_PROFILES = [
@@ -114,6 +115,9 @@ export const roomState = {
   countdownTickTimers: [],
   countdownSec: 0,
   chatLog: [], // { sys, id, name, text }
+  chatMuted: false,
+  blockedIds: new Set(),
+  lastChatBySender: new Map(),
   botTimers: [],
   podiumCheckTimerId: null,
   applyingRemoteChart: false,
@@ -363,20 +367,36 @@ function appendChatMessage({ sys = false, id = "", name = "", text = "" }) {
 function renderChatLog() {
   const logEl = document.getElementById("roomChatLog");
   if (!logEl) return;
-  logEl.innerHTML = roomState.chatLog.map((m) => {
+  const blockTip = escapeHtml(t("roomBlockTip"));
+  const visible = roomState.chatLog.filter((m) => m.sys || !roomState.blockedIds.has(m.id));
+  logEl.innerHTML = visible.map((m) => {
     if (m.sys) {
       return `<div class="room-chat-msg is-sys">${escapeHtml(m.text)}</div>`;
     }
     const isMe = m.id === roomState.clientId;
-    return `<div class="room-chat-msg${isMe ? " is-me" : ""}"><span class="chat-author">${escapeHtml(m.name)}:</span><span>${escapeHtml(m.text)}</span></div>`;
+    const blockBtn = !isMe && m.id
+      ? `<button type="button" class="chat-block-btn" data-block-id="${escapeHtml(m.id)}" data-block-name="${escapeHtml(m.name)}" title="${blockTip}">🚫</button>`
+      : "";
+    return `<div class="room-chat-msg${isMe ? " is-me" : ""}"><span class="chat-author">${escapeHtml(m.name)}:</span><span>${escapeHtml(m.text)}</span>${blockBtn}</div>`;
   }).join("");
   logEl.scrollTop = logEl.scrollHeight;
+
+  const unblockBtn = document.getElementById("btnRoomUnblockAll");
+  if (unblockBtn) {
+    const cnt = roomState.blockedIds.size;
+    unblockBtn.classList.toggle("hidden", cnt === 0);
+    if (cnt > 0) unblockBtn.textContent = t("roomUnblockAll", cnt);
+  }
 }
 
 function sendChatMessage(rawText) {
   if (!roomState.joined) return;
   const clean = String(rawText || "").trim().slice(0, 120);
   if (!clean) return;
+  const now = performance.now();
+  const prev = roomState.lastChatBySender.get(roomState.clientId) || 0;
+  if (now - prev < 500) return;
+  roomState.lastChatBySender.set(roomState.clientId, now);
   appendChatMessage({ sys: false, id: roomState.clientId, name: roomState.name, text: clean });
   sendMsg({
     type: "chat",
@@ -384,6 +404,18 @@ function sendChatMessage(rawText) {
     name: roomState.name,
     text: clean,
   });
+}
+
+function syncChatMuteUi() {
+  const btn = document.getElementById("btnRoomMuteChat");
+  const panel = document.getElementById("roomChatPanel");
+  const split = document.getElementById("roomSplit");
+  if (btn) {
+    btn.textContent = roomState.chatMuted ? t("roomChatOffBtn") : t("roomChatOnBtn");
+    btn.classList.toggle("danger", roomState.chatMuted);
+  }
+  if (panel) panel.classList.toggle("hidden", roomState.chatMuted);
+  if (split) split.classList.toggle("chat-muted", roomState.chatMuted);
 }
 
 // =========================================================================
@@ -474,6 +506,11 @@ function handleIncomingMessage(msg) {
   }
 
   if (msg.type === "chat") {
+    if (roomState.chatMuted || roomState.blockedIds.has(msg.id)) return;
+    const now = performance.now();
+    const prev = roomState.lastChatBySender.get(msg.id) || 0;
+    if (now - prev < 500) return; // basic per-sender flood protection
+    roomState.lastChatBySender.set(msg.id, now);
     appendChatMessage({ sys: false, id: msg.id, name: msg.name || "Player", text: msg.text });
     return;
   }
@@ -1296,6 +1333,9 @@ export function syncRoomLanguage() {
   setTxt("btnRoomNewScore", "roomNextScore");
   setTxt("btnRoomEndNow", "roomEndNow");
   setTxt("btnRoomChatSend", "roomChatSend");
+  setTxt("lblRoomChatTitle", "roomChatTitle");
+  syncChatMuteUi();
+  renderChatLog();
 
   const nickIn = document.getElementById("roomNickInput");
   if (nickIn) nickIn.placeholder = t("roomNickPlaceholder");
@@ -1337,6 +1377,7 @@ export function initRoom(callbacks) {
   try {
     const savedNick = localStorage.getItem(NICK_STORAGE_KEY);
     if (savedNick && nickIn) nickIn.value = savedNick;
+    roomState.chatMuted = localStorage.getItem(CHAT_MUTE_STORAGE_KEY) === "1";
   } catch (_) {}
 
   document.getElementById("btnRoom").addEventListener("click", (e) => {
@@ -1431,6 +1472,31 @@ export function initRoom(callbacks) {
       }
     });
   }
+  document.getElementById("btnRoomMuteChat").addEventListener("click", (e) => {
+    e.currentTarget.blur();
+    roomState.chatMuted = !roomState.chatMuted;
+    try { localStorage.setItem(CHAT_MUTE_STORAGE_KEY, roomState.chatMuted ? "1" : "0"); } catch (_) {}
+    syncChatMuteUi();
+  });
+
+  document.getElementById("roomChatLog").addEventListener("click", (e) => {
+    const btn = e.target.closest(".chat-block-btn");
+    if (!btn) return;
+    const bid = btn.dataset.blockId;
+    const bname = btn.dataset.blockName || "User";
+    if (!bid) return;
+    roomState.blockedIds.add(bid);
+    appendChatMessage({ sys: true, text: t("roomSysBlocked", bname) });
+    renderChatLog();
+  });
+
+  document.getElementById("btnRoomUnblockAll").addEventListener("click", (e) => {
+    e.currentTarget.blur();
+    roomState.blockedIds.clear();
+    appendChatMessage({ sys: true, text: t("roomSysUnblocked") });
+    renderChatLog();
+  });
+
   document.querySelectorAll(".room-react-btn").forEach((btn) => {
     btn.addEventListener("click", (e) => {
       e.currentTarget.blur();
