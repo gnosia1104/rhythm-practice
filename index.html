@@ -60,7 +60,7 @@
   "description": "Free browser-based rhythm & pitch sight-reading trainer for musicians featuring 6 progressive levels, 5 time signatures, triplets, staccato, ghost notes, gap click metronome, custom score editor, daily challenges, and audio interface onset/sustain/rest grading."
 }
 </script>
-<link rel="stylesheet" href="css/styles.css?v=20261127ah" />
+<link rel="stylesheet" href="css/styles.css?v=20261128a" />
 <script defer src="https://cloud.umami.is/script.js" data-website-id="9070201e-fd1f-4081-ad26-1219def68ba6" data-domains="gnosia1104.github.io"></script>
 </head>
 <body>
@@ -186,6 +186,7 @@
             <button id="btnPitchBeta" type="button" role="menuitem" title="재즈 플랫 키 5선보 음정 초견 베타 (오디오 피치 판정 지원)"><span id="btnPitchText">🎼 음정 초견</span><span class="beta-tag">BETA</span></button>
             <button id="btnAchievements" type="button" role="menuitem" title="달성 과제 · 칭호 · 기록 JSON 백업/복원"><span id="btnAchText">🏅 도전과제</span><span id="achCountBadge" class="tools-badge">0/12</span></button>
             <button id="btnLeaderboard" type="button" role="menuitem" title="오늘의 데일리 · 데일리+ · 엔드리스 글로벌 랭킹"><span id="btnLbText">🏆 리더보드</span><span class="beta-tag">TOP 20</span></button>
+            <button id="btnDiagnostics" type="button" role="menuitem" title="박 위치별 러시·드래그, BPM별 정확도, 쉼표 실패율 로컬 분석 및 약점 드릴"><span id="btnDiagText">📊 연주 분석</span><span class="beta-tag">BETA</span></button>
             <div class="tools-sep"></div>
             <div id="lblToolsSecUtil" class="tools-sec-lbl">보정 · 출력</div>
             <button id="btnSyncCal" type="button" role="menuitem" title="타이밍 지연 보정 (블루투스 이어폰 / 오디오 인터페이스)">⏱ 보정</button>
@@ -556,6 +557,39 @@
     <span id="lbMsg" class="lb-msg"></span>
   </div>
 
+  <!-- Personal Performance Analytics & Local Diagnostics Drawer (BETA) -->
+  <div id="diagBar" class="diag-bar hidden">
+    <div class="diag-head">
+      <div class="group">
+        <strong id="lblDiagTitle">📊 개인 연주 애널리틱스</strong>
+        <span class="beta-tag">BETA</span>
+        <span id="diagSummaryStats" class="diag-summary">누적 0회 · 0노트</span>
+      </div>
+      <div class="group">
+        <button id="btnDiagReset" type="button" title="로컬 분석 데이터 초기화">초기화</button>
+        <button id="btnDiagClose" type="button" class="cal-close" title="닫기">✕</button>
+      </div>
+    </div>
+    <div id="diagWeaknessBox" class="diag-weakness">
+      <span id="diagWeaknessText">최소 5노트 이상 연주하면 취약 패턴 분석과 맞춤 드릴이 표시됩니다.</span>
+      <button id="btnDiagFocusDrill" type="button" class="primary hidden">🎯 약점 집중 드릴 생성</button>
+    </div>
+    <div class="diag-cards">
+      <div class="diag-card">
+        <div id="lblDiagSubHead" class="diag-card-title">박 위치별 정확도 · 러시/드래그</div>
+        <div id="diagSubGrid" class="diag-grid"></div>
+      </div>
+      <div class="diag-card">
+        <div id="lblDiagBpmHead" class="diag-card-title">BPM 구간별 정확도 · 쉼표 실패율</div>
+        <div id="diagBpmGrid" class="diag-grid"></div>
+      </div>
+      <div class="diag-card">
+        <div id="lblDiagTrendHead" class="diag-card-title">최근 20회 정확도 · 타이밍 SD 추이</div>
+        <div id="diagTrendBox" class="diag-trend-box"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- PDF-Style Vector Sheet Music -->
   <div class="sheet-paper">
     <div class="sheet-header">
@@ -699,7 +733,7 @@
 <!-- Steam-Style Achievement Unlock Toast Stack -->
 <div id="achToastStack" class="ach-toast-stack" aria-live="polite"></div>
 
-<script type="module" src="js/main.js?v=20261127ag"></script>
+<script type="module" src="js/main.js?v=20261128a"></script>
 </body>
 </html>
 

@@ -69,6 +69,9 @@ import {
   initJuice, syncJuiceUi, resetJuiceCombo, onJuiceHit, onJuiceMiss, onJuiceExtraHit,
   animateScoreRollup, celebrateRankReveal,
 } from "./juice.js";
+import {
+  initDiagnostics, syncDiagnosticsLanguage, recordDiagnosticsRun,
+} from "./diagnostics.js";
 
 function resetTargets() {
   const ts = getTimeSig(app.phrase ? app.phrase.timeSig : app.timeSig);
@@ -811,6 +814,14 @@ function finalizeRun() {
     restCount: (app.phrase.rests || []).length,
     restErrs,
   });
+  recordDiagnosticsRun({
+    phrase: app.phrase,
+    bpm: app.bpm,
+    level: app.level,
+    acc,
+    sd,
+    mean,
+  });
   if (app.dailyDate && !isRoomPlaying()) {
     recordLeaderboardRun({
       tab: app.dailyPlus ? "dailyplus" : "daily",
@@ -1434,6 +1445,7 @@ function applyLanguage(lang) {
   syncEndlessLanguage();
   syncAchievementsLanguage();
   syncLeaderboardLanguage();
+  syncDiagnosticsLanguage();
   updateMeta();
   app.dirtyScore = true;
 }
@@ -2864,6 +2876,7 @@ function syncAllDropdownBadges() {
     !document.getElementById("pitchBar").classList.contains("hidden") ||
     !document.getElementById("achBar").classList.contains("hidden") ||
     !document.getElementById("lbBar").classList.contains("hidden") ||
+    !document.getElementById("diagBar").classList.contains("hidden") ||
     !document.getElementById("calBar").classList.contains("hidden");
   const toolsDropOpen = !document.getElementById("toolsDropdown").classList.contains("hidden");
   document.getElementById("btnToolsMenu").classList.toggle("active", toolsDropOpen || anyDrill || anyPanelOpen);
@@ -3141,6 +3154,21 @@ initLeaderboard({
 });
 initJuice({
   updateMeta,
+});
+initDiagnostics({
+  onUiChange: () => syncToolsMenuBadge(),
+  onApplyWeaknessDrill: (weak) => {
+    if (isRoomPlaying() || isRoomGuest()) return;
+    if (app.endlessMode) setEndlessMode(false);
+    app.dailyDate = null;
+    app.dailyPlus = false;
+    app.customMode = false;
+    app.level = Math.max(1, Math.min(6, weak.drill.level || app.level));
+    app.tripletMode = weak.drill.tripletMode || 0;
+    newPhrase();
+    setHitBadge(t("diagDrillApplied", weak.label, app.level), "tight");
+  },
+  setHitBadge,
 });
 const btnOpenLbFromRes = document.getElementById("btnOpenLbFromResult");
 if (btnOpenLbFromRes) {
