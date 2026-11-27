@@ -1,38 +1,32 @@
-// Main Application Entry Point — Playback, Grading, Drills, Controls & Boot
+// Main Application Entry Point — Playback, Grading, Controls & Boot
 import { I18N, getCurLang, setCurLang, t } from "./i18n.js";
 import {
-  TIME_SIG_OPTIONS, TIME_SIGS, BAR_OPTIONS, LEVEL_TITLES, PRE_DELAY_SEC,
-  decodeFullSeedCode, getTodayDateStr, getDailyChallengeSpec, getDailyStreak, saveDailyBest, generatePhrase,
+  TIME_SIGS, LEVEL_TITLES, PRE_DELAY_SEC,
+  decodeFullSeedCode, getDailyChallengeSpec, getDailyStreak, saveDailyBest, generatePhrase,
 } from "./rhythm.js";
 import {
-  IS_MOBILE, app, audioIn, edState, calState, tourState,
+  app, audioIn, edState, calState, tourState,
   getTimeSig, tripletsAllowed, isGapBar, hitWindowSec, currentFullSeedCode, deriveInputMode,
 } from "./state.js";
 import {
-  formatPlayMods, formatPlayModsCompact, computeChartMaxInfo,
+  formatPlayMods, computeChartMaxInfo,
   getTimingThresholds, computeDetailedScore, computeScoreRank,
 } from "./scoring.js";
-import { el, renderScore } from "./engraver.js?v=20261127o";
+import { renderScore } from "./engraver.js?v=20261127o";
 import {
-  getAudioCtx, isAudioCtxRunning, onAudioStateChange, setClickMasterGainVol, ensureAudioCtx, ensureAudioCtxReady,
-  stopScheduledAudio, scheduleClick, scheduleBassNote, scheduleRunAudio,
+  getAudioCtx, isAudioCtxRunning, onAudioStateChange, ensureAudioCtx, ensureAudioCtxReady,
+  stopScheduledAudio, scheduleClick, scheduleRunAudio,
 } from "./audio-out.js";
 import {
   registerAudioInCallbacks, populateAudioDevices, populateChannelSelect, startAudioInput, stopAudioInput,
   closeSustainTarget, schedulePitchCheck,
 } from "./audio-in.js";
-import {
-  JAZZ_KEYS, FLAT_PC_NAMES, DEGREE_NAMES, getRelativeDegreeName, midiToFreq,
-  assignPitchesToPhrase, clearPitchesFromPhrase,
-} from "./pitch-gen.js";
+import { JAZZ_KEYS, getRelativeDegreeName } from "./pitch-gen.js";
 import { comparePitchClass } from "./pitch-detect.js";
 import {
   midiIn, registerMidiCallbacks, startMidiInput, stopMidiInput,
 } from "./midi-in.js";
-import {
-  clearShareQueryUrl, buildShareUrl, copyToClipboard, flashBtnText,
-  buildResultCardText, renderScoreCardPngBlob,
-} from "./share-card.js";
+import { clearShareQueryUrl, buildShareUrl } from "./share-card.js";
 import {
   makeDefaultBar, applyCustomToApp, renderEditorUi, toggleEditorBar, applyFullSeedObj, applySeedQueryParams,
   loadCustomFromInput, initEditor,
@@ -41,7 +35,7 @@ import {
   hasSeenTour, renderTourStep, openTour, closeTour, nextTourStep, prevTourStep, initTour,
 } from "./tour.js";
 import {
-  trackPracticeStart, trackPracticeComplete, trackPracticeStop, trackShare, trackRefVisit,
+  trackPracticeStart, trackPracticeComplete, trackPracticeStop, trackRefVisit,
 } from "./analytics.js";
 import {
   initRoom, syncRoomLanguage, isRoomActive, isRoomGuest, isRoomSuddenDeath, isRoomPlaying, isRoomCountingDown, getRoomCountdownText,
@@ -72,6 +66,22 @@ import {
 import {
   initDiagnostics, syncDiagnosticsLanguage, recordDiagnosticsRun,
 } from "./diagnostics.js";
+import {
+  cancelRushTimer, saveRushBest, clearFadeOutClasses, syncDrillUi, initDrills,
+} from "./drills.js";
+import {
+  stopCalibration, recordCalibrationTap, finishCalibration, syncLatency, syncKeyLatency, initCalibration,
+} from "./calibration.js";
+import {
+  PITCH_KEY_MAP, PITCH_TOP_ROW_SWALLOW,
+  applyPitchToCurrentPhrase, getActivePitchKeyId, findNextPitchFreeIdx,
+  handlePitchFreeStep, triggerPitchPianoKey, handleMidiNoteOn, syncPitchUi, initPitchUi,
+} from "./pitch-ui.js";
+import { drawDistribution, renderLog, initResultsUi } from "./results-ui.js";
+import {
+  syncAllDropdownBadges, syncToolsMenuBadge, syncClickVol, syncGuideUi, initToolbarMenus,
+} from "./toolbar-menus.js";
+import { initKeyboard } from "./keyboard.js";
 
 function resetTargets() {
   const ts = getTimeSig(app.phrase ? app.phrase.timeSig : app.timeSig);
@@ -133,53 +143,6 @@ function resetTargets() {
   resetJuiceCombo();
 }
 
-
-function cancelRushTimer(resetRound = false) {
-  if (app.rushTimerId) {
-    window.clearTimeout(app.rushTimerId);
-    app.rushTimerId = null;
-  }
-  if (resetRound) app.rushRound = 0;
-}
-
-function loadRushBest() {
-  try {
-    const raw = localStorage.getItem("rhythm_practice_rush_best");
-    if (raw) {
-      const p = JSON.parse(raw);
-      if (p && Number.isFinite(p.peakBpm)) return { peakBpm: p.peakBpm, rounds: p.rounds || 0 };
-    }
-  } catch (_) {}
-  return null;
-}
-
-function saveRushBest(bpm, rounds) {
-  const prev = loadRushBest();
-  const next = {
-    peakBpm: prev ? Math.max(prev.peakBpm, bpm) : bpm,
-    rounds: prev ? Math.max(prev.rounds, rounds) : rounds,
-  };
-  try { localStorage.setItem("rhythm_practice_rush_best", JSON.stringify(next)); } catch (_) {}
-  syncDrillUi();
-  return next;
-}
-
-function clearFadeOutClasses() {
-  document.querySelectorAll("#scoreSvg .beat-fade.faded").forEach(n => n.classList.remove("faded"));
-}
-
-function applyPitchToCurrentPhrase(rebuildRhythm = false) {
-  if (!app.phrase) return;
-  if (rebuildRhythm && !app.customMode && !app.dailyDate) {
-    app.phrase = generatePhrase(app.numBars, app.level, app.tripletMode, app.timeSig, app.phrase.seed, app.staccatoOn, app.ghostOn, app.pitchMode);
-  }
-  if (app.pitchMode) {
-    assignPitchesToPhrase(app.phrase, app.pitchKey, app.pitchProg, app.pitchClef);
-  } else {
-    clearPitchesFromPhrase(app.phrase);
-  }
-  app.dirtyScore = true;
-}
 
 function abortActiveRunTracking(reason = "stop") {
   if (!app.runTrackOpen) return;
@@ -306,128 +269,6 @@ function stopRun(fromRoom = false) {
   }
   app.state = "READY";
   setHitBadge(t("badgeStopped"), "");
-  syncTransportButtons();
-}
-
-// Optional 16-beat tap/pluck latency calibration (4 warm-up + 12 measured)
-
-function resetCalDots() {
-  const dots = document.querySelectorAll("#calDots .cal-dot");
-  dots.forEach((d, i) => {
-    d.className = i < calState.warmupClicks ? "cal-dot warmup" : "cal-dot";
-  });
-}
-
-async function startCalibration() {
-  abortActiveRunTracking("cal");
-  const seq = ++app.runSeq;
-  ensureAudioCtx(); // Synchronously unlock/resume inside user tap gesture on mobile
-  stopScheduledAudio();
-  app.state = "READY";
-  resetTargets();
-  const ctx = await ensureAudioCtxReady();
-  if (seq !== app.runSeq) return;
-  calState.startAudioT = ctx.currentTime + 0.45;
-  calState.taps = [];
-  calState.captured = {};
-  resetCalDots();
-  app.state = "CAL";
-  setHitBadge(t("calBadgeRunning"), "");
-  document.getElementById("btnCalRun").textContent = t("calStopBtn");
-  document.getElementById("btnCalRun").classList.remove("primary");
-  document.getElementById("btnCalRun").classList.add("danger");
-  const msgEl = document.getElementById("calMsg");
-  msgEl.style.color = "var(--accent)";
-  msgEl.textContent = t("calRunningMsg");
-  syncTransportButtons();
-  for (let c = 0; c < calState.totalClicks; c++) {
-    const isAcc = c % 4 === 0;
-    scheduleClick(ctx, calState.startAudioT + c * calState.beatSec, isAcc ? 1318.51 : 880.0, isAcc ? 0.32 : 0.22);
-  }
-}
-
-function stopCalibration(resetBadge = true) {
-  if (app.state !== "CAL") return;
-  stopScheduledAudio();
-  app.state = "READY";
-  const btn = document.getElementById("btnCalRun");
-  btn.textContent = t("calStartBtn");
-  btn.classList.remove("danger");
-  btn.classList.add("primary");
-  resetCalDots();
-  if (resetBadge) {
-    setHitBadge(t("badgeStopped"), "");
-    const msgEl = document.getElementById("calMsg");
-    msgEl.style.color = "var(--muted)";
-    msgEl.textContent = t("calIdleMsg");
-  }
-  syncTransportButtons();
-}
-
-function recordCalibrationTap(rawAudioT, source) {
-  if (app.state !== "CAL") return;
-  const elapsed = rawAudioT - calState.startAudioT;
-  const idx = Math.round(elapsed / calState.beatSec);
-  if (idx < 0 || idx >= calState.totalClicks) return;
-  const deltaMs = (elapsed - idx * calState.beatSec) * 1000;
-  if (Math.abs(deltaMs) > 320) return;
-
-  const dots = document.querySelectorAll("#calDots .cal-dot");
-  if (idx < calState.warmupClicks) {
-    if (dots[idx]) dots[idx].classList.add("hit");
-    return;
-  }
-  if (calState.captured[idx]) return;
-  calState.captured[idx] = true;
-  calState.taps.push({ idx, deltaMs, source });
-  if (dots[idx]) dots[idx].classList.add("hit");
-  const sign = deltaMs >= 0 ? "+" : "";
-  setHitBadge(`[${source === "AUDIO" ? "AUD" : "KEY"}] ${sign}${Math.round(deltaMs)}ms`, "tight");
-
-  if (idx === calState.totalClicks - 1) {
-    finishCalibration();
-  }
-}
-
-function finishCalibration() {
-  stopScheduledAudio();
-  app.state = "READY";
-  const btn = document.getElementById("btnCalRun");
-  btn.textContent = t("calStartBtn");
-  btn.classList.remove("danger");
-  btn.classList.add("primary");
-  const msgEl = document.getElementById("calMsg");
-
-  const n = calState.taps.length;
-  if (n < calState.minTaps) {
-    msgEl.style.color = "var(--red)";
-    msgEl.textContent = t("calTooFew", n);
-    setHitBadge(t("badgeWait"), "");
-    syncTransportButtons();
-    return;
-  }
-
-  const sorted = calState.taps.map(x => x.deltaMs).sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  const med = sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
-  const mad = sorted.reduce((acc, v) => acc + Math.abs(v - med), 0) / sorted.length;
-  const audCount = calState.taps.filter(x => x.source === "AUDIO").length;
-  const useAudio = audCount * 2 >= n;
-  const rounded = Math.round(med);
-
-  if (useAudio) {
-    const applied = Math.max(0, Math.min(300, rounded));
-    syncLatency(applied, true);
-    msgEl.style.color = "var(--green)";
-    msgEl.textContent = t("calApplied", "AUD", applied, n, Math.round(mad));
-    setHitBadge(`AUD +${applied}ms`, "tight");
-  } else {
-    const applied = Math.max(-50, Math.min(300, rounded));
-    syncKeyLatency(applied, true);
-    msgEl.style.color = "var(--green)";
-    msgEl.textContent = t("calApplied", "KEY", applied, n, Math.round(mad));
-    setHitBadge(`KEY ${applied >= 0 ? "+" : ""}${applied}ms`, "tight");
-  }
   syncTransportButtons();
 }
 
@@ -1061,124 +902,6 @@ function finalizeEndlessGameOver(stats) {
   syncTransportButtons();
   app.dirtyScore = true;
 }
-
-function drawDistribution(errs, hits, total, mean, sd, tight, sustainStats = null, extraHits = app.extraHits, distBpm = app.bpm) {
-  const svg = document.getElementById("distSvg");
-  while (svg.firstChild) svg.removeChild(svg.firstChild);
-  const W = 380, cy = 30, pad = 28;
-  const mapX = (ms) => pad + ((Math.max(-150, Math.min(150, ms)) + 150) / 300) * (W - pad * 2);
-  const tw = getTimingThresholds(distBpm);
-
-  // Tight zone (-tw.tight..+tw.tight)
-  svg.appendChild(el("rect", {
-    x: mapX(-tw.tight), y: 12, width: mapX(tw.tight) - mapX(-tw.tight), height: 36,
-    fill: "#dcfce7", rx: 4
-  }));
-  // Axis line & ticks
-  svg.appendChild(el("line", { x1: pad, y1: cy, x2: W - pad, y2: cy, stroke: "#cbd5e1", "stroke-width": 1.5 }));
-  for (const ms of [-150, -80, 0, 80, 150]) {
-    const x = mapX(ms);
-    svg.appendChild(el("line", {
-      x1: x, y1: ms === 0 ? 8 : 22, x2: x, y2: ms === 0 ? 52 : 38,
-      stroke: ms === 0 ? "#16a34a" : "#94a3b8", "stroke-width": ms === 0 ? 2 : 1
-    }));
-    svg.appendChild(el("text", {
-      x, y: 61, "text-anchor": "middle", "font-size": 10, fill: "#64748b",
-      "font-family": "ui-monospace, monospace"
-    }, ms === 0 ? "0" : (ms > 0 ? `+${ms}` : `${ms}`)));
-  }
-  for (const e of errs) {
-    const ae = Math.abs(e);
-    const fill = ae <= tw.tight ? "#16a34a" : (ae <= tw.ok ? "#d97706" : "#dc2626");
-    svg.appendChild(el("circle", { cx: mapX(e), cy, r: 5, fill, opacity: 0.85 }));
-  }
-
-  const summary = document.getElementById("summaryLine");
-  if (total === 0) {
-    summary.textContent = t("summaryIdle");
-  } else if (hits > 0) {
-    const sign = mean >= 0 ? "+" : "";
-    const restErrs = sustainStats ? (sustainStats.restErrs || 0) : 0;
-    summary.textContent = t(
-      "summaryHits",
-      hits, total, ((hits / total) * 100).toFixed(1), tight,
-      sign, mean.toFixed(1), sd.toFixed(1), extraHits,
-      sustainStats, restErrs
-    );
-  } else {
-    const restErrs = sustainStats ? (sustainStats.restErrs || 0) : 0;
-    summary.textContent = t("summaryZero", total, extraHits, restErrs);
-  }
-}
-
-function renderLog() {
-  const box = document.getElementById("logContainer");
-  if (!app.history.length) {
-    box.className = "log-empty";
-    box.textContent = t("logEmpty");
-    return;
-  }
-  box.className = "";
-  const rows = app.history.map((h, idx) => {
-    const mStr = h.hits ? `${h.mean >= 0 ? "+" : ""}${h.mean.toFixed(1)}ms` : "—";
-    const sStr = h.hits ? `${h.sd.toFixed(1)}ms` : "—";
-    const susStr = h.susTotal ? `${Math.round((h.susOk / h.susTotal) * 100)}%` : "—";
-    const tTag = h.tripletMode === 2 ? "T2" : (h.tripletMode === 1 ? "T1" : (h.triplets ? "T" : ""));
-    const lvFlags = `${tTag}${h.staccato ? "S" : ""}${h.ghost ? "G" : ""}`;
-    const barsTag = h.bars ? `${h.bars}B` : "";
-    const modePrefix = h.endless ? "♾️" : (h.custom ? "✏️" : (h.dailyPlus ? "🔥" : (h.daily ? "🏆" : "")));
-    const lvCore = h.custom ? "Custom" : `Lv${h.lv}${lvFlags}`;
-    const lvLabel = `${modePrefix}${modePrefix ? " " : ""}${lvCore} · ${h.ts || "4/4"}${barsTag ? ` · ${barsTag}` : ""}`;
-    const canReplay = Boolean(h.daily || h.dailyPlus || (h.fullSeed && (h.fullSeed.startsWith("C1_") || decodeFullSeedCode(h.fullSeed))));
-    const replayHint = canReplay ? " · Click to replay" : "";
-    const lvTip = `${h.fullSeed ? `#${h.fullSeed} · ` : ""}${lvCore} (${h.ts || "4/4"}${barsTag ? ` ${barsTag}` : ""})${replayHint}`;
-    const modStr = formatPlayModsCompact(h);
-    const metroTxt = (h.gapClick && h.gapClick !== "OFF") ? `Gap ${h.gapClick}` : (h.soundOn === false ? "OFF" : "ON");
-    const modTip = `Input:${h.mode || "KEY"} | Metro:${metroTxt} | Beats:${h.showBeatNums ? "ON" : "OFF"} | Cursor:${h.showCursor ? "ON" : "OFF"} | Grade:${h.blindGrade ? "End" : "Live"} | Fade:${h.fadeBeats ? `${h.fadeBeats}b` : "OFF"} | Rush:${h.rushOn ? "ON" : "OFF"}`;
-    const rk = h.rank
-      ? { grade: h.rank, cls: h.rankCls || "rank-b" }
-      : computeScoreRank({ hits: h.hits, total: h.total, tight: h.tight, extra: h.extra || 0, sustainStats: { total: h.susTotal || 0, ok: h.susOk || 0, restErrs: h.restErrs || 0 } });
-    const extStr = (h.restErrs && h.restErrs > 0) ? `${h.extra}/${h.restErrs}r` : `${h.extra}`;
-    const scoreCell = Number.isFinite(h.score)
-      ? `<td class="log-score" title="${h.score.toLocaleString()} / ${(h.maxScore || 0).toLocaleString()} pts">${h.score.toLocaleString()}</td>`
-      : `<td class="log-score">—</td>`;
-    return `<tr>
-      <td>#${h.take}</td>
-      <td><span class="log-rank ${rk.cls}">${rk.grade}</span></td>
-      ${scoreCell}
-      <td class="log-lv${canReplay ? " replayable" : ""}"${canReplay ? ` data-replay-idx="${idx}"` : ""} title="${lvTip}">${lvLabel}</td>
-      <td>${h.bpm}</td>
-      <td title="${modTip}">${modStr}</td>
-      <td><strong>${h.hits}/${h.total}</strong> (${h.acc.toFixed(0)}%)</td>
-      <td>${h.tight}</td>
-      <td>${susStr}</td>
-      <td>${mStr}</td>
-      <td>${sStr}</td>
-      <td>${extStr}</td>
-    </tr>`;
-  }).join("");
-  box.innerHTML = `<table class="log-table">
-    <thead><tr><th>#</th><th>Rank</th><th>Score</th><th>Lv</th><th>BPM</th><th>Opt</th><th>Hit</th><th>Tight</th><th>Sus</th><th>Mean</th><th>SD</th><th>Ext</th></tr></thead>
-    <tbody>${rows}</tbody>
-  </table>`;
-}
-
-document.getElementById("logContainer").addEventListener("click", (e) => {
-  const cell = e.target.closest("[data-replay-idx]");
-  if (!cell) return;
-  const h = app.history[Number(cell.dataset.replayIdx)];
-  if (!h) return;
-  if (h.daily || h.dailyPlus) {
-    loadDailyChallenge(h.dailyDate || null, Boolean(h.dailyPlus));
-  } else if (h.fullSeed && h.fullSeed.startsWith("C1_")) {
-    if (Number.isFinite(Number(h.bpm))) app.bpm = Math.max(40, Math.min(180, Math.round(Number(h.bpm))));
-    loadCustomFromInput(h.fullSeed);
-  } else if (h.fullSeed) {
-    const cfg = decodeFullSeedCode(h.fullSeed);
-    if (cfg) applyFullSeedObj(cfg);
-  }
-  document.querySelector(".sheet-paper").scrollIntoView({ behavior: "smooth", block: "nearest" });
-});
 
 function updateMeta() {
   app.inputMode = deriveInputMode();
@@ -1924,23 +1647,6 @@ if (btnFooterToggle && footerDetails) {
   });
 }
 
-const guideCard = document.getElementById("guideCard");
-const btnGuide = document.getElementById("btnGuide");
-const guideToggleHint = document.getElementById("guideToggleHint");
-function syncGuideUi() {
-  const opened = guideCard.open;
-  btnGuide.classList.toggle("active", opened);
-  guideToggleHint.textContent = opened ? t("guideClose") : t("guideOpen");
-}
-guideCard.addEventListener("toggle", syncGuideUi);
-btnGuide.addEventListener("click", () => {
-  guideCard.open = !guideCard.open;
-  syncGuideUi();
-  if (guideCard.open) {
-    guideCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  }
-});
-
 document.getElementById("langSelect").addEventListener("change", (e) => {
   applyLanguage(e.target.value);
   e.target.blur();
@@ -2074,207 +1780,8 @@ function syncThreshold(pct) {
 }
 thrSlider.addEventListener("input", e => syncThreshold(Number(e.target.value)));
 
-const latSlider = document.getElementById("latSlider");
-const latVal = document.getElementById("latVal");
-const calAudLatSlider = document.getElementById("calAudLatSlider");
-const calAudLatVal = document.getElementById("calAudLatVal");
-const keyLatSlider = document.getElementById("keyLatSlider");
-const keyLatVal = document.getElementById("keyLatVal");
-
-function syncLatency(ms, persist = false) {
-  const clamped = Math.max(0, Math.min(300, Math.round(ms)));
-  audioIn.latencyMs = clamped;
-  latSlider.value = String(clamped);
-  latVal.textContent = `${clamped}ms`;
-  calAudLatSlider.value = String(clamped);
-  calAudLatVal.textContent = `${clamped}ms`;
-  if (persist) {
-    try { localStorage.setItem("rhythm_practice_aud_lat", String(clamped)); } catch (_) {}
-  }
-}
-function syncKeyLatency(ms, persist = false) {
-  const clamped = Math.max(-50, Math.min(300, Math.round(ms)));
-  app.keyLatencyMs = clamped;
-  keyLatSlider.value = String(clamped);
-  keyLatVal.textContent = `${clamped > 0 ? "+" : ""}${clamped}ms`;
-  if (persist) {
-    try { localStorage.setItem("rhythm_practice_key_lat", String(clamped)); } catch (_) {}
-  }
-}
-latSlider.addEventListener("input", e => syncLatency(Number(e.target.value), true));
-calAudLatSlider.addEventListener("input", e => syncLatency(Number(e.target.value), true));
-keyLatSlider.addEventListener("input", e => syncKeyLatency(Number(e.target.value), true));
-
-const calBar = document.getElementById("calBar");
-const btnSyncCal = document.getElementById("btnSyncCal");
-function toggleCalBar(forceOpen = null) {
-  const open = forceOpen !== null ? forceOpen : calBar.classList.contains("hidden");
-  calBar.classList.toggle("hidden", !open);
-  btnSyncCal.classList.toggle("active", open);
-  if (!open && app.state === "CAL") stopCalibration(true);
-}
-btnSyncCal.addEventListener("click", (e) => {
-  e.currentTarget.blur();
-  toggleCalBar();
-});
-document.getElementById("btnCalClose").addEventListener("click", () => toggleCalBar(false));
-document.getElementById("btnCalRun").addEventListener("click", (e) => {
-  e.currentTarget.blur();
-  if (app.state === "CAL") stopCalibration(true);
-  else startCalibration();
-});
-document.getElementById("btnCalReset").addEventListener("click", (e) => {
-  e.currentTarget.blur();
-  syncKeyLatency(0, true);
-  syncLatency(25, true);
-  const msgEl = document.getElementById("calMsg");
-  msgEl.style.color = "var(--muted)";
-  msgEl.textContent = t("calResetMsg");
-});
-
-window.addEventListener("keydown", (e) => {
-  if (e.repeat) return;
-  if (typeof tourState !== "undefined" && tourState.open) {
-    if (e.code === "Escape") {
-      e.preventDefault();
-      closeTour(true);
-    } else if (e.code === "ArrowRight" || e.code === "Enter" || e.code === "NumpadEnter" || e.code === "Space") {
-      e.preventDefault();
-      nextTourStep();
-    } else if (e.code === "ArrowLeft") {
-      e.preventDefault();
-      prevTourStep();
-    }
-    return;
-  }
-  if (e.metaKey || e.ctrlKey || e.altKey) return;
-  if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.tagName === "SELECT")) return;
-
-  // Use physical key code (e.code) so all shortcuts work even when Korean IME is active
-  const code = e.code;
-
-  // In Pitch Sight-Reading BETA, free the entire top 2 rows (1..0 & Q..P) for playable piano/bass input!
-  if (app.pitchMode) {
-    if (PITCH_KEY_MAP.has(code)) {
-      e.preventDefault();
-      triggerPitchPianoKey(PITCH_KEY_MAP.get(code));
-      return;
-    }
-    if (PITCH_TOP_ROW_SWALLOW.has(code)) {
-      e.preventDefault();
-      return;
-    }
-  }
-
-  if (code === "Space" || code === "KeyJ" || code === "KeyK" || code === "KeyF" || code === "KeyD") {
-    e.preventDefault();
-    const hitKind = (code === "KeyF" || code === "KeyD") ? "GHOST" : "NORMAL";
-    if (app.state === "CAL" && getAudioCtx()) {
-      recordCalibrationTap(getAudioCtx().currentTime, "KEY");
-    } else if (app.state === "COUNTIN" || app.state === "PLAY") {
-      if (app.keyOn && getAudioCtx()) {
-        handleHit(getAudioCtx().currentTime - app.keyLatencyMs / 1000, "KEY", hitKind, code);
-      }
-    } else if (app.state === "READY") {
-      if (!isRoomCountingDown()) handleMainStartAction();
-    }
-  } else if (code === "Enter" || code === "NumpadEnter" || code === "KeyA") {
-    e.preventDefault();
-    handleMainStartAction();
-  } else if (code === "Escape") {
-    e.preventDefault();
-    handleMainStopAction();
-  } else if (code === "KeyN") {
-    e.preventDefault();
-    handleMainNewAction();
-  } else if (code === "KeyH") {
-    e.preventDefault();
-    handleMainDemoAction();
-  } else if (code === "Equal" || code === "NumpadAdd" || e.key === "+" || e.key === "=") {
-    e.preventDefault();
-    setBpm(app.bpm + 5);
-  } else if (code === "Minus" || code === "NumpadSubtract" || e.key === "-" || e.key === "_") {
-    e.preventDefault();
-    setBpm(app.bpm - 5);
-  } else if (/^(Digit|Numpad)[1-6]$/.test(code)) {
-    setLevel(Number(code.slice(-1)));
-  } else if (code === "ArrowUp") {
-    e.preventDefault();
-    if (app.level < 6) setLevel(app.level + 1);
-  } else if (code === "ArrowDown") {
-    e.preventDefault();
-    if (app.level > 1) setLevel(app.level - 1);
-  } else if (code === "KeyV") {
-    e.preventDefault();
-    app.showCursor = !app.showCursor;
-    updateMeta();
-  } else if (code === "KeyZ") {
-    e.preventDefault();
-    if (tripletsAllowed()) {
-      app.tripletMode = (app.tripletMode + 1) % 3;
-      newPhrase();
-    }
-  } else if (code === "KeyC") {
-    e.preventDefault();
-    app.staccatoOn = !app.staccatoOn;
-    newPhrase();
-  } else if (code === "KeyX") {
-    e.preventDefault();
-    app.ghostOn = !app.ghostOn;
-    newPhrase();
-  } else if (code === "KeyS") {
-    e.preventDefault();
-    const idx = TIME_SIG_OPTIONS.indexOf(app.timeSig);
-    app.timeSig = TIME_SIG_OPTIONS[(idx + 1) % TIME_SIG_OPTIONS.length];
-    newPhrase();
-  } else if (code === "KeyL") {
-    e.preventDefault();
-    const idx = BAR_OPTIONS.indexOf(app.numBars);
-    app.numBars = BAR_OPTIONS[(idx + 1) % BAR_OPTIONS.length];
-    newPhrase();
-  } else if (code === "KeyM") {
-    e.preventDefault();
-    app.soundOn = !app.soundOn;
-    if (!app.soundOn) stopScheduledAudio();
-    updateMeta();
-  } else if (code === "KeyB") {
-    e.preventDefault();
-    app.showBeatNums = !app.showBeatNums;
-    app.dirtyScore = true;
-    updateMeta();
-  } else if (code === "KeyG") {
-    e.preventDefault();
-    app.blindGrade = !app.blindGrade;
-    app.dirtyScore = true;
-    if (app.state === "PLAY" && app.blindGrade) setHitBadge(t("badgeBlindPlay"), "");
-    updateMeta();
-  } else if (code === "Slash") {
-    e.preventDefault();
-    cycleInputMode();
-  } else if (code === "BracketLeft") {
-    syncThreshold(Math.round(audioIn.threshold * 100) - 2);
-  } else if (code === "BracketRight") {
-    syncThreshold(Math.round(audioIn.threshold * 100) + 2);
-  } else if (code === "Comma") {
-    syncLatency(audioIn.latencyMs - 5, true);
-  } else if (code === "Period") {
-    syncLatency(audioIn.latencyMs + 5, true);
-  }
-});
-
-window.addEventListener("keyup", (e) => {
-  if (PITCH_KEY_MAP.has(e.code)) {
-    const kEl = document.querySelector(`#pitchPiano [data-code="${e.code}"]`);
-    if (kEl) kEl.classList.remove("pressed");
-  }
-  if (app.activeKeyStac && app.activeKeyStac.code === e.code && getAudioCtx()) {
-    closeKeyStaccato((getAudioCtx().currentTime - app.keyLatencyMs / 1000) - app.startAudioT);
-  }
-});
-
 // -------------------------------------------------------------------------
-// 7B. Custom Score Editor, Share URL, Daily Challenge & Result Card
-
+// 7B. Daily Challenge & Initial Score Boot
 document.getElementById("btnDaily").addEventListener("click", (e) => {
   e.currentTarget.blur();
   loadDailyChallenge(null, false);
@@ -2285,71 +1792,6 @@ document.getElementById("btnDailyPlus").addEventListener("click", (e) => {
   loadDailyChallenge(null, true);
 });
 
-document.getElementById("btnShareUrl").addEventListener("click", async (e) => {
-  const btn = e.currentTarget;
-  btn.blur();
-  const url = buildShareUrl();
-  await copyToClipboard(url);
-  trackShare("url", app);
-  flashBtnText(btn, t("btnShareCopied"), () => t("btnShareUrl"));
-  setHitBadge(app.customMode ? t("edUrlCopied") : t("edSeedCopied"), "tight");
-});
-
-document.getElementById("btnShareResult").addEventListener("click", async (e) => {
-  const btn = e.currentTarget;
-  btn.blur();
-  const text = buildResultCardText();
-  if (!text) return;
-  await copyToClipboard(text);
-  trackShare("text", app);
-  flashBtnText(btn, t("resultCopied"), () => t("btnShareResult"));
-});
-
-document.getElementById("btnBragCard").addEventListener("click", async (e) => {
-  const btn = e.currentTarget;
-  btn.blur();
-  const blob = await renderScoreCardPngBlob();
-  if (!blob) return;
-  trackShare("card", app);
-  const snap = (app.lastResult && app.lastResult.snap) || {};
-  const dDate = snap.dailyDate !== undefined ? snap.dailyDate : app.dailyDate;
-  const dPlus = snap.dailyPlus !== undefined ? snap.dailyPlus : app.dailyPlus;
-  const tag = dDate
-    ? `${dPlus ? "daily-plus" : "daily"}-${dDate}`
-    : `score-${getTodayDateStr()}`;
-  const filename = `rhythm-sight-reader-${tag}.png`;
-  // Mobile native share sheet (KakaoTalk / Instagram / X / Photos) when supported
-  try {
-    const file = new File([blob], filename, { type: "image/png" });
-    if (IS_MOBILE && navigator.canShare && navigator.canShare({ files: [file] })) {
-      await navigator.share({
-        title: "Rhythm Sight-Reader",
-        text: buildResultCardText(),
-        files: [file],
-      });
-      flashBtnText(btn, t("bragSaved"), () => t("btnBragCard"));
-      return;
-    }
-  } catch (err) {
-    if (err && err.name === "AbortError") return;
-  }
-  // Desktop / fallback: instant PNG download + try clipboard image copy
-  try {
-    if (navigator.clipboard && window.ClipboardItem) {
-      await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
-    }
-  } catch (_) {}
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  window.setTimeout(() => URL.revokeObjectURL(url), 1500);
-  flashBtnText(btn, t("bragSaved"), () => t("btnBragCard"));
-});
-
 function bootInitialScore() {
   const params = new URLSearchParams(location.search || "");
   if (applySeedQueryParams(params)) return;
@@ -2358,622 +1800,63 @@ function bootInitialScore() {
   resetTargets();
 }
 
-// -------------------------------------------------------------------------
-// Special Training BETA Controls (Gap Click · Look-ahead Fade-out · BPM Rush)
-// -------------------------------------------------------------------------
-function syncDrillUi() {
-  const bar = document.getElementById("drillBar");
-  const barOpen = !bar.classList.contains("hidden");
-  const anyActive = (app.gapClick !== "OFF") || (app.fadeBeats > 0) || app.rushOn;
-  document.getElementById("btnDrill").classList.toggle("active", barOpen || anyActive);
-  if (typeof syncToolsMenuBadge === "function") syncToolsMenuBadge();
-  document.getElementById("gapClickSelect").value = app.gapClick;
-  document.getElementById("fadeOutSelect").value = String(app.fadeBeats);
-  const rushBtn = document.getElementById("btnRushToggle");
-  rushBtn.textContent = app.rushOn ? t("drillRushOn") : t("drillRushOff");
-  rushBtn.classList.toggle("active", app.rushOn);
-  document.getElementById("rushAccSelect").value = String(app.rushMinAcc);
-  const bestEl = document.getElementById("rushBestBadge");
-  const best = loadRushBest();
-  if (best && best.rounds > 0) {
-    bestEl.textContent = t("drillRushBest", best.peakBpm, best.rounds);
-    bestEl.classList.remove("hidden");
-  } else {
-    bestEl.classList.add("hidden");
-  }
-}
-
-document.getElementById("btnDrill").addEventListener("click", (e) => {
-  e.currentTarget.blur();
-  document.getElementById("drillBar").classList.toggle("hidden");
-  syncDrillUi();
-});
-document.getElementById("btnDrillClose").addEventListener("click", () => {
-  document.getElementById("drillBar").classList.add("hidden");
-  syncDrillUi();
-});
-document.getElementById("gapClickSelect").addEventListener("change", (e) => {
-  app.gapClick = e.target.value;
-  if (app.gapClick !== "OFF" && !app.soundOn) {
-    app.soundOn = true; // Ensure metronome is ON so Gap Click has audible ON bars
-  }
-  e.target.blur();
-  app.dirtyScore = true;
-  updateMeta();
-  syncDrillUi();
-});
-document.getElementById("fadeOutSelect").addEventListener("change", (e) => {
-  app.fadeBeats = Number(e.target.value) || 0;
-  clearFadeOutClasses();
-  e.target.blur();
-  updateMeta();
-  syncDrillUi();
-});
-document.getElementById("btnRushToggle").addEventListener("click", (e) => {
-  e.currentTarget.blur();
-  app.rushOn = !app.rushOn;
-  cancelRushTimer(true);
-  if (app.rushOn && (app.dailyDate || app.customMode)) {
-    newPhrase(); // Exit Daily/Custom so Rush can generate fresh phrases each round
-  }
-  const msgEl = document.getElementById("drillMsg");
-  msgEl.style.color = "var(--muted)";
-  msgEl.textContent = t("drillIdleMsg");
-  updateMeta();
-  syncDrillUi();
-});
-document.getElementById("rushAccSelect").addEventListener("change", (e) => {
-  app.rushMinAcc = Number(e.target.value) || 90;
-  e.target.blur();
-});
-document.getElementById("btnDrillReset").addEventListener("click", (e) => {
-  e.currentTarget.blur();
-  cancelRushTimer(true);
-  app.gapClick = "OFF";
-  app.fadeBeats = 0;
-  app.rushOn = false;
-  clearFadeOutClasses();
-  const msgEl = document.getElementById("drillMsg");
-  msgEl.style.color = "var(--muted)";
-  msgEl.textContent = t("drillIdleMsg");
-  app.dirtyScore = true;
-  updateMeta();
-  syncDrillUi();
-});
-
-
-// -------------------------------------------------------------------------
-// Pitch Sight-Reading BETA Controls (Flat-Key Jazz Harmony + e4r5ty7u8i9op Piano + Free-Tempo + MIDI + Audio)
-// -------------------------------------------------------------------------
-// Shifted ergonomic DAW layout starting from E = C (e 4 r 5 t y 7 u 8 i 9 o p),
-// plus low A-Bb-B (q 2 w) on the left for natural leading tones!
-const PITCH_WHITE_KEYS = [
-  { code: "KeyQ", kbd: "Q", midi: 33, note: "A" },
-  { code: "KeyW", kbd: "W", midi: 35, note: "B" },
-  { code: "KeyE", kbd: "E", midi: 36, note: "C", cAnchor: true },
-  { code: "KeyR", kbd: "R", midi: 38, note: "D" },
-  { code: "KeyT", kbd: "T", midi: 40, note: "E" },
-  { code: "KeyY", kbd: "Y", midi: 41, note: "F" },
-  { code: "KeyU", kbd: "U", midi: 43, note: "G" },
-  { code: "KeyI", kbd: "I", midi: 45, note: "A" },
-  { code: "KeyO", kbd: "O", midi: 47, note: "B" },
-  { code: "KeyP", kbd: "P", midi: 48, note: "C", cAnchor: true },
-];
-const PITCH_BLACK_KEYS = [
-  { code: "Digit2", kbd: "2", midi: 34, note: "B♭", leftPct: 6.6 },
-  { code: "Digit4", kbd: "4", midi: 37, note: "D♭", leftPct: 26.6 },
-  { code: "Digit5", kbd: "5", midi: 39, note: "E♭", leftPct: 36.6 },
-  { code: "Digit7", kbd: "7", midi: 42, note: "G♭", leftPct: 56.6 },
-  { code: "Digit8", kbd: "8", midi: 44, note: "A♭", leftPct: 66.6 },
-  { code: "Digit9", kbd: "9", midi: 46, note: "B♭", leftPct: 76.6 },
-];
-const PITCH_KEY_MAP = new Map([...PITCH_WHITE_KEYS, ...PITCH_BLACK_KEYS].map(k => [k.code, k]));
-// Unused top-row digits (gaps between black keys: 1, 3, 6, 0) swallowed while Pitch BETA is ON so level shortcuts never misfire
-const PITCH_TOP_ROW_SWALLOW = new Set(["Digit1", "Digit3", "Digit6", "Digit0"]);
-
-function getActivePitchKeyId() {
-  if (app.phrase && app.phrase.pitchMeta && app.phrase.pitchMeta.key) {
-    return app.phrase.pitchMeta.key;
-  }
-  return app.pitchKey === "RND" ? "Bb" : app.pitchKey;
-}
-
-function getActiveKeyRootPc() {
-  return (JAZZ_KEYS[getActivePitchKeyId()] || JAZZ_KEYS.C).rootPc;
-}
-
-function findNextPitchFreeIdx(startIdx) {
-  const tgts = (app.phrase && app.phrase.targets) || [];
-  let idx = startIdx;
-  while (idx < tgts.length && tgts[idx].art === "ghost") idx++;
-  return idx;
-}
-
-function handlePitchFreeStep(playedMidiFloat, sourceTag = "KEY") {
-  if (!app.pitchMode || !app.pitchFreeMode || !app.phrase) return;
-  const tgts = app.phrase.targets || [];
-  if (!tgts.length) return;
-  if (app.pitchFreeIdx >= tgts.length) {
-    // Already completed phrase: reset cleanly on next press to replay!
-    resetTargets();
-  }
-  const curIdx = findNextPitchFreeIdx(app.pitchFreeIdx);
-  if (curIdx >= tgts.length) return;
-  const tgt = tgts[curIdx];
-  if (!tgt.pitch) return;
-
-  const useRel = Boolean(app.pitchRelative && sourceTag !== "AUD");
-  const keyId = getActivePitchKeyId();
-  const cmp = comparePitchClass(playedMidiFloat, tgt.pitch.midi, 45);
-  const tgtLbl = useRel ? getRelativeDegreeName(tgt.pitch.midi, keyId) : tgt.pitch.name;
-  const detLbl = useRel ? getRelativeDegreeName(Math.round(playedMidiFloat), keyId) : cmp.detectedName;
-
-  if (cmp.ok) {
-    tgt.hit = true;
-    tgt.pitchOk = true;
-    tgt.detectedPitch = detLbl;
-    app.pitchFreeIdx = findNextPitchFreeIdx(curIdx + 1);
-    app.dirtyScore = true;
-
-    if (app.pitchFreeIdx >= tgts.length) {
-      const gradable = tgts.filter(tg => tg.art !== "ghost" && tg.pitch);
-      const firstTryOk = gradable.filter(tg => tg.pitchOk === true && !tg.hadWrongTry).length;
-      const pct = gradable.length ? (firstTryOk / gradable.length) * 100 : 100;
-      const msgEl = document.getElementById("pitchMsg");
-      msgEl.style.color = pct >= 85 ? "var(--green)" : (pct >= 65 ? "var(--amber)" : "var(--red)");
-      msgEl.textContent = t("pitchFreeDone", firstTryOk, gradable.length, pct, app.pitchFreeMistakes);
-      setHitBadge(`[${sourceTag}] 🎯 ${firstTryOk}/${gradable.length} (${pct.toFixed(0)}%)`, "tight");
-    } else {
-      setHitBadge(`[${sourceTag}] ✓ ${tgtLbl}`, "tight");
-    }
-  } else {
-    tgt.pitchOk = false;
-    tgt.hadWrongTry = true;
-    tgt.detectedPitch = detLbl;
-    app.pitchFreeMistakes += 1;
-    app.dirtyScore = true;
-    setHitBadge(`[${sourceTag}] ${tgtLbl} ≠ ${detLbl}`, "err");
-  }
-}
-
-function flashPianoKeyByMidi(midi) {
-  const pc = ((midi % 12) + 12) % 12;
-  const match = [...PITCH_WHITE_KEYS, ...PITCH_BLACK_KEYS].find(k => (k.midi % 12) === pc);
-  if (!match) return;
-  const kEl = document.querySelector(`#pitchPiano [data-code="${match.code}"]`);
-  if (kEl) {
-    kEl.classList.add("pressed");
-    window.setTimeout(() => kEl.classList.remove("pressed"), 150);
-  }
-}
-
-function triggerPitchPianoKey(keySpec, fromPointer = false) {
-  if (!keySpec) return;
-  const ctx = ensureAudioCtx();
-  const kEl = document.querySelector(`#pitchPiano [data-code="${keySpec.code}"]`);
-  if (kEl) {
-    kEl.classList.add("pressed");
-    if (fromPointer) {
-      window.setTimeout(() => kEl.classList.remove("pressed"), 140);
-    }
-  }
-  // In Relative/Movable-Do mode, E(C) acts as Tonic 1 of the current key!
-  const rootShift = app.pitchRelative ? getActiveKeyRootPc() : 0;
-  const effectiveMidi = keySpec.midi + rootShift;
-  // Live synth feedback (shifted +2 octaves in Treble Clef so it sounds in treble register)
-  if (ctx) {
-    let soundMidi = app.pitchClef === "treble" ? (effectiveMidi + 24) : effectiveMidi;
-    if (app.pitchClef === "bass" && soundMidi > 55) soundMidi -= 12;
-    if (app.pitchClef === "treble" && soundMidi > 84) soundMidi -= 12;
-    scheduleBassNote(ctx, ctx.currentTime, 0.26, midiToFreq(soundMidi));
-  }
-  if (app.state === "CAL" && ctx) {
-    recordCalibrationTap(ctx.currentTime, "KEY");
-  } else if ((app.state === "COUNTIN" || app.state === "PLAY") && ctx) {
-    if (app.keyOn || fromPointer) {
-      handleHit(ctx.currentTime - app.keyLatencyMs / 1000, fromPointer ? "PAD" : "KEY", "NORMAL", keySpec.code, effectiveMidi);
-    }
-  } else if (app.pitchFreeMode) {
-    handlePitchFreeStep(effectiveMidi, fromPointer ? "PAD" : "KEY");
-  } else {
-    const lbl = app.pitchRelative ? DEGREE_NAMES[((keySpec.midi % 12) + 12) % 12] : keySpec.note;
-    const srcTag = fromPointer ? "PAD" : "KEY";
-    setHitBadge(keySpec.kbd ? `[${srcTag}] ${lbl} (${keySpec.kbd})` : `[${srcTag}] ${lbl}`, "tight");
-  }
-}
-
-function handleMidiNoteOn(midiNote) {
-  const ctx = ensureAudioCtx();
-  const rootShift = (app.pitchMode && app.pitchRelative) ? getActiveKeyRootPc() : 0;
-  const effectiveMidi = midiNote + rootShift;
-  const pc = ((effectiveMidi % 12) + 12) % 12;
-  const noteName = (app.pitchMode && app.pitchRelative)
-    ? DEGREE_NAMES[((midiNote % 12) + 12) % 12]
-    : FLAT_PC_NAMES[pc];
-  if (app.pitchMode) {
-    flashPianoKeyByMidi(midiNote);
-    if (ctx) {
-      // Keep MIDI playback in natural register for Bass or Treble clef
-      const playMidi = app.pitchClef === "treble"
-        ? (effectiveMidi < 48 ? effectiveMidi + 24 : (effectiveMidi > 84 ? effectiveMidi - 12 : effectiveMidi))
-        : (effectiveMidi < 28 ? effectiveMidi + 12 : (effectiveMidi > 60 ? effectiveMidi - 12 : effectiveMidi));
-      scheduleBassNote(ctx, ctx.currentTime, 0.26, midiToFreq(playMidi));
-    }
-  }
-  if (app.state === "CAL" && ctx) {
-    recordCalibrationTap(ctx.currentTime, "MIDI");
-  } else if ((app.state === "COUNTIN" || app.state === "PLAY") && ctx) {
-    handleHit(ctx.currentTime, "MIDI", "NORMAL", null, app.pitchMode ? effectiveMidi : null);
-  } else if (app.pitchMode && app.pitchFreeMode) {
-    handlePitchFreeStep(effectiveMidi, "MIDI");
-  } else {
-    setHitBadge(`[MIDI] ${noteName}`, "tight");
-  }
-}
-
-const DOCK_WHITE_KEYS = [
-  { code: "DockC",  midi: 36, note: "C", cAnchor: true },
-  { code: "DockD",  midi: 38, note: "D" },
-  { code: "DockE",  midi: 40, note: "E" },
-  { code: "DockF",  midi: 41, note: "F" },
-  { code: "DockG",  midi: 43, note: "G" },
-  { code: "DockA",  midi: 45, note: "A" },
-  { code: "DockB",  midi: 47, note: "B" },
-  { code: "DockC2", midi: 48, note: "C", cAnchor: true },
-];
-const DOCK_BLACK_KEYS = [
-  { code: "DockDb", midi: 37, note: "D♭", leftPct: 8.2 },
-  { code: "DockEb", midi: 39, note: "E♭", leftPct: 20.7 },
-  { code: "DockGb", midi: 42, note: "G♭", leftPct: 45.7 },
-  { code: "DockAb", midi: 44, note: "A♭", leftPct: 58.2 },
-  { code: "DockBb", midi: 46, note: "B♭", leftPct: 70.7 },
-];
-
-function syncPitchPianoLabels() {
-  for (const k of [...PITCH_WHITE_KEYS, ...PITCH_BLACK_KEYS]) {
-    const node = document.querySelector(`#pitchPiano [data-code="${k.code}"] .pk-note`);
-    if (node) {
-      node.textContent = app.pitchRelative ? DEGREE_NAMES[((k.midi % 12) + 12) % 12] : k.note;
-    }
-  }
-  for (const k of [...DOCK_WHITE_KEYS, ...DOCK_BLACK_KEYS]) {
-    const node = document.querySelector(`#dockPitchPiano [data-code="${k.code}"] .pk-note`);
-    if (node) {
-      node.textContent = app.pitchRelative ? DEGREE_NAMES[((k.midi % 12) + 12) % 12] : k.note;
-    }
-  }
-}
-
-function buildPitchPianoUi() {
-  const wrap = document.getElementById("pitchPiano");
-  if (wrap && wrap.childElementCount === 0) {
-    for (const k of PITCH_WHITE_KEYS) {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = k.cAnchor ? "pk-white c-anchor" : "pk-white";
-      btn.dataset.code = k.code;
-      btn.innerHTML = `<span class="pk-note">${k.note}</span><span class="pk-kbd">${k.kbd}</span>`;
-      btn.addEventListener("pointerdown", (e) => {
-        e.preventDefault();
-        triggerPitchPianoKey(k, true);
-      });
-      wrap.appendChild(btn);
-    }
-    for (const k of PITCH_BLACK_KEYS) {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "pk-black";
-      btn.style.left = `${k.leftPct}%`;
-      btn.dataset.code = k.code;
-      btn.innerHTML = `<span class="pk-note">${k.note}</span><span class="pk-kbd">${k.kbd}</span>`;
-      btn.addEventListener("pointerdown", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        triggerPitchPianoKey(k, true);
-      });
-      wrap.appendChild(btn);
-    }
-  }
-  const dockWrap = document.getElementById("dockPitchPiano");
-  if (dockWrap && dockWrap.childElementCount === 0) {
-    for (const k of DOCK_WHITE_KEYS) {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = k.cAnchor ? "pk-white c-anchor" : "pk-white";
-      btn.dataset.code = k.code;
-      btn.innerHTML = `<span class="pk-note">${k.note}</span>`;
-      btn.addEventListener("pointerdown", (e) => {
-        e.preventDefault();
-        btn.classList.add("pressed");
-        window.setTimeout(() => btn.classList.remove("pressed"), 140);
-        triggerPitchPianoKey(k, true);
-      });
-      dockWrap.appendChild(btn);
-    }
-    for (const k of DOCK_BLACK_KEYS) {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "pk-black";
-      btn.style.left = `${k.leftPct}%`;
-      btn.dataset.code = k.code;
-      btn.innerHTML = `<span class="pk-note">${k.note}</span>`;
-      btn.addEventListener("pointerdown", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        btn.classList.add("pressed");
-        window.setTimeout(() => btn.classList.remove("pressed"), 140);
-        triggerPitchPianoKey(k, true);
-      });
-      dockWrap.appendChild(btn);
-    }
-  }
-}
-buildPitchPianoUi();
-
-function syncPitchUi() {
-  const bar = document.getElementById("pitchBar");
-  const barOpen = !bar.classList.contains("hidden");
-  document.getElementById("btnPitchBeta").classList.toggle("active", barOpen || app.pitchMode);
-  const toggleBtn = document.getElementById("btnPitchToggle");
-  toggleBtn.textContent = app.pitchMode ? t("pitchOn") : t("pitchOff");
-  toggleBtn.classList.toggle("active", app.pitchMode);
-  const freeBtn = document.getElementById("btnPitchFreeMode");
-  freeBtn.textContent = app.pitchFreeMode ? t("pitchFree") : t("pitchTimed");
-  freeBtn.classList.toggle("active", app.pitchFreeMode);
-  const relBtn = document.getElementById("btnPitchRelMode");
-  relBtn.textContent = app.pitchRelative ? t("pitchRel") : t("pitchAbs");
-  relBtn.classList.toggle("active", app.pitchRelative);
-  document.getElementById("pitchClefSelect").value = app.pitchClef;
-  document.getElementById("pitchKeySelect").value = app.pitchKey;
-  document.getElementById("pitchProgSelect").value = app.pitchProg;
-  const hintBtn = document.getElementById("btnPitchHints");
-  hintBtn.textContent = app.pitchShowHints ? t("pitchHintsOn") : t("pitchHintsOff");
-  hintBtn.classList.toggle("active", app.pitchShowHints);
-  const pianoEl = document.getElementById("pitchPiano");
-  if (pianoEl) pianoEl.classList.toggle("hidden", !app.pitchMode || app.showTouchDock);
-  const dockPadsEl = document.getElementById("dockPads");
-  const dockPianoEl = document.getElementById("dockPitchPiano");
-  if (dockPadsEl) dockPadsEl.classList.toggle("hidden", app.pitchMode);
-  if (dockPianoEl) dockPianoEl.classList.toggle("hidden", !app.pitchMode);
-  syncPitchPianoLabels();
-  if (typeof syncToolsMenuBadge === "function") syncToolsMenuBadge();
-}
-
-document.getElementById("btnPitchBeta").addEventListener("click", (e) => {
-  e.currentTarget.blur();
-  const bar = document.getElementById("pitchBar");
-  const willOpen = bar.classList.contains("hidden");
-  bar.classList.toggle("hidden", !willOpen);
-  // Auto-enable Pitch BETA when first opening the drawer so the user sees 5-line jazz notation immediately
-  if (willOpen && !app.pitchMode) {
-    app.pitchMode = true;
-    applyPitchToCurrentPhrase(true);
-    resetTargets();
-    updateMeta();
-  }
-  syncPitchUi();
-});
-document.getElementById("btnPitchClose").addEventListener("click", () => {
-  document.getElementById("pitchBar").classList.add("hidden");
-  syncPitchUi();
-});
-document.getElementById("btnPitchToggle").addEventListener("click", (e) => {
-  e.currentTarget.blur();
-  app.pitchMode = !app.pitchMode;
-  applyPitchToCurrentPhrase(true);
-  resetTargets();
-  const msgEl = document.getElementById("pitchMsg");
-  msgEl.style.color = "var(--muted)";
-  msgEl.textContent = t("pitchIdleMsg");
-  updateMeta();
-  syncPitchUi();
-});
-document.getElementById("btnPitchFreeMode").addEventListener("click", (e) => {
-  e.currentTarget.blur();
-  app.pitchFreeMode = !app.pitchFreeMode;
-  if (app.pitchFreeMode && !app.pitchMode) {
-    app.pitchMode = true;
-    applyPitchToCurrentPhrase();
-  }
-  stopRun();
-  resetTargets();
-  const msgEl = document.getElementById("pitchMsg");
-  msgEl.style.color = "var(--muted)";
-  msgEl.textContent = t("pitchIdleMsg");
-  updateMeta();
-  syncPitchUi();
-});
-document.getElementById("btnPitchRelMode").addEventListener("click", (e) => {
-  e.currentTarget.blur();
-  app.pitchRelative = !app.pitchRelative;
-  if (app.pitchRelative && !app.pitchMode) {
-    app.pitchMode = true;
-    applyPitchToCurrentPhrase();
-    resetTargets();
-  }
-  app.dirtyScore = true;
-  updateMeta();
-  syncPitchUi();
-});
-document.getElementById("pitchClefSelect").addEventListener("change", (e) => {
-  app.pitchClef = e.target.value === "treble" ? "treble" : "bass";
-  e.target.blur();
-  if (!app.pitchMode) app.pitchMode = true;
-  applyPitchToCurrentPhrase();
-  resetTargets();
-  updateMeta();
-  syncPitchUi();
-});
-document.getElementById("pitchKeySelect").addEventListener("change", (e) => {
-  app.pitchKey = e.target.value;
-  e.target.blur();
-  if (!app.pitchMode) app.pitchMode = true;
-  applyPitchToCurrentPhrase();
-  resetTargets();
-  updateMeta();
-  syncPitchUi();
-});
-document.getElementById("pitchProgSelect").addEventListener("change", (e) => {
-  app.pitchProg = e.target.value;
-  e.target.blur();
-  if (!app.pitchMode) app.pitchMode = true;
-  applyPitchToCurrentPhrase();
-  resetTargets();
-  updateMeta();
-  syncPitchUi();
-});
-document.getElementById("btnPitchHints").addEventListener("click", (e) => {
-  e.currentTarget.blur();
-  app.pitchShowHints = !app.pitchShowHints;
-  app.dirtyScore = true;
-  syncPitchUi();
-});
-
-
-// -------------------------------------------------------------------------
-// Categorized Toolbar Dropdowns (🎚️ 난이도 통합 패널 · ⋯ 도구)
-// -------------------------------------------------------------------------
-const TOOLBAR_MENUS = [
-  { wrapId: "diffWrap", btnId: "btnDiffMenu", dropId: "diffDropdown", closeOnClick: false },
-  { wrapId: "toolsWrap", btnId: "btnToolsMenu", dropId: "toolsDropdown", closeOnClick: true },
-];
-
-function closeAllToolbarMenus(exceptDropId = null) {
-  for (const m of TOOLBAR_MENUS) {
-    if (m.dropId === exceptDropId) continue;
-    const drop = document.getElementById(m.dropId);
-    const btn = document.getElementById(m.btnId);
-    if (drop && !drop.classList.contains("hidden")) {
-      drop.classList.add("hidden");
-      if (btn) btn.setAttribute("aria-expanded", "false");
-    }
-  }
-}
-
-function syncAllDropdownBadges() {
-  // 1. Unified Difficulty Menu (Lv + Tech + TimeSig + Bars + Practice Opts)
-  const allowTri = tripletsAllowed(app.level, getTimeSig());
-  const effTri = allowTri ? app.tripletMode : 0;
-  const tTag = effTri === 2 ? "T2" : (effTri === 1 ? "T1" : "");
-  const lvFlags = `${tTag}${app.staccatoOn ? "S" : ""}${app.ghostOn ? "G" : ""}`;
-  const diffParts = [`Lv${app.level}${lvFlags}`, app.timeSig, `${app.numBars}B`];
-  if (!app.soundOn) diffParts.push("M×");
-  if (app.blindGrade) diffParts.push("Blind");
-  if (app.showBeatNums) diffParts.push("+B");
-  if (app.showCursor) diffParts.push("+C");
-  if (app.drumBacking) diffParts.push("🥁");
-  if (app.endlessMode) diffParts.push("♾️");
-  if (app.suddenDeath) diffParts.push("💀");
-  const diffDropOpen = !document.getElementById("diffDropdown").classList.contains("hidden");
-  document.getElementById("diffSummaryBadge").textContent = diffParts.join(" · ");
-  document.getElementById("btnDiffMenu").classList.toggle("active", diffDropOpen);
-
-  // 2. Tools Menu (Editor · Drills · Pitch · Sync · PDF · Tour · Guide)
-  const anyDrill = (app.gapClick !== "OFF") || (app.fadeBeats > 0) || app.rushOn || app.pitchMode;
-  const anyPanelOpen =
-    !document.getElementById("editorBar").classList.contains("hidden") ||
-    !document.getElementById("drillBar").classList.contains("hidden") ||
-    !document.getElementById("pitchBar").classList.contains("hidden") ||
-    !document.getElementById("achBar").classList.contains("hidden") ||
-    !document.getElementById("lbBar").classList.contains("hidden") ||
-    !document.getElementById("diagBar").classList.contains("hidden") ||
-    !document.getElementById("calBar").classList.contains("hidden");
-  const toolsDropOpen = !document.getElementById("toolsDropdown").classList.contains("hidden");
-  document.getElementById("btnToolsMenu").classList.toggle("active", toolsDropOpen || anyDrill || anyPanelOpen);
-  document.getElementById("toolsActiveDot").classList.toggle("hidden", !anyDrill);
-}
-const syncToolsMenuBadge = syncAllDropdownBadges;
-
-document.getElementById("btnDiffClose").addEventListener("click", (e) => {
-  e.stopPropagation();
-  closeAllToolbarMenus();
-  syncAllDropdownBadges();
-});
-
-function clampDropdownToViewport(drop) {
-  if (!drop || drop.classList.contains("hidden")) return;
-  drop.style.left = "0px";
-  drop.style.right = "auto";
-  const r = drop.getBoundingClientRect();
-  const vw = window.innerWidth;
-  let shift = 0;
-  if (r.right > vw - 12) shift -= (r.right - (vw - 12));
-  if (r.left + shift < 12) shift += (12 - (r.left + shift));
-  if (shift !== 0) drop.style.left = `${Math.round(shift)}px`;
-}
-
-for (const m of TOOLBAR_MENUS) {
-  const btn = document.getElementById(m.btnId);
-  const drop = document.getElementById(m.dropId);
-  btn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    e.currentTarget.blur();
-    const willOpen = drop.classList.contains("hidden");
-    closeAllToolbarMenus(willOpen ? m.dropId : null);
-    drop.classList.toggle("hidden", !willOpen);
-    btn.setAttribute("aria-expanded", willOpen ? "true" : "false");
-    if (willOpen) clampDropdownToViewport(drop);
-    syncAllDropdownBadges();
-  });
-  if (m.closeOnClick) {
-    drop.addEventListener("click", (e) => {
-      if (e.target.closest("button")) {
-        window.setTimeout(() => {
-          drop.classList.add("hidden");
-          btn.setAttribute("aria-expanded", "false");
-          syncAllDropdownBadges();
-        }, 0);
-      }
-    });
-  }
-}
-window.addEventListener("resize", () => {
-  for (const m of TOOLBAR_MENUS) {
-    clampDropdownToViewport(document.getElementById(m.dropId));
-  }
-});
-document.addEventListener("click", (e) => {
-  const insideAny = TOOLBAR_MENUS.some(m => document.getElementById(m.wrapId).contains(e.target));
-  if (!insideAny) {
-    closeAllToolbarMenus();
-    syncAllDropdownBadges();
-  }
-});
-document.addEventListener("keydown", (e) => {
-  if (e.code === "Escape") {
-    closeAllToolbarMenus();
-    syncAllDropdownBadges();
-  }
-});
-["btnEdClose", "btnCalClose", "btnDrillClose", "btnPitchClose"].forEach(id => {
-  const elBtn = document.getElementById(id);
-  if (elBtn) elBtn.addEventListener("click", () => window.setTimeout(syncAllDropdownBadges, 0));
-});
-
-function syncClickVol(val, persist = true) {
-  const v = Math.max(0, Math.min(200, Math.round(Number(val) || 0)));
-  app.clickVol = v;
-  document.getElementById("clickVolSlider").value = String(v);
-  document.getElementById("clickVolVal").textContent = `${v}%`;
-  setClickMasterGainVol(v);
-  if (persist) {
-    try { localStorage.setItem("rhythm_practice_click_vol", String(v)); } catch (_) {}
-  }
-}
-
-document.getElementById("clickVolSlider").addEventListener("input", (e) => {
-  syncClickVol(e.target.value, true);
-});
-document.getElementById("clickVolSlider").addEventListener("change", (e) => {
-  syncClickVol(e.target.value, true);
-  e.target.blur();
-  if ((app.state === "READY" || app.state === "DONE") && app.clickVol > 0) {
-    const ctx = ensureAudioCtx();
-    scheduleClick(ctx, ctx.currentTime + 0.02, 1318.51, 0.32);
-  }
-});
-
 // Wire cross-module callbacks cleanly before Boot
+initToolbarMenus();
+initDrills({ updateMeta, newPhrase, onUiChange: () => syncToolsMenuBadge() });
+initCalibration({
+  abortActiveRunTracking,
+  resetTargets,
+  setHitBadge,
+  syncTransportButtons,
+  onUiChange: () => syncToolsMenuBadge(),
+});
+initPitchUi({
+  resetTargets,
+  stopRun,
+  updateMeta,
+  setHitBadge,
+  handleHit,
+  recordCalibrationTap,
+  onUiChange: () => syncToolsMenuBadge(),
+});
+initResultsUi({
+  loadDailyChallenge,
+  loadCustomFromInput,
+  applyFullSeedObj,
+  setHitBadge,
+  onOpenLeaderboard: () => {
+    const targetTab = app.endlessMode
+      ? (app.suddenDeath ? "endless_sd3" : "endless")
+      : (app.dailyDate ? (app.dailyPlus ? "dailyplus" : "daily") : "daily");
+    toggleLeaderboardBar(true, targetTab);
+    document.getElementById("lbBar")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  },
+});
+initKeyboard({
+  PITCH_KEY_MAP,
+  PITCH_TOP_ROW_SWALLOW,
+  triggerPitchPianoKey,
+  closeTour,
+  nextTourStep,
+  prevTourStep,
+  recordCalibrationTap,
+  handleHit,
+  closeKeyStaccato,
+  isRoomCountingDown,
+  handleMainStartAction,
+  handleMainStopAction,
+  handleMainNewAction,
+  handleMainDemoAction,
+  setBpm,
+  setLevel,
+  updateMeta,
+  newPhrase,
+  setHitBadge,
+  cycleInputMode,
+  syncThreshold,
+  syncLatency,
+});
+
 registerAudioInCallbacks({ handleHit, handlePitchFreeStep, recordCalibrationTap, setHitBadge });
 registerMidiCallbacks({
   onNoteOn: handleMidiNoteOn,
@@ -3170,17 +2053,6 @@ initDiagnostics({
   },
   setHitBadge,
 });
-const btnOpenLbFromRes = document.getElementById("btnOpenLbFromResult");
-if (btnOpenLbFromRes) {
-  btnOpenLbFromRes.addEventListener("click", (e) => {
-    e.currentTarget.blur();
-    const targetTab = app.endlessMode
-      ? (app.suddenDeath ? "endless_sd3" : "endless")
-      : (app.dailyDate ? (app.dailyPlus ? "dailyplus" : "daily") : "daily");
-    toggleLeaderboardBar(true, targetTab);
-    document.getElementById("lbBar")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  });
-}
 syncToolsMenuBadge();
 renderLog();
 requestAnimationFrame(frame);

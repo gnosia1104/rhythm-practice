@@ -4,6 +4,7 @@ import { app, edState, getTimeSig, currentFullSeedCode } from "./state.js";
 import { t } from "./i18n.js";
 import { SVG_NS, el, drawRest, drawNotehead, drawTuplet, drawFlag } from "./engraver.js";
 import { stopScheduledAudio } from "./audio-out.js";
+import { stopCalibration } from "./calibration.js";
 import { buildShareUrl, copyToClipboard, flashBtnText } from "./share-card.js";
 
 const edCbs = {
