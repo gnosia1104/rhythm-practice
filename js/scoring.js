@@ -240,30 +240,27 @@ export function computeScoreRank(r) {
     { grade: "C",  cls: "rank-c",  color: "#ef4444" },
   ];
   let idx = 4; // C
-  // Primary: synced directly with difficulty-weighted Score % (score / maxScore)
+  // Generous accuracy-led Rank (keeps practice encouraging while Score stays strict for leaderboard)
   if (r.maxScore > 0 && Number.isFinite(r.score)) {
     const scorePct = (r.score / r.maxScore) * 100;
-    if (scorePct >= 95 && acc >= 99.9 && restErrs === 0) idx = 0;
-    else if (scorePct >= 88 && acc >= 90) idx = 1;
-    else if (scorePct >= 78) idx = 2;
-    else if (scorePct >= 62) idx = 3;
-    else idx = 4;
+    if (scorePct >= 94 && acc >= 99.9 && restErrs === 0) idx = 0;       // S+: perfect no-miss, 0 rest err, 94%+ score
+    else if (acc >= 99.9 || (acc >= 90 && scorePct >= 75)) idx = 1;     // S : no-miss OR 90%+ hits & 75%+ score
+    else if (acc >= 85 || (acc >= 80 && scorePct >= 60)) idx = 2;       // A : 85%+ hits OR 80%+ hits & 60%+ score
+    else if (acc >= 65 || scorePct >= 45) idx = 3;                      // B : 65%+ hits OR 45%+ score
+    else idx = 4;                                                        // C : below B
   } else {
     // Fallback for legacy persisted Practice Log rows without maxScore
     const tightPct = (r.tight / r.total) * 100;
-    const susPct = (r.sustainStats && r.sustainStats.total > 0)
-      ? (r.sustainStats.ok / r.sustainStats.total) * 100
-      : 100;
-    if (acc >= 99.9 && tightPct >= 85 && restErrs === 0 && susPct >= 85) idx = 0;
-    else if (acc >= 95 && tightPct >= 70 && restErrs <= 1) idx = 1;
-    else if (acc >= 85) idx = 2;
-    else if (acc >= 70) idx = 3;
+    if (acc >= 99.9 && tightPct >= 80 && restErrs === 0) idx = 0;
+    else if (acc >= 90) idx = 1;
+    else if (acc >= 80) idx = 2;
+    else if (acc >= 65) idx = 3;
     else idx = 4;
   }
-  // Strict anti-mashing rank caps for KEY/PAD spam; fair audio-only cap only when rest errors also occur
+  // Anti-mashing caps only for clear spam (never punish 1–2 accidental extra taps)
   if (kExtraRatio >= 0.50) idx = Math.max(idx, 4);
-  else if (kExtraRatio >= 0.30) idx = Math.max(idx, 3);
-  else if (kExtraRatio >= 0.15) idx = Math.max(idx, 2);
+  else if (kExtraRatio >= 0.35) idx = Math.max(idx, 3);
+  else if (kExtraRatio >= 0.25) idx = Math.max(idx, 2);
   if (aExtraRatio >= 0.85 && restErrs >= 2) idx = Math.max(idx, 3);
   return TIERS[idx];
 }
