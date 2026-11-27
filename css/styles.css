@@ -2045,12 +2045,124 @@ button.active .tools-badge {
 .podium-score { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 800; font-size: 15px; color: #111827; }
 .podium-meta { font-size: 11px; font-weight: 700; color: var(--muted); }
 
+.room-countdown-banner {
+  text-align: center;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: linear-gradient(90deg, #4c1d95 0%, #6d28d9 50%, #4c1d95 100%);
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  box-shadow: 0 4px 14px rgba(109, 40, 217, 0.25);
+}
+
+.room-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 10px;
+  align-items: stretch;
+}
+@media (max-width: 780px) {
+  .room-split {
+    grid-template-columns: 1fr;
+  }
+}
+
 .room-leaderboard {
   display: flex;
   flex-direction: column;
   gap: 6px;
   max-height: 220px;
   overflow-y: auto;
+}
+
+.room-chat {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #f8fafc;
+  overflow: hidden;
+  min-height: 150px;
+  max-height: 220px;
+}
+
+.room-chat-log {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.room-chat-msg {
+  word-break: break-word;
+}
+.room-chat-msg .chat-author {
+  font-weight: 800;
+  color: #4c1d95;
+  margin-right: 5px;
+}
+.room-chat-msg.is-me .chat-author {
+  color: #1d4ed8;
+}
+.room-chat-msg.is-sys {
+  color: var(--muted);
+  font-style: italic;
+  font-size: 11.5px;
+}
+
+.room-chat-bar {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 7px;
+  border-top: 1px solid #e5e7eb;
+  background: #ffffff;
+}
+
+.room-reacts {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.room-react-btn {
+  padding: 3px 5px;
+  font-size: 13px;
+  border-radius: 6px;
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  line-height: 1;
+}
+.room-react-btn:hover {
+  background: #ede9fe;
+  border-color: #c4b5fd;
+}
+
+.room-chat-input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 5px 8px;
+  font-size: 12px;
+  background: #fff;
+  color: var(--ink);
+}
+.room-chat-input:focus {
+  outline: none;
+  border-color: #7c3aed;
+}
+
+.room-chat-bar button.primary {
+  padding: 5px 10px;
+  font-size: 12px;
+  flex-shrink: 0;
 }
 
 .room-player-row {

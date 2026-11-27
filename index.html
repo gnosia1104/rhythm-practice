@@ -60,7 +60,7 @@
   "description": "Free browser-based rhythm & pitch sight-reading trainer for musicians featuring 6 progressive levels, 5 time signatures, triplets, staccato, ghost notes, gap click metronome, custom score editor, daily challenges, and audio interface onset/sustain/rest grading."
 }
 </script>
-<link rel="stylesheet" href="css/styles.css?v=20261127g" />
+<link rel="stylesheet" href="css/styles.css?v=20261127i" />
 <script defer src="https://cloud.umami.is/script.js" data-website-id="9070201e-fd1f-4081-ad26-1219def68ba6" data-domains="gnosia1104.github.io"></script>
 </head>
 <body>
@@ -432,8 +432,24 @@
       </div>
 
       <div id="roomChartSummary" class="room-chart-summary"></div>
+      <div id="roomCountdownBanner" class="room-countdown-banner hidden" aria-live="assertive"></div>
       <div id="roomPodium" class="room-podium hidden"></div>
-      <div id="roomLeaderboard" class="room-leaderboard"></div>
+      <div class="room-split">
+        <div id="roomLeaderboard" class="room-leaderboard"></div>
+        <div class="room-chat">
+          <div id="roomChatLog" class="room-chat-log" aria-live="polite"></div>
+          <div class="room-chat-bar">
+            <div class="room-reacts">
+              <button type="button" class="room-react-btn" data-react="👋" title="인사">👋</button>
+              <button type="button" class="room-react-btn" data-react="🔥" title="파이팅">🔥</button>
+              <button type="button" class="room-react-btn" data-react="👏" title="박수">👏</button>
+              <button type="button" class="room-react-btn" data-react="😂" title="웃음">😂</button>
+            </div>
+            <input id="roomChatInput" class="room-chat-input" type="text" maxlength="120" placeholder="채팅 입력 후 Enter..." />
+            <button id="btnRoomChatSend" type="button" class="primary">전송</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <span id="roomMsg" class="room-msg">닉네임을 입력하고 방을 만들거나 4자리 코드로 바로 입장하세요.</span>
@@ -573,7 +589,7 @@
   </div>
 </div>
 
-<script type="module" src="js/main.js?v=20261127h"></script>
+<script type="module" src="js/main.js?v=20261127i"></script>
 </body>
 </html>
 

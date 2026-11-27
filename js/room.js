@@ -36,6 +36,7 @@ let cbs = {
   applyRoomChart: () => {},
   triggerRoomStart: () => {},
   unlockAudio: () => {},
+  playCountdownBeep: () => {},
   stopRun: () => {},
   newPhrase: () => {},
   setHitBadge: () => {},
@@ -110,6 +111,9 @@ export const roomState = {
   transport: null,
   lastProgressSentMs: 0,
   countdownTimerId: null,
+  countdownTickTimers: [],
+  countdownSec: 0,
+  chatLog: [], // { sys, id, name, text }
   botTimers: [],
   podiumCheckTimerId: null,
   applyingRemoteChart: false,
@@ -338,11 +342,48 @@ function clearRoundTimers() {
     window.clearTimeout(roomState.countdownTimerId);
     roomState.countdownTimerId = null;
   }
+  for (const id of roomState.countdownTickTimers) window.clearTimeout(id);
+  roomState.countdownTickTimers = [];
+  roomState.countdownSec = 0;
   if (roomState.podiumCheckTimerId) {
     window.clearTimeout(roomState.podiumCheckTimerId);
     roomState.podiumCheckTimerId = null;
   }
   clearBotTimers();
+}
+
+function appendChatMessage({ sys = false, id = "", name = "", text = "" }) {
+  const cleanText = String(text || "").trim().slice(0, 120);
+  if (!cleanText) return;
+  roomState.chatLog.push({ sys, id, name, text: cleanText });
+  if (roomState.chatLog.length > 40) roomState.chatLog.shift();
+  renderChatLog();
+}
+
+function renderChatLog() {
+  const logEl = document.getElementById("roomChatLog");
+  if (!logEl) return;
+  logEl.innerHTML = roomState.chatLog.map((m) => {
+    if (m.sys) {
+      return `<div class="room-chat-msg is-sys">${escapeHtml(m.text)}</div>`;
+    }
+    const isMe = m.id === roomState.clientId;
+    return `<div class="room-chat-msg${isMe ? " is-me" : ""}"><span class="chat-author">${escapeHtml(m.name)}:</span><span>${escapeHtml(m.text)}</span></div>`;
+  }).join("");
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function sendChatMessage(rawText) {
+  if (!roomState.joined) return;
+  const clean = String(rawText || "").trim().slice(0, 120);
+  if (!clean) return;
+  appendChatMessage({ sys: false, id: roomState.clientId, name: roomState.name, text: clean });
+  sendMsg({
+    type: "chat",
+    id: roomState.clientId,
+    name: roomState.name,
+    text: clean,
+  });
 }
 
 // =========================================================================
@@ -395,10 +436,12 @@ function handleIncomingMessage(msg) {
   if (!roomState.joined || !msg || !msg.type) return;
 
   if (msg.type === "hello") {
+    const isNew = !roomState.players.has(msg.id);
     const p = roomState.players.get(msg.id) || makePlayerRecord(msg.id, msg.name, Boolean(msg.isHost), false);
     p.name = msg.name || p.name;
     if (msg.isHost) p.isHost = true;
     roomState.players.set(msg.id, p);
+    if (isNew) appendChatMessage({ sys: true, text: t("roomSysJoin", p.name) });
     // Reply with our own presence (so local multi-tab discovery works instantaneously!)
     sendMsg({
       type: "hello_ack",
@@ -423,8 +466,15 @@ function handleIncomingMessage(msg) {
   }
 
   if (msg.type === "leave") {
+    const left = roomState.players.get(msg.id);
     roomState.players.delete(msg.id);
+    if (left) appendChatMessage({ sys: true, text: t("roomSysLeave", left.name) });
     renderRoomUi();
+    return;
+  }
+
+  if (msg.type === "chat") {
+    appendChatMessage({ sys: false, id: msg.id, name: msg.name || "Player", text: msg.text });
     return;
   }
 
@@ -549,13 +599,28 @@ function beginSyncedRound(msg) {
   const totalNotes = (app.phrase && app.phrase.targets) ? app.phrase.targets.length : 0;
   resetPlayersForRound(totalNotes);
   roomState.phase = "COUNTDOWN";
+  const totalSec = Math.max(1, Math.min(5, Math.round((Number(msg.startDelayMs) || 3000) / 1000)));
+  roomState.countdownSec = totalSec;
+  appendChatMessage({ sys: true, text: t("roomSysStart", msg.roundId) });
+  cbs.playCountdownBeep(totalSec);
+  cbs.setHitBadge(t("roomCountdownBanner", totalSec), "warn");
   renderRoomUi();
 
-  const delay = Math.max(250, Math.min(2000, Number(msg.startDelayMs) || 800));
-  cbs.setHitBadge(t("roomSyncStarting"), "tight");
+  for (let s = totalSec - 1; s >= 1; s--) {
+    const waitMs = (totalSec - s) * 1000;
+    const tid = window.setTimeout(() => {
+      if (!roomState.joined || roomState.roundId !== msg.roundId || roomState.phase !== "COUNTDOWN") return;
+      roomState.countdownSec = s;
+      cbs.playCountdownBeep(s);
+      cbs.setHitBadge(t("roomCountdownBanner", s), "warn");
+      renderRoomUi();
+    }, waitMs);
+    roomState.countdownTickTimers.push(tid);
+  }
 
   roomState.countdownTimerId = window.setTimeout(() => {
     roomState.countdownTimerId = null;
+    roomState.countdownSec = 0;
     if (!roomState.joined || roomState.roundId !== msg.roundId) return;
     roomState.phase = "PLAYING";
     renderRoomUi();
@@ -563,7 +628,7 @@ function beginSyncedRound(msg) {
     if (roomState.isHost && roomState.bots.length) {
       startBotSimulations(msg.roundId);
     }
-  }, delay);
+  }, totalSec * 1000);
 }
 
 // =========================================================================
@@ -751,6 +816,8 @@ function checkRoundCompletion() {
   const allFinished = all.every((p) => p.status === "DONE" || p.status === "OUT");
   if (allFinished) {
     roomState.phase = "PODIUM";
+    const winner = sortedPlayers()[0];
+    if (winner) appendChatMessage({ sys: true, text: t("roomSysWinner", winner.name, winner.score) });
     if (roomState.isHost) {
       sendMsg({ type: "podium_show", roundId: roomState.roundId });
     }
@@ -771,6 +838,11 @@ export function isRoomPlaying() {
 
 export function isRoomCountingDown() {
   return roomState.joined && roomState.phase === "COUNTDOWN";
+}
+
+export function getRoomCountdownText() {
+  if (!isRoomCountingDown() || roomState.countdownSec <= 0) return "";
+  return t("roomCountdownBanner", roomState.countdownSec);
 }
 
 export function tryStartRoomRoundFromMain() {
@@ -931,6 +1003,7 @@ async function connectRoom({ code, name, createAsHost = false, restoreHost = nul
   roomState.code = cleanCode;
   roomState.name = cleanNick;
   roomState.bots = [];
+  roomState.chatLog = [];
   roomState.players.clear();
   roomState.phase = "LOBBY";
 
@@ -988,6 +1061,7 @@ async function connectRoom({ code, name, createAsHost = false, restoreHost = nul
     roomState.transportMode === "supabase" ? t("roomConnectedOnline") : t("roomConnectedLocal"),
     "var(--muted)"
   );
+  appendChatMessage({ sys: true, text: t("roomSysJoin", roomState.name) });
   renderRoomUi();
 }
 
@@ -1022,7 +1096,7 @@ function hostStartRound() {
     roundId: nextRoundId,
     rule: roomState.rule,
     chart,
-    startDelayMs: 700,
+    startDelayMs: 3000,
   };
   sendMsg(payload);
   beginSyncedRound(payload);
@@ -1145,6 +1219,13 @@ export function renderRoomUi() {
       : (roomState.phase === "PODIUM" ? t("roomPhasePodium") : t("roomPhaseLobby")));
   document.getElementById("roomChartSummary").textContent = `${phaseTxt} · ${ruleTxt} · ${chartLabel} · ${roomState.players.size}P`;
 
+  const cdBanner = document.getElementById("roomCountdownBanner");
+  if (cdBanner) {
+    const showCd = roomState.phase === "COUNTDOWN" && roomState.countdownSec > 0;
+    cdBanner.classList.toggle("hidden", !showCd);
+    if (showCd) cdBanner.textContent = t("roomCountdownBanner", roomState.countdownSec);
+  }
+
   // Render Podium (1st–3rd) when PODIUM
   const podiumEl = document.getElementById("roomPodium");
   const list = sortedPlayers();
@@ -1214,11 +1295,14 @@ export function syncRoomLanguage() {
   setTxt("btnRoomLeave", "roomLeaveBtn");
   setTxt("btnRoomNewScore", "roomNextScore");
   setTxt("btnRoomEndNow", "roomEndNow");
+  setTxt("btnRoomChatSend", "roomChatSend");
 
   const nickIn = document.getElementById("roomNickInput");
   if (nickIn) nickIn.placeholder = t("roomNickPlaceholder");
   const codeIn = document.getElementById("roomCodeInput");
   if (codeIn) codeIn.placeholder = t("roomCodePlaceholder");
+  const chatIn = document.getElementById("roomChatInput");
+  if (chatIn) chatIn.placeholder = t("roomChatPlaceholder");
 
   const ruleSel = document.getElementById("roomRuleSelect");
   const ruleOpts = t("roomRuleOpts") || [];
@@ -1325,6 +1409,33 @@ export function initRoom(callbacks) {
   document.getElementById("btnRoomEndNow").addEventListener("click", (e) => {
     e.currentTarget.blur();
     hostForcePodium();
+  });
+
+  const chatInput = document.getElementById("roomChatInput");
+  const doSendChat = () => {
+    if (!chatInput) return;
+    const val = chatInput.value;
+    if (!val.trim()) return;
+    chatInput.value = "";
+    sendChatMessage(val);
+  };
+  document.getElementById("btnRoomChatSend").addEventListener("click", (e) => {
+    e.currentTarget.blur();
+    doSendChat();
+  });
+  if (chatInput) {
+    chatInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.isComposing) {
+        e.preventDefault();
+        doSendChat();
+      }
+    });
+  }
+  document.querySelectorAll(".room-react-btn").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.currentTarget.blur();
+      sendChatMessage(btn.dataset.react || "🔥");
+    });
   });
 
   window.addEventListener("pagehide", () => {

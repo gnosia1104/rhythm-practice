@@ -44,10 +44,10 @@ import {
   trackPracticeStart, trackPracticeComplete, trackPracticeStop, trackShare, trackRefVisit,
 } from "./analytics.js";
 import {
-  initRoom, syncRoomLanguage, isRoomPlaying, isRoomCountingDown,
+  initRoom, syncRoomLanguage, isRoomPlaying, isRoomCountingDown, getRoomCountdownText,
   tryStartRoomRoundFromMain, notifyRoomStopped,
   notifyRoomChartChanged, notifyRoomLiveProgress, notifyRoomFinish,
-} from "./room.js?v=20261127h";
+} from "./room.js?v=20261127i";
 
 function resetTargets() {
   const ts = getTimeSig(app.phrase ? app.phrase.timeSig : app.timeSig);
@@ -1350,6 +1350,8 @@ function frame() {
         finalizeRun();
       }
     }
+  } else if (isRoomCountingDown()) {
+    statusMain.textContent = getRoomCountdownText();
   } else if (app.state === "READY") {
     statusMain.textContent = t("statusReady");
   } else if (app.state === "DONE") {
@@ -1359,13 +1361,16 @@ function frame() {
   if (ledCore.className !== ledClass) ledCore.className = ledClass;
 
   if (countinHintEl) {
-    const showHint = app.state === "COUNTIN";
+    const showRoomCd = isRoomCountingDown();
+    const showHint = showRoomCd || app.state === "COUNTIN";
     if (showHint) {
-      const hintTxt = app.pitchMode
-        ? t("countinHintPitch")
-        : (app.audioOn && !app.keyOn && !app.showTouchDock
-          ? t("countinHintAudio")
-          : (app.showTouchDock && !app.keyOn ? t("countinHintPad") : t("countinHintKey")));
+      const hintTxt = showRoomCd
+        ? getRoomCountdownText()
+        : (app.pitchMode
+          ? t("countinHintPitch")
+          : (app.audioOn && !app.keyOn && !app.showTouchDock
+            ? t("countinHintAudio")
+            : (app.showTouchDock && !app.keyOn ? t("countinHintPad") : t("countinHintKey"))));
       if (countinHintEl.textContent !== hintTxt) countinHintEl.textContent = hintTxt;
       if (countinHintEl.classList.contains("hidden")) countinHintEl.classList.remove("hidden");
     } else if (!countinHintEl.classList.contains("hidden")) {
@@ -2673,6 +2678,12 @@ initRoom({
   },
   triggerRoomStart: () => startRun(false),
   unlockAudio: () => ensureAudioCtx(),
+  playCountdownBeep: (sec) => {
+    const ctx = ensureAudioCtx();
+    if (ctx && app.clickVol > 0) {
+      scheduleClick(ctx, ctx.currentTime + 0.01, sec === 1 ? 1046.5 : 659.25, 0.18);
+    }
+  },
   stopRun: () => stopRun(true),
   newPhrase,
   setHitBadge,
