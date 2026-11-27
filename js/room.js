@@ -35,6 +35,7 @@ function gaussianRand() {
 let cbs = {
   applyRoomChart: () => {},
   triggerRoomStart: () => {},
+  unlockAudio: () => {},
   stopRun: () => {},
   newPhrase: () => {},
   setHitBadge: () => {},
@@ -679,9 +680,9 @@ function startBotSimulations(roundId) {
       renderRoomUi();
     };
 
-    // Schedule probabilistic rest mistakes on real rest timestamps
+    // Schedule probabilistic rest mistakes on real rest timestamps (aligned with PRE_DELAY_SEC 0.35s)
     botPhrase.rests.forEach((botRst) => {
-      const fireMs = Math.max(200, Math.round((botRst.timeSec + 0.16) * 1000));
+      const fireMs = Math.max(250, Math.round((botRst.timeSec + 0.45) * 1000));
       const tid = window.setTimeout(() => {
         if (!roomState.joined || roomState.roundId !== roundId || roomState.phase !== "PLAYING" || eliminated) return;
         if (Math.random() < prof.restErrProb) {
@@ -694,9 +695,9 @@ function startBotSimulations(roundId) {
       roomState.botTimers.push(tid);
     });
 
-    // Schedule realistic note-by-note execution
+    // Schedule realistic note-by-note execution (aligned with PRE_DELAY_SEC 0.35s)
     botPhrase.targets.forEach((botTgt, idx) => {
-      const fireMs = Math.max(200, Math.round((botTgt.timeSec + 0.18) * 1000));
+      const fireMs = Math.max(250, Math.round((botTgt.timeSec + 0.48) * 1000));
       const tid = window.setTimeout(() => {
         if (!roomState.joined || roomState.roundId !== roundId || roomState.phase !== "PLAYING" || eliminated) return;
         // Harder subdivisions/articulations slightly lower bot hit probability just like human players
@@ -766,6 +767,30 @@ export function isRoomActive() {
 
 export function isRoomPlaying() {
   return roomState.joined && (roomState.phase === "PLAYING" || roomState.phase === "COUNTDOWN");
+}
+
+export function isRoomCountingDown() {
+  return roomState.joined && roomState.phase === "COUNTDOWN";
+}
+
+export function tryStartRoomRoundFromMain() {
+  if (!roomState.joined || !roomState.isHost) return false;
+  if (roomState.phase === "COUNTDOWN") return true; // already counting down
+  hostStartRound();
+  return true;
+}
+
+export function notifyRoomStopped() {
+  if (!roomState.joined) return;
+  if (roomState.phase === "COUNTDOWN" || roomState.phase === "PLAYING") {
+    if (roomState.isHost) {
+      clearRoundTimers();
+      roomState.phase = "LOBBY";
+      for (const p of roomState.players.values()) p.status = "READY";
+      sendMsg({ type: "round_abort", roundId: roomState.roundId });
+      renderRoomUi();
+    }
+  }
 }
 
 export function notifyRoomChartChanged() {
@@ -988,6 +1013,7 @@ export async function leaveRoom(clearUrl = true) {
 
 function hostStartRound() {
   if (!roomState.joined || !roomState.isHost) return;
+  cbs.unlockAudio(); // Synchronously unlock Web Audio on user gesture before countdown setTimeout!
   const chart = getCurrentChartPayload();
   roomState.chart = chart;
   const nextRoundId = roomState.roundId + 1;
@@ -996,7 +1022,7 @@ function hostStartRound() {
     roundId: nextRoundId,
     rule: roomState.rule,
     chart,
-    startDelayMs: 900,
+    startDelayMs: 700,
   };
   sendMsg(payload);
   beginSyncedRound(payload);

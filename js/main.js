@@ -44,9 +44,10 @@ import {
   trackPracticeStart, trackPracticeComplete, trackPracticeStop, trackShare, trackRefVisit,
 } from "./analytics.js";
 import {
-  initRoom, syncRoomLanguage, isRoomPlaying,
+  initRoom, syncRoomLanguage, isRoomPlaying, isRoomCountingDown,
+  tryStartRoomRoundFromMain, notifyRoomStopped,
   notifyRoomChartChanged, notifyRoomLiveProgress, notifyRoomFinish,
-} from "./room.js?v=20261127g";
+} from "./room.js?v=20261127h";
 
 function resetTargets() {
   const ts = getTimeSig(app.phrase ? app.phrase.timeSig : app.timeSig);
@@ -243,11 +244,12 @@ async function startRun(demo = false, keepRushRound = false) {
   );
 }
 
-function stopRun() {
+function stopRun(fromRoom = false) {
   const hadRushTimer = Boolean(app.rushTimerId);
   cancelRushTimer(true);
   app.runSeq += 1;
   clearFadeOutClasses();
+  if (!fromRoom) notifyRoomStopped();
   if (app.state === "CAL") {
     stopCalibration(true);
     return;
@@ -1436,8 +1438,12 @@ function frame() {
 // -------------------------------------------------------------------------
 // 7. Wire Controls & Keyboard Shortcuts
 // -------------------------------------------------------------------------
-document.getElementById("btnStart").addEventListener("click", () => startRun(false));
-document.getElementById("btnDockStart").addEventListener("click", () => startRun(false));
+function handleMainStartAction() {
+  if (tryStartRoomRoundFromMain()) return;
+  startRun(false);
+}
+document.getElementById("btnStart").addEventListener("click", handleMainStartAction);
+document.getElementById("btnDockStart").addEventListener("click", handleMainStartAction);
 document.getElementById("btnStop").addEventListener("click", () => stopRun());
 document.getElementById("btnDockStop").addEventListener("click", () => stopRun());
 document.getElementById("btnNew").addEventListener("click", () => newPhrase());
@@ -1612,7 +1618,7 @@ function bindTouchPad(padEl, hitKind = "NORMAL") {
         handleHit(getAudioCtx().currentTime - app.keyLatencyMs / 1000, "PAD", hitKind, null);
       }
     } else if (app.state === "READY") {
-      startRun(false);
+      if (!isRoomCountingDown()) handleMainStartAction();
     }
   };
   padEl.addEventListener("pointerdown", trigger, { passive: false });
@@ -1806,11 +1812,11 @@ window.addEventListener("keydown", (e) => {
         handleHit(getAudioCtx().currentTime - app.keyLatencyMs / 1000, "KEY", hitKind, code);
       }
     } else if (app.state === "READY") {
-      startRun(false);
+      if (!isRoomCountingDown()) handleMainStartAction();
     }
   } else if (code === "Enter" || code === "NumpadEnter" || code === "KeyR") {
     e.preventDefault();
-    startRun(false);
+    handleMainStartAction();
   } else if (code === "Escape") {
     e.preventDefault();
     stopRun();
@@ -2666,7 +2672,8 @@ initRoom({
     }
   },
   triggerRoomStart: () => startRun(false),
-  stopRun,
+  unlockAudio: () => ensureAudioCtx(),
+  stopRun: () => stopRun(true),
   newPhrase,
   setHitBadge,
   updateMeta,
