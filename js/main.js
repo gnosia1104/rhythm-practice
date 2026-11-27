@@ -48,7 +48,7 @@ import {
   refreshRoomAudioBanner, tryStartRoomRoundFromMain, notifyRoomStopped,
   notifyRoomChartChanged, notifyRoomLiveProgress, notifyRoomFinish,
   notifyRoomEndlessProgress, notifyRoomEndlessOut,
-} from "./room.js?v=20261127aa";
+} from "./room.js?v=20261127ac";
 import {
   endlessState, isSdEndless, initEndless, setEndlessMode, setEndlessStreamSeed, syncEndlessLanguage, renderEndlessHud,
   buildEndlessPreviewPhrase, startEndlessAudioAndState, stepEndlessFrame,
@@ -59,6 +59,12 @@ import {
   initAchievements, syncAchievementsLanguage,
   evaluateStandardRunAchievements, evaluateEndlessAchievements, evaluateRoomWinAchievement,
 } from "./achievements.js";
+import {
+  initSuddenDeath, resetSuddenDeathRunState, renderSdLivesHud, playSuddenDeathFailSfx, checkSuddenDeathProgress,
+} from "./sudden-death.js";
+import {
+  initLeaderboard, syncLeaderboardLanguage, recordLeaderboardRun,
+} from "./leaderboard.js";
 
 function resetTargets() {
   const ts = getTimeSig(app.phrase ? app.phrase.timeSig : app.timeSig);
@@ -115,10 +121,8 @@ function resetTargets() {
   app.extraHits = 0;
   app.keyExtraHits = 0;
   app.audioExtraHits = 0;
-  app.suddenDeathOut = false;
-  lastSdMisses = 0;
   app.dirtyScore = true;
-  if (typeof renderSdLivesHud === "function") renderSdLivesHud(false);
+  resetSuddenDeathRunState();
 }
 
 
@@ -522,150 +526,6 @@ function pushLiveRoomProgress() {
   });
 }
 
-let lastSdMisses = 0;
-
-function isSuddenDeathActive() {
-  if (isSdEndless()) return true;
-  if (isRoomActive()) return isRoomSuddenDeath();
-  return Boolean(app.suddenDeath);
-}
-
-function countCurrentMisses() {
-  if (isSdEndless()) {
-    return Math.max(0, (endlessState.maxLives || 3) - (endlessState.lives ?? 3));
-  }
-  if (!app.phrase) return 0;
-  const missedNotes = (app.phrase.targets || []).filter(tg => tg.missed).length;
-  const restErrs = (app.phrase.rests || []).filter(r => r.error).length;
-  return missedNotes + restErrs;
-}
-
-function renderSdLivesHud(shake = false) {
-  const el = document.getElementById("metaSdLives");
-  if (!el) return;
-  const active = isSuddenDeathActive();
-  el.classList.toggle("hidden", !active);
-  if (!active) return;
-
-  const maxLives = isSdEndless() ? (endlessState.maxLives || 3) : (app.suddenDeathMax || 3);
-  const left = app.suddenDeathOut
-    ? 0
-    : (isSdEndless() ? Math.max(0, endlessState.lives ?? maxLives) : Math.max(0, maxLives - countCurrentMisses()));
-  if (left <= 0) {
-    el.textContent = "💀 OUT";
-  } else {
-    const hearts = "❤️".repeat(left) + "🖤".repeat(Math.max(0, maxLives - left));
-    el.textContent = `💀 ${hearts}`;
-  }
-  el.classList.toggle("warn", left === 1);
-  el.classList.toggle("out", left === 0);
-  if (shake) {
-    el.classList.remove("shake");
-    void el.offsetWidth;
-    el.classList.add("shake");
-  }
-}
-
-function playSuddenDeathFailSfx() {
-  const ctx = ensureAudioCtx();
-  if (!ctx || app.clickVol <= 0) return;
-  const t0 = ctx.currentTime + 0.01;
-  scheduleBassNote(ctx, t0, 0.16, 220.0);
-  scheduleBassNote(ctx, t0 + 0.16, 0.28, 146.83);
-}
-
-function triggerSoloSuddenDeathOut(misses) {
-  if (app.suddenDeathOut || isRoomPlaying()) return;
-  app.suddenDeathOut = true;
-  cancelRushTimer(true);
-  stopScheduledAudio();
-  clearFadeOutClasses();
-  app.state = "DONE";
-  abortActiveRunTracking("sd_out");
-  playSuddenDeathFailSfx();
-  renderSdLivesHud(true);
-
-  const tgts = (app.phrase && app.phrase.targets) || [];
-  const total = tgts.length;
-  const hitTgts = tgts.filter(tg => tg.hit);
-  const hits = hitTgts.length;
-  const errs = hitTgts.map(tg => tg.errMs).filter(e => e !== null);
-  const tw = getTimingThresholds(app.bpm);
-  const tight = errs.filter(e => Math.abs(e) <= tw.tight).length;
-  const acc = total ? (hits / total) * 100 : 0;
-  let mean = 0, sd = 0;
-  if (errs.length) {
-    mean = errs.reduce((a, b) => a + b, 0) / errs.length;
-    sd = Math.sqrt(errs.reduce((s, e) => s + (e - mean) ** 2, 0) / errs.length);
-  }
-  const restErrs = (app.phrase && app.phrase.rests ? app.phrase.rests : []).filter(r => r.error).length;
-  const scoreDetail = computeDetailedScore(app.phrase, hits, total, sd, app.extraHits, restErrs, app.keyExtraHits, app.audioExtraHits);
-  app.history.unshift({
-    take: app.takeId++,
-    tsIso: new Date().toISOString(),
-    seed: app.phrase.seed.toString(16).toUpperCase().padStart(4, "0"),
-    fullSeed: app.customMode ? (app.phrase.customCode || "Custom") : currentFullSeedCode(),
-    bpm: app.bpm,
-    bars: app.numBars,
-    lv: app.level,
-    tripletMode: tripletsAllowed() ? app.tripletMode : 0,
-    staccato: app.staccatoOn,
-    ghost: app.ghostOn,
-    daily: Boolean(app.dailyDate),
-    dailyPlus: Boolean(app.dailyDate && app.dailyPlus),
-    dailyDate: app.dailyDate || null,
-    custom: app.customMode,
-    ts: app.timeSig,
-    mode: app.inputMode,
-    soundOn: app.soundOn,
-    showBeatNums: app.showBeatNums,
-    showCursor: app.showCursor,
-    blindGrade: app.blindGrade,
-    gapClick: app.gapClick,
-    fadeBeats: app.fadeBeats,
-    rushOn: app.rushOn,
-    rank: "💀 OUT",
-    rankCls: "rank-c",
-    score: scoreDetail.score,
-    maxScore: scoreDetail.maxScore,
-    ptsPerBar: Math.round(scoreDetail.score / Math.max(1, app.numBars)),
-    hits, total, acc, tight, mean, sd, extra: app.extraHits, restErrs,
-    susTotal: 0, susOk: 0,
-  });
-  if (app.history.length > 12) app.history.pop();
-  try { localStorage.setItem("rhythm_practice_history_v1", JSON.stringify(app.history)); } catch (_) {}
-
-  drawDistribution(errs, hits, total, mean, sd, tight, { total: 0, ok: 0, short: 0, long: 0, restErrs }, app.extraHits);
-  const rankEl = document.getElementById("rankBadge");
-  if (rankEl) {
-    rankEl.textContent = "💀 OUT";
-    rankEl.className = "rank-pill rank-c";
-  }
-  const scoreEl = document.getElementById("scoreBadge");
-  if (scoreEl) {
-    scoreEl.textContent = `${scoreDetail.score.toLocaleString()} / ${scoreDetail.maxScore.toLocaleString()}`;
-  }
-  renderLog();
-  setHitBadge(t("sdOutBadge"), "err");
-  syncTransportButtons();
-  app.dirtyScore = true;
-}
-
-function checkSuddenDeathProgress() {
-  if (!isSuddenDeathActive()) return;
-  if (app.state !== "COUNTIN" && app.state !== "PLAY") return;
-  const misses = countCurrentMisses();
-  if (misses !== lastSdMisses) {
-    const increased = misses > lastSdMisses;
-    lastSdMisses = misses;
-    renderSdLivesHud(increased);
-    // Infinite Sudden Death elimination is handled inside endless.js -> finalizeEndlessGameOver
-    if (!app.endlessMode && !isRoomPlaying() && misses >= (app.suddenDeathMax || 3)) {
-      triggerSoloSuddenDeathOut(misses);
-    }
-  }
-}
-
 function handleHit(hitAudioT, source, hitKind = "NORMAL", keyCode = null, playedMidi = null) {
   if (app.state !== "COUNTIN" && app.state !== "PLAY") return;
   const ts = getTimeSig();
@@ -935,6 +795,21 @@ function finalizeRun() {
     restCount: (app.phrase.rests || []).length,
     restErrs,
   });
+  if (app.dailyDate && !isRoomPlaying()) {
+    recordLeaderboardRun({
+      tab: app.dailyPlus ? "dailyplus" : "daily",
+      dateStr: app.dailyDate,
+      score: scoreDetail.score,
+      maxScore: scoreDetail.maxScore,
+      bars: app.numBars,
+      acc,
+      sd,
+      rank: rank.grade,
+      bpm: app.bpm,
+      level: app.level,
+      inputMode: app.inputMode,
+    });
+  }
   notifyRoomFinish({
     score: scoreDetail.score,
     maxScore: scoreDetail.maxScore,
@@ -1134,6 +1009,20 @@ function finalizeEndlessGameOver(stats) {
   const tsTrack = getTimeSig();
   trackPracticeComplete(app, { rank: rk.grade, acc, durationSec: Math.max(1, bars * tsTrack.clicksPerBar * tsTrack.clickSec(app.bpm)) });
   evaluateEndlessAchievements({ survivedBars: bars, hits: stats.hits });
+  if (bars > 0) {
+    recordLeaderboardRun({
+      tab: isSd ? "endless_sd3" : "endless",
+      score: bars * 100 + stats.maxCombo * 10,
+      maxScore: bars * 100 + stats.maxCombo * 10,
+      bars,
+      acc,
+      sd,
+      rank: rk.grade,
+      bpm: stats.peakBpm || app.bpm,
+      level: app.level,
+      inputMode: app.inputMode,
+    });
+  }
   syncTransportButtons();
   app.dirtyScore = true;
 }
@@ -1519,6 +1408,7 @@ function applyLanguage(lang) {
   syncRoomLanguage();
   syncEndlessLanguage();
   syncAchievementsLanguage();
+  syncLeaderboardLanguage();
   updateMeta();
   app.dirtyScore = true;
 }
@@ -1939,8 +1829,7 @@ document.getElementById("btnBlindGrade").addEventListener("click", () => {
 
 document.getElementById("btnSuddenDeath").addEventListener("click", () => {
   app.suddenDeath = !app.suddenDeath;
-  app.suddenDeathOut = false;
-  lastSdMisses = 0;
+  resetSuddenDeathRunState();
   if (app.endlessMode) {
     if (app.state === "READY" || app.state === "DONE") buildEndlessPreviewPhrase();
     const msg = document.getElementById("endlessMsg");
@@ -2941,6 +2830,8 @@ function syncAllDropdownBadges() {
     !document.getElementById("editorBar").classList.contains("hidden") ||
     !document.getElementById("drillBar").classList.contains("hidden") ||
     !document.getElementById("pitchBar").classList.contains("hidden") ||
+    !document.getElementById("achBar").classList.contains("hidden") ||
+    !document.getElementById("lbBar").classList.contains("hidden") ||
     !document.getElementById("calBar").classList.contains("hidden");
   const toolsDropOpen = !document.getElementById("toolsDropdown").classList.contains("hidden");
   document.getElementById("btnToolsMenu").classList.toggle("active", toolsDropOpen || anyDrill || anyPanelOpen);
@@ -3197,6 +3088,24 @@ initAchievements({
     renderEndlessHud();
     updateMeta();
   },
+});
+initSuddenDeath({
+  isSdEndless,
+  getEndlessLives: () => ({ lives: endlessState.lives, maxLives: endlessState.maxLives }),
+  isRoomActive,
+  isRoomSuddenDeath,
+  isRoomPlaying,
+  cancelRushTimer,
+  clearFadeOutClasses,
+  abortActiveRunTracking,
+  drawDistribution,
+  renderLog,
+  setHitBadge,
+  syncTransportButtons,
+});
+initLeaderboard({
+  onUiChange: () => syncToolsMenuBadge(),
+  setHitBadge,
 });
 syncToolsMenuBadge();
 renderLog();

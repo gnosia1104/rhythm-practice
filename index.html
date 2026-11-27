@@ -60,7 +60,7 @@
   "description": "Free browser-based rhythm & pitch sight-reading trainer for musicians featuring 6 progressive levels, 5 time signatures, triplets, staccato, ghost notes, gap click metronome, custom score editor, daily challenges, and audio interface onset/sustain/rest grading."
 }
 </script>
-<link rel="stylesheet" href="css/styles.css?v=20261127ab" />
+<link rel="stylesheet" href="css/styles.css?v=20261127ac" />
 <script defer src="https://cloud.umami.is/script.js" data-website-id="9070201e-fd1f-4081-ad26-1219def68ba6" data-domains="gnosia1104.github.io"></script>
 </head>
 <body>
@@ -182,6 +182,7 @@
             <button id="btnDrill" type="button" role="menuitem" title="특수 훈련 베타 (갭 클릭 · 시야 방해 · BPM 러쉬)"><span id="btnDrillText">🧪 특수훈련</span><span class="beta-tag">BETA</span></button>
             <button id="btnPitchBeta" type="button" role="menuitem" title="재즈 플랫 키 5선보 음정 초견 베타 (오디오 피치 판정 지원)"><span id="btnPitchText">🎼 음정 초견</span><span class="beta-tag">BETA</span></button>
             <button id="btnAchievements" type="button" role="menuitem" title="달성 과제 · 칭호 · 기록 JSON 백업/복원"><span id="btnAchText">🏅 도전과제</span><span id="achCountBadge" class="tools-badge">0/12</span></button>
+            <button id="btnLeaderboard" type="button" role="menuitem" title="오늘의 데일리 · 데일리+ · 엔드리스 글로벌 랭킹"><span id="btnLbText">🏆 리더보드</span><span class="beta-tag">TOP 20</span></button>
             <div class="tools-sep"></div>
             <div id="lblToolsSecUtil" class="tools-sec-lbl">보정 · 출력</div>
             <button id="btnSyncCal" type="button" role="menuitem" title="타이밍 지연 보정 (블루투스 이어폰 / 오디오 인터페이스)">⏱ 보정</button>
@@ -521,6 +522,34 @@
     <span id="achMsg" class="ach-msg"></span>
   </div>
 
+  <!-- Global & Local Top 20 Leaderboard Drawer -->
+  <div id="lbBar" class="lb-bar hidden">
+    <div class="lb-head">
+      <div class="group">
+        <strong id="lblLbTitle">🏆 글로벌 리더보드</strong>
+        <span id="lbModeBadge" class="room-mode-pill local">LOCAL</span>
+      </div>
+      <div class="group">
+        <button id="btnLbRefresh" type="button" title="랭킹 새로고침">↻ 새로고침</button>
+        <button id="btnLbClose" type="button" class="cal-close" title="닫기">✕</button>
+      </div>
+    </div>
+    <div class="lb-controls">
+      <div class="lb-tabs" role="tablist">
+        <button type="button" class="lb-tab-btn active" data-lb-tab="daily">🏆 데일리</button>
+        <button type="button" class="lb-tab-btn" data-lb-tab="dailyplus">🔥 데일리+</button>
+        <button type="button" class="lb-tab-btn" data-lb-tab="endless">♾️ 엔드리스</button>
+        <button type="button" class="lb-tab-btn" data-lb-tab="endless_sd3">💀 서든데스</button>
+      </div>
+      <div class="lb-nick-pair">
+        <input id="lbNickInput" class="room-input lb-nick-in" type="text" maxlength="16" placeholder="닉네임 (예: GrooveKing)" />
+        <button id="btnLbSaveNick" type="button">닉네임 저장</button>
+      </div>
+    </div>
+    <div id="lbList" class="lb-list"></div>
+    <span id="lbMsg" class="lb-msg"></span>
+  </div>
+
   <!-- PDF-Style Vector Sheet Music -->
   <div class="sheet-paper">
     <div class="sheet-header">
@@ -659,7 +688,7 @@
 <!-- Steam-Style Achievement Unlock Toast Stack -->
 <div id="achToastStack" class="ach-toast-stack" aria-live="polite"></div>
 
-<script type="module" src="js/main.js?v=20261127ab"></script>
+<script type="module" src="js/main.js?v=20261127ac"></script>
 </body>
 </html>
 

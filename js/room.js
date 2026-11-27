@@ -6,18 +6,15 @@ import { app, currentFullSeedCode, hitWindowSec, tripletsAllowed, getTimeSig } f
 import { computeDetailedScore, computeScoreRank, getTimingThresholds } from "./scoring.js";
 import { copyToClipboard, flashBtnText } from "./share-card.js";
 import { trackEvent } from "./analytics.js";
+import {
+  SUPABASE_URL, SUPABASE_ANON_KEY, NICK_STORAGE_KEY,
+  isSupabaseConfigured, getSupabaseClient,
+} from "./supabase-client.js";
 
-// =========================================================================
-// Supabase Realtime Config (Optional: leave blank for Local Multi-Tab Mode)
-// Create a free project at https://supabase.com -> Project Settings -> API
-// Paste Project URL and anon public key below (no DB tables needed!).
-// =========================================================================
-export const SUPABASE_URL = "https://fdpnrxkohvfrcesoxpwo.supabase.co";
-export const SUPABASE_ANON_KEY = "sb_publishable_ifPAkMXSsD1C_2xEToofNg_GtDLtkVB";
+export { SUPABASE_URL, SUPABASE_ANON_KEY };
 
 const ROOM_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // Excludes confusing I/O/0/1
 export const MAX_ROOM_PLAYERS = 10; // Total room capacity including bots
-const NICK_STORAGE_KEY = "rhythm_room_nick_v1";
 const CHAT_MUTE_STORAGE_KEY = "rhythm_room_chat_muted_v1";
 const HOST_SESSION_PREFIX = "rhythm_room_host_";
 const LAST_ROOM_SESSION_KEY = "rhythm_room_last_v1";
@@ -48,8 +45,6 @@ let cbs = {
   setHitBadge: () => {},
   updateMeta: () => {},
 };
-
-let supabaseClientPromise = null;
 
 function randomId(len = 10) {
   let out = "";
@@ -82,21 +77,6 @@ function escapeHtml(str) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
-}
-
-function isSupabaseConfigured() {
-  return Boolean(SUPABASE_URL && SUPABASE_URL.trim() && SUPABASE_ANON_KEY && SUPABASE_ANON_KEY.trim());
-}
-
-async function getSupabaseClient() {
-  if (!isSupabaseConfigured()) return null;
-  if (!supabaseClientPromise) {
-    supabaseClientPromise = import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm")
-      .then((mod) => mod.createClient(SUPABASE_URL.trim(), SUPABASE_ANON_KEY.trim(), {
-        realtime: { params: { eventsPerSecond: 10 } },
-      }));
-  }
-  return supabaseClientPromise;
 }
 
 export const roomState = {
