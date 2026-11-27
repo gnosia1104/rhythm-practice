@@ -21,6 +21,7 @@ export function trackEvent(name, data) {
 export function getPracticeModeTag(st) {
   if (st.dailyDate) return st.dailyPlus ? "daily+" : "daily";
   if (st.customMode) return "custom";
+  if (st.endlessMode) return "endless";
   if (st.rushOn) return "rush";
   if (st.gapClick && st.gapClick !== "OFF") return "gap";
   if (st.fadeBeats > 0) return "fade";

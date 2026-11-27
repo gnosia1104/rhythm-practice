@@ -12,7 +12,7 @@ import {
   formatPlayMods, formatPlayModsCompact, computeChartMaxInfo,
   getTimingThresholds, computeDetailedScore, computeScoreRank,
 } from "./scoring.js";
-import { el, renderScore } from "./engraver.js";
+import { el, renderScore } from "./engraver.js?v=20261127o";
 import {
   getAudioCtx, setClickMasterGainVol, ensureAudioCtx, ensureAudioCtxReady,
   stopScheduledAudio, scheduleClick, scheduleBassNote, scheduleRunAudio,
@@ -48,6 +48,12 @@ import {
   tryStartRoomRoundFromMain, notifyRoomStopped,
   notifyRoomChartChanged, notifyRoomLiveProgress, notifyRoomFinish,
 } from "./room.js?v=20261127n";
+import {
+  endlessState, initEndless, syncEndlessLanguage, renderEndlessHud,
+  buildEndlessPreviewPhrase, startEndlessAudioAndState, stepEndlessFrame,
+  onEndlessHit, onEndlessMiss, onEndlessRestPassed, onEndlessRestError, onEndlessExtraHit,
+  saveEndlessBest,
+} from "./endless.js?v=20261127o";
 
 function resetTargets() {
   const ts = getTimeSig(app.phrase ? app.phrase.timeSig : app.timeSig);
@@ -176,11 +182,22 @@ function newPhrase(forcedSeed = null, keepDaily = false) {
   if (app.state === "CAL") stopCalibration(false);
   stopScheduledAudio();
   app.takeId += 1;
+  if (keepDaily && app.endlessMode) {
+    app.endlessMode = false;
+    renderEndlessHud();
+  }
   if (!keepDaily) {
     app.dailyDate = null;
     app.dailyPlus = false;
     app.customMode = false;
     clearShareQueryUrl();
+  }
+  if (app.endlessMode && !keepDaily && !forcedSeed) {
+    buildEndlessPreviewPhrase();
+    app.state = "READY";
+    setHitBadge(t("endlessReadyBadge"), "tight");
+    updateMeta();
+    return;
   }
   app.phrase = generatePhrase(app.numBars, app.level, app.tripletMode, app.timeSig, forcedSeed, app.staccatoOn, app.ghostOn, app.pitchMode && !keepDaily);
   applyPitchToCurrentPhrase(false);
@@ -226,22 +243,26 @@ async function startRun(demo = false, keepRushRound = false) {
   syncTransportButtons();
   const ctx = await ensureAudioCtxReady();
   if (seq !== app.runSeq) return;
-  resetTargets();
   app.startAudioT = ctx.currentTime + PRE_DELAY_SEC;
   app.state = demo ? "DEMO" : "COUNTIN";
   setHitBadge(demo ? t("badgeDemo") : t("badgeCountIn"), "");
   syncTransportButtons();
   app.runTrackOpen = !demo;
   trackPracticeStart(app, demo);
-  scheduleRunAudio(
-    app.bpm,
-    app.numBars,
-    app.startAudioT,
-    demo ? true : app.soundOn,
-    demo ? app.phrase.targets : null,
-    app.timeSig,
-    demo ? "OFF" : app.gapClick
-  );
+  if (app.endlessMode && !demo) {
+    startEndlessAudioAndState(app.startAudioT);
+  } else {
+    resetTargets();
+    scheduleRunAudio(
+      app.bpm,
+      app.phrase ? app.phrase.numBars : app.numBars,
+      app.startAudioT,
+      demo ? true : app.soundOn,
+      demo ? app.phrase.targets : null,
+      app.timeSig,
+      demo ? "OFF" : app.gapClick
+    );
+  }
 }
 
 function stopRun(fromRoom = false) {
@@ -257,7 +278,12 @@ function stopRun(fromRoom = false) {
   if (app.state !== "COUNTIN" && app.state !== "PLAY" && app.state !== "DEMO" && !hadRushTimer) return;
   abortActiveRunTracking("stop");
   stopScheduledAudio();
-  resetTargets();
+  if (app.endlessMode) {
+    if (endlessState.survivedBars > 0) saveEndlessBest(endlessState.survivedBars);
+    buildEndlessPreviewPhrase();
+  } else {
+    resetTargets();
+  }
   app.state = "READY";
   setHitBadge(t("badgeStopped"), "");
   syncTransportButtons();
@@ -572,6 +598,7 @@ function handleHit(hitAudioT, source, hitKind = "NORMAL", keyCode = null, played
       }
       app.dirtyScore = true;
     }
+    onEndlessHit(best);
   } else {
     app.extraHits += 1;
     if (source === "AUDIO") app.audioExtraHits += 1;
@@ -588,7 +615,13 @@ function handleHit(hitAudioT, source, hitKind = "NORMAL", keyCode = null, played
       hitRest.error = true;
       hitRest.passed = false;
       hitRest.errorKind = "HIT";
+      if (!hitRest.hpCounted) {
+        hitRest.hpCounted = true;
+        onEndlessRestError();
+      }
       if (!app.blindGrade) app.dirtyScore = true;
+    } else {
+      onEndlessExtraHit();
     }
     if (!app.blindGrade) {
       setHitBadge(hitRest ? `[${src}] REST ERR !` : `[${src}] EXTRA !`, "err");
@@ -806,6 +839,89 @@ function finalizeRun() {
   app.dirtyScore = true;
 }
 
+function finalizeEndlessGameOver(stats) {
+  stopScheduledAudio();
+  app.state = "DONE";
+  app.runTrackOpen = false;
+  clearFadeOutClasses();
+
+  const total = stats.hits + stats.missed;
+  const acc = total ? (stats.hits / total) * 100 : 0;
+  let mean = 0, sd = 0;
+  if (stats.errs.length) {
+    mean = stats.errs.reduce((a, b) => a + b, 0) / stats.errs.length;
+    sd = Math.sqrt(stats.errs.reduce((s, e) => s + (e - mean) ** 2, 0) / stats.errs.length);
+  }
+  const bars = stats.survivedBars;
+  const rk = bars >= 50 ? { grade: "S+", cls: "rank-sp" }
+    : (bars >= 30 ? { grade: "S", cls: "rank-s" }
+      : (bars >= 16 ? { grade: "A", cls: "rank-a" }
+        : (bars >= 8 ? { grade: "B", cls: "rank-b" } : { grade: "C", cls: "rank-c" })));
+
+  app.history.unshift({
+    take: app.takeId++,
+    tsIso: new Date().toISOString(),
+    seed: "ENDL",
+    fullSeed: "",
+    bpm: stats.peakBpm || app.bpm,
+    bars,
+    lv: app.level,
+    tripletMode: tripletsAllowed() ? app.tripletMode : 0,
+    staccato: app.staccatoOn,
+    ghost: app.ghostOn,
+    endless: true,
+    daily: false,
+    dailyPlus: false,
+    custom: false,
+    ts: app.timeSig,
+    mode: app.inputMode,
+    soundOn: app.soundOn,
+    showBeatNums: app.showBeatNums,
+    showCursor: app.showCursor,
+    blindGrade: app.blindGrade,
+    gapClick: app.gapClick,
+    fadeBeats: app.fadeBeats,
+    rushOn: false,
+    rank: rk.grade,
+    rankCls: rk.cls,
+    score: bars * 100 + stats.maxCombo * 10,
+    maxScore: bars * 100 + stats.maxCombo * 10,
+    hits: stats.hits,
+    total,
+    acc,
+    tight: stats.tight,
+    mean,
+    sd,
+    extra: stats.extra,
+    restErrs: stats.restErrs,
+    susTotal: 0,
+    susOk: 0,
+  });
+  if (app.history.length > 12) app.history.pop();
+  try { localStorage.setItem("rhythm_practice_history_v1", JSON.stringify(app.history)); } catch (_) {}
+
+  drawDistribution(stats.errs, stats.hits, total, mean, sd, stats.tight, { total: 0, ok: 0, short: 0, long: 0, restErrs: stats.restErrs }, stats.extra, stats.peakBpm || app.bpm);
+  const rankEl = document.getElementById("rankBadge");
+  rankEl.textContent = rk.grade;
+  rankEl.className = `rank-pill ${rk.cls}`;
+  const scoreEl = document.getElementById("scoreBadge");
+  scoreEl.textContent = `♾️ ${bars}B · Max ${stats.maxCombo}C`;
+  scoreEl.classList.remove("hidden");
+  renderLog();
+
+  const goText = t("endlessGameOver", bars, stats.bestBars, stats.isNewBest, stats.maxCombo, stats.peakBpm || app.bpm);
+  const msgEl = document.getElementById("endlessMsg");
+  if (msgEl) {
+    msgEl.style.color = stats.isNewBest ? "var(--green)" : "var(--red)";
+    msgEl.textContent = goText;
+  }
+  setHitBadge(`💀 ${bars}B${stats.isNewBest ? " 🏆 NEW BEST!" : ""}`, stats.isNewBest ? "tight" : "err");
+  const tsTrack = getTimeSig();
+  trackPracticeComplete(app, { rank: rk.grade, acc, durationSec: Math.max(1, bars * tsTrack.clicksPerBar * tsTrack.clickSec(app.bpm)) });
+  syncTransportButtons();
+  app.dirtyScore = true;
+}
+
 function drawDistribution(errs, hits, total, mean, sd, tight, sustainStats = null, extraHits = app.extraHits, distBpm = app.bpm) {
   const svg = document.getElementById("distSvg");
   while (svg.firstChild) svg.removeChild(svg.firstChild);
@@ -870,7 +986,7 @@ function renderLog() {
     const tTag = h.tripletMode === 2 ? "T2" : (h.tripletMode === 1 ? "T1" : (h.triplets ? "T" : ""));
     const lvFlags = `${tTag}${h.staccato ? "S" : ""}${h.ghost ? "G" : ""}`;
     const barsTag = h.bars ? `${h.bars}B` : "";
-    const modePrefix = h.custom ? "✏️" : (h.dailyPlus ? "🔥" : (h.daily ? "🏆" : ""));
+    const modePrefix = h.endless ? "♾️" : (h.custom ? "✏️" : (h.dailyPlus ? "🔥" : (h.daily ? "🏆" : "")));
     const lvCore = h.custom ? "Custom" : `Lv${h.lv}${lvFlags}`;
     const lvLabel = `${modePrefix}${modePrefix ? " " : ""}${lvCore} · ${h.ts || "4/4"}${barsTag ? ` · ${barsTag}` : ""}`;
     const canReplay = Boolean(h.daily || h.dailyPlus || (h.fullSeed && (h.fullSeed.startsWith("C1_") || decodeFullSeedCode(h.fullSeed))));
@@ -941,7 +1057,10 @@ function updateMeta() {
   const rndPrefix = app.pitchKey === "RND" ? "🎲 " : "";
   const relSuffix = app.pitchRelative ? " · 123" : "";
   const pitchTag = app.pitchMode ? ` · ${clefIcon} ${rndPrefix}${(JAZZ_KEYS[resolvedPitchKey] || JAZZ_KEYS.Bb).label}${relSuffix}` : "";
-  if (app.customMode) {
+  if (app.endlessMode) {
+    document.getElementById("metaLevel").textContent = `♾️ Endless · ${app.timeSig} · ${baseTitle}${pitchTag} · [${playMods}]`;
+    document.getElementById("metaSeed").textContent = `♾️ Best ${endlessState.bestBars}B`;
+  } else if (app.customMode) {
     document.getElementById("metaLevel").textContent = `✏️ Custom · ${app.timeSig} · ${app.numBars} bars${pitchTag} · [${playMods}]`;
     document.getElementById("metaSeed").textContent = app.phrase.customCode ? app.phrase.customCode.slice(0, 14) + "…" : "Custom";
   } else if (app.dailyDate) {
@@ -954,9 +1073,13 @@ function updateMeta() {
   }
   const chartMax = computeChartMaxInfo(app.phrase);
   const maxEl = document.getElementById("metaMaxScore");
-  maxEl.textContent = chartMax.sustainMax > 0
-    ? `Max ${chartMax.noteMax.toLocaleString()} + Sus ${chartMax.sustainMax.toLocaleString()}`
-    : `Max ${chartMax.maxScore.toLocaleString()}`;
+  if (app.endlessMode) {
+    maxEl.textContent = "♾️ Survival";
+  } else {
+    maxEl.textContent = chartMax.sustainMax > 0
+      ? `Max ${chartMax.noteMax.toLocaleString()} + Sus ${chartMax.sustainMax.toLocaleString()}`
+      : `Max ${chartMax.maxScore.toLocaleString()}`;
+  }
   const modDesc = chartMax.modTags.length ? ` · ${chartMax.modTags.join(", ")}` : "";
   const susDesc = chartMax.sustainMax > 0 ? ` · Note ${chartMax.noteMax.toLocaleString()} + Sus ${chartMax.sustainMax.toLocaleString()} (${chartMax.sustainCount} notes)` : "";
   maxEl.title = `Chart Max: ${chartMax.maxScore.toLocaleString()} pts (Meter ×${chartMax.meterMult.toFixed(2)} · Log BPM ×${chartMax.bpmMult.toFixed(2)}${modDesc}${susDesc})`;
@@ -1167,6 +1290,7 @@ function applyLanguage(lang) {
   renderLog();
   syncGuideUi();
   syncRoomLanguage();
+  syncEndlessLanguage();
   updateMeta();
   app.dirtyScore = true;
 }
@@ -1256,6 +1380,7 @@ function frame() {
 
   // Update run timing & LED
   let ledClass = "led-core";
+  let endlessFrameInfo = null;
   if (app.state === "CAL" && getAudioCtx()) {
     const elapsed = getAudioCtx().currentTime - calState.startAudioT;
     const endT = (calState.totalClicks - 1) * calState.beatSec + 0.34;
@@ -1280,16 +1405,23 @@ function frame() {
     const now = getAudioCtx().currentTime;
     const elapsed = now - app.startAudioT;
     const ts = getTimeSig();
-    const clickSec = ts.clickSec(app.bpm);
+    const isEndlessRun = Boolean(app.endlessMode && app.state !== "DEMO");
+    const refBpm = isEndlessRun ? (endlessState.baseBpm || app.bpm) : app.bpm;
+    const clickSec = ts.clickSec(refBpm);
     const tickSec = clickSec / ts.clickTicks;
     const countIn = ts.countInClicks * clickSec;
     const win = hitWindowSec();
-    const totalClicks = ts.countInClicks + app.numBars * ts.clicksPerBar;
-    const endT = countIn + (app.numBars * ts.barTicks) * tickSec + win;
+    const activeNumBars = app.phrase ? app.phrase.numBars : app.numBars;
+    const totalClicks = ts.countInClicks + activeNumBars * ts.clicksPerBar;
+    const endT = countIn + (activeNumBars * ts.barTicks) * tickSec + win;
 
     if (app.state === "COUNTIN" && elapsed >= countIn) {
       app.state = "PLAY";
       if (app.blindGrade) setHitBadge(t("badgeBlindPlay"), "");
+    }
+
+    if (isEndlessRun && app.state === "PLAY") {
+      endlessFrameInfo = stepEndlessFrame(elapsed);
     }
 
     if (app.state === "COUNTIN" || app.state === "PLAY") {
@@ -1298,12 +1430,18 @@ function frame() {
         if (!tgt.hit && !tgt.missed && elapsed > tgt.timeSec + win) {
           tgt.missed = true;
           changed = true;
+          onEndlessMiss();
         }
       }
       for (const rst of (app.phrase.rests || [])) {
+        if (app.endlessMode && rst.error && !rst.hpCounted) {
+          rst.hpCounted = true;
+          onEndlessRestError();
+        }
         if (!rst.error && !rst.passed && elapsed >= rst.endSec) {
           rst.passed = true;
           changed = true;
+          onEndlessRestPassed();
         }
       }
       if (changed) {
@@ -1313,8 +1451,10 @@ function frame() {
     }
 
     const clickIdxNow = elapsed >= 0 ? Math.floor(elapsed / clickSec) : -1;
-    const inGapMuteNow = (app.state === "PLAY" && app.gapClick !== "OFF" && clickIdxNow >= ts.countInClicks)
-      && isGapBar(Math.floor((clickIdxNow - ts.countInClicks) / ts.clicksPerBar), app.gapClick);
+    const inGapMuteNow = endlessFrameInfo
+      ? endlessFrameInfo.inGapMute
+      : ((app.state === "PLAY" && app.gapClick !== "OFF" && clickIdxNow >= ts.countInClicks)
+        && isGapBar(Math.floor((clickIdxNow - ts.countInClicks) / ts.clicksPerBar), app.gapClick));
 
     if (elapsed < 0) {
       statusMain.textContent = t("statusGetReady");
@@ -1330,17 +1470,24 @@ function frame() {
     }
 
     if (elapsed >= 0) {
-      const clickIdx = clickIdxNow;
-      const phase = elapsed - clickIdx * clickSec;
-      const flashDur = Math.min(0.13, clickSec * 0.32);
-      const ledLimit = (app.soundOn || app.state === "DEMO") ? totalClicks : ts.countInClicks;
-      if (clickIdx >= 0 && clickIdx < ledLimit && phase < flashDur && !inGapMuteNow) {
-        const pos = clickIdx < ts.countInClicks ? clickIdx : (clickIdx - ts.countInClicks) % ts.clicksPerBar;
-        ledClass = pos === 0 ? "led-core beat1" : "led-core beatn";
+      if (endlessFrameInfo) {
+        const flashDur = Math.min(0.13, endlessFrameInfo.clickSec * 0.32);
+        if (app.soundOn && !endlessFrameInfo.inGapMute && endlessFrameInfo.phase < flashDur) {
+          ledClass = endlessFrameInfo.clickInBar === 0 ? "led-core beat1" : "led-core beatn";
+        }
+      } else {
+        const clickIdx = clickIdxNow;
+        const phase = elapsed - clickIdx * clickSec;
+        const flashDur = Math.min(0.13, clickSec * 0.32);
+        const ledLimit = (app.soundOn || app.state === "DEMO") ? totalClicks : ts.countInClicks;
+        if (clickIdx >= 0 && clickIdx < ledLimit && phase < flashDur && !inGapMuteNow) {
+          const pos = clickIdx < ts.countInClicks ? clickIdx : (clickIdx - ts.countInClicks) % ts.clicksPerBar;
+          ledClass = pos === 0 ? "led-core beat1" : "led-core beatn";
+        }
       }
     }
 
-    if (elapsed >= endT) {
+    if (!isEndlessRun && elapsed >= endT) {
       if (app.state === "DEMO") {
         stopScheduledAudio();
         app.state = "READY";
@@ -1388,16 +1535,24 @@ function frame() {
   if (cursorEl) {
     let showNow = false;
     if (app.showCursor && (app.state === "PLAY" || app.state === "DEMO") && getAudioCtx() && app.scoreLayout) {
-      const ts = getTimeSig();
-      const clickSec = ts.clickSec(app.bpm);
-      const tickSec = clickSec / ts.clickTicks;
-      const countIn = ts.countInClicks * clickSec;
-      const playElapsed = (getAudioCtx().currentTime - app.startAudioT) - countIn;
-      const totalTicks = app.numBars * ts.barTicks;
-      const curTick = playElapsed / tickSec;
-      if (curTick >= 0 && curTick < totalTicks) {
-        const bIdx = Math.floor(curTick / ts.barTicks);
-        const tickInBar = curTick - bIdx * ts.barTicks;
+      let bIdx = -1, tickInBar = 0;
+      if (endlessFrameInfo) {
+        bIdx = endlessFrameInfo.localBar;
+        tickInBar = endlessFrameInfo.tickInBar;
+      } else {
+        const ts = getTimeSig();
+        const clickSec = ts.clickSec(app.bpm);
+        const tickSec = clickSec / ts.clickTicks;
+        const countIn = ts.countInClicks * clickSec;
+        const playElapsed = (getAudioCtx().currentTime - app.startAudioT) - countIn;
+        const totalTicks = (app.phrase ? app.phrase.numBars : app.numBars) * ts.barTicks;
+        const curTick = playElapsed / tickSec;
+        if (curTick >= 0 && curTick < totalTicks) {
+          bIdx = Math.floor(curTick / ts.barTicks);
+          tickInBar = curTick - bIdx * ts.barTicks;
+        }
+      }
+      if (bIdx >= 0) {
         const lay = app.scoreLayout.barLayouts[bIdx];
         if (lay) {
           const cx = lay.tickX ? lay.tickX(tickInBar) : (lay.barX0 + lay.innerPadL + (tickInBar / lay.barTicks) * lay.innerW);
@@ -2697,6 +2852,13 @@ initRoom({
   newPhrase,
   setHitBadge,
   updateMeta,
+});
+initEndless({
+  onGameOver: finalizeEndlessGameOver,
+  setHitBadge,
+  updateMeta,
+  stopRun,
+  newPhrase,
 });
 syncToolsMenuBadge();
 renderLog();

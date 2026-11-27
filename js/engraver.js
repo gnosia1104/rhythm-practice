@@ -258,7 +258,10 @@ export function renderScore(svg, phrase) {
   const hasDenseNotes = hasPitch && phrase.bars.some(bar => bar.some(bt => bt.some(ev => !ev.rest && ev.dur <= 4)));
 
   let barsPerSystem;
-  if (phrase.timeSig === "5/4") {
+  if (phrase.endless && phrase.endlessSlotBars) {
+    // Double-buffered Endless Mode ALWAYS renders exactly 2 lines (Slot 0 top, Slot 1 bottom)
+    barsPerSystem = phrase.endlessSlotBars;
+  } else if (phrase.timeSig === "5/4") {
     barsPerSystem = isNarrow ? 1 : (numBars <= 2 ? numBars : (numBars <= 4 ? 2 : 3));
   } else if (hasDenseNotes) {
     // Give 16th-note / triplet pitched bars generous horizontal width so accidentals never collide with noteheads
@@ -296,8 +299,30 @@ export function renderScore(svg, phrase) {
     const staffTop = sys * sysH + (hasPitch ? 68 : 58);
     const midY = staffTop + 20;
     const stemTopY = midY - 35;
-    const g = el("g");
+    const sysClasses = [];
+    if (phrase.endless) {
+      sysClasses.push("endless-sys");
+      if (sys === phrase.endlessActiveSlot) sysClasses.push("active-slot");
+      if (sys === phrase.endlessFreshSlot) sysClasses.push("fresh-slot");
+    }
+    const g = el("g", sysClasses.length ? { class: sysClasses.join(" ") } : {});
     svg.appendChild(g);
+
+    if (phrase.endless) {
+      const slotStartNum = (phrase.endlessSlotStarts && phrase.endlessSlotStarts[sys]) || (sys * barsPerSystem + 1);
+      const isAct = sys === phrase.endlessActiveSlot;
+      if (isAct) {
+        g.appendChild(el("rect", {
+          x: 2, y: staffTop - 4, width: 5, height: 48, rx: 2.5, fill: "#16a34a"
+        }));
+      }
+      g.appendChild(el("text", {
+        x: leftPad, y: staffTop - 10,
+        "font-size": 11, "font-weight": 800,
+        "font-family": "ui-monospace, SFMono-Regular, Menlo, monospace",
+        fill: isAct ? "#15803d" : "#94a3b8"
+      }, `m.${slotStartNum}`));
+    }
 
     // 5 staff lines
     for (let li = 0; li < 5; li++) {
@@ -874,8 +899,8 @@ export function renderScore(svg, phrase) {
         }
       }
 
-      // Right barline (final double barline on very last bar)
-      const isFinal = (bIdx === numBars - 1);
+      // Right barline (final double barline on very last bar, except in infinite Endless Mode)
+      const isFinal = !phrase.endless && (bIdx === numBars - 1);
       if (isFinal) {
         g.appendChild(el("line", {
           x1: barX1 - 6.5, y1: staffTop, x2: barX1 - 6.5, y2: staffTop + 40,

@@ -60,7 +60,7 @@
   "description": "Free browser-based rhythm & pitch sight-reading trainer for musicians featuring 6 progressive levels, 5 time signatures, triplets, staccato, ghost notes, gap click metronome, custom score editor, daily challenges, and audio interface onset/sustain/rest grading."
 }
 </script>
-<link rel="stylesheet" href="css/styles.css?v=20261127j" />
+<link rel="stylesheet" href="css/styles.css?v=20261127o" />
 <script defer src="https://cloud.umami.is/script.js" data-website-id="9070201e-fd1f-4081-ad26-1219def68ba6" data-domains="gnosia1104.github.io"></script>
 </head>
 <body>
@@ -193,6 +193,7 @@
       <div class="group">
         <button id="btnDaily" class="daily-btn" title="오늘의 4/4 데일리 챌린지 (고정 8마디)">🏆 데일리</button>
         <button id="btnDailyPlus" class="daily-plus-btn" title="오늘의 변박·고급 데일리+ 챌린지 (3/4·2/4·5/4·6/8)">🔥 데일리+</button>
+        <button id="btnEndless" class="endless-btn" title="2줄 교차 무한 초견 서바이벌 모드 (HP 게이지 · 최고 생존 마디 기록)">♾️ 엔드리스</button>
         <button id="btnRoom" class="room-btn" title="실시간 멀티플레이어 방 대결 (4자리 코드 · 초대 링크)">⚔️ 방 대결</button>
       </div>
     </div>
@@ -460,6 +461,26 @@
     <span id="roomMsg" class="room-msg">닉네임을 입력하고 방을 만들거나 4자리 코드로 바로 입장하세요.</span>
   </div>
 
+  <!-- Endless 2-Line Double-Buffered Arcade Survival HUD -->
+  <div id="endlessBar" class="endless-bar hidden">
+    <div class="endless-row">
+      <strong id="lblEndlessTitle">♾️ 엔드리스 서바이벌</strong>
+      <div class="endless-hp-box" title="정확한 어택·쉼표 통과 시 회복 / 미스·쉼표 에러 시 감소">
+        <span class="endless-hp-icon">❤️</span>
+        <div class="endless-hp-track">
+          <div id="endlessHpFill" class="endless-hp-fill" style="width:100%"></div>
+        </div>
+        <span id="endlessHpVal" class="endless-hp-val">100%</span>
+      </div>
+      <span id="endlessBarsVal" class="endless-pill bars">생존 0마디</span>
+      <span id="endlessComboVal" class="endless-pill combo">0 COMBO</span>
+      <span id="endlessBestVal" class="endless-pill best">🏆 최고 0마디</span>
+      <button id="btnEndlessEsc" type="button" title="8마디(2줄) 통과마다 BPM +5 자동 가속">⚡ 가속 OFF</button>
+      <button id="btnEndlessClose" type="button" class="cal-close" title="엔드리스 종료">✕</button>
+    </div>
+    <span id="endlessMsg" class="endless-msg">2줄 교차 무한 초견: 아랫줄 절반을 지나면 지나간 윗줄이 자동으로 새 악보로 바뀝니다. HP가 0이 될 때까지 최대한 많은 마디를 생존하세요!</span>
+  </div>
+
   <!-- PDF-Style Vector Sheet Music -->
   <div class="sheet-paper">
     <div class="sheet-header">
@@ -594,7 +615,7 @@
   </div>
 </div>
 
-<script type="module" src="js/main.js?v=20261127n"></script>
+<script type="module" src="js/main.js?v=20261127o"></script>
 </body>
 </html>
 

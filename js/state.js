@@ -25,6 +25,7 @@ export const app = {
   rushMinAcc: 90,   // 85 | 90 | 95
   rushRound: 0,
   rushTimerId: null,
+  endlessMode: false,   // Endless 2-line double-buffered infinite survival sight-reading
   pitchMode: false,     // Pitch Sight-Reading BETA (flat-key jazz 5-line bass/treble clef)
   pitchClef: "bass",    // "bass" (F-clef) | "treble" (G-clef)
   pitchKey: "Bb",       // "RND" | C | F | Bb | Eb | Ab | Db | Dm | Gm | Cm

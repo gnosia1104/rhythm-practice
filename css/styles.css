@@ -2302,6 +2302,125 @@ button.active .tools-badge {
   color: var(--muted);
 }
 
+/* Endless 2-Line Double-Buffered Survival Mode */
+.endless-btn {
+  background: #ecfdf5;
+  border-color: #6ee7b7;
+  color: #065f46;
+}
+.endless-btn:hover {
+  background: #d1fae5;
+  border-color: #34d399;
+}
+.endless-btn.active {
+  background: #059669;
+  border-color: #059669;
+  color: #ffffff;
+}
+
+.endless-bar {
+  background: var(--panel-bg);
+  border: 1.5px solid #6ee7b7;
+  border-radius: 12px;
+  padding: 10px 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 12.5px;
+  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.08);
+}
+
+.endless-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+}
+
+.endless-row button {
+  padding: 4px 9px;
+  font-size: 12px;
+}
+
+.endless-hp-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 170px;
+  flex: 1 1 170px;
+  max-width: 240px;
+}
+
+.endless-hp-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.endless-hp-track {
+  flex: 1;
+  height: 12px;
+  border-radius: 999px;
+  background: #e5e7eb;
+  overflow: hidden;
+  border: 1px solid #d1d5db;
+}
+
+.endless-hp-fill {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #22c55e, #16a34a);
+  transition: width 0.14s ease-out, background 0.2s;
+}
+.endless-hp-fill.warn {
+  background: linear-gradient(90deg, #f59e0b, #d97706);
+}
+.endless-hp-fill.crit {
+  background: linear-gradient(90deg, #ef4444, #dc2626);
+  animation: endlessHpPulse 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes endlessHpPulse {
+  from { opacity: 0.72; }
+  to   { opacity: 1; }
+}
+
+.endless-hp-val {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  font-weight: 800;
+  min-width: 36px;
+  text-align: right;
+  color: var(--ink);
+}
+
+.endless-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.endless-pill.bars  { background: #dcfce7; color: #15803d; }
+.endless-pill.combo { background: #eff6ff; color: #1d4ed8; }
+.endless-pill.best  { background: #fef3c7; color: #b45309; }
+
+.endless-msg {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.endless-sys.fresh-slot {
+  animation: endlessSwapFade 0.45s ease-out;
+}
+
+@keyframes endlessSwapFade {
+  from { opacity: 0.12; }
+  to   { opacity: 1; }
+}
+
 .hidden { display: none !important; }
 
 @page { margin: 12mm; }
@@ -2309,6 +2428,6 @@ button.active .tools-badge {
 @media print {
   body { background: #fff; padding: 0; }
   .app { max-width: none; }
-  .lang-select, .toolbar, .status-strip, .audio-bar, .cal-bar, .editor-bar, .drill-bar, .pitch-bar, .room-bar, .meta-share-btn, .results-grid, .guide-card, .sheet-footer, .touch-dock, .tour-overlay { display: none !important; }
+  .lang-select, .toolbar, .status-strip, .audio-bar, .cal-bar, .editor-bar, .drill-bar, .pitch-bar, .room-bar, .endless-bar, .meta-share-btn, .results-grid, .guide-card, .sheet-footer, .touch-dock, .tour-overlay { display: none !important; }
   .sheet-paper { border: none; box-shadow: none; padding: 0; }
 }
