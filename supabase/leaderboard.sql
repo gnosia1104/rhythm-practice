@@ -84,8 +84,8 @@ begin
     return false;
   end if;
 
-  -- Block URLs / invite spam
-  if lower(v_raw) ~ '(https?://|www\.|discord\.gg|\.com|\.net|\.kr|\.jp|\.io|t\.me/)' then
+  -- Block URLs, shorteners, phishing TLDs & messenger scam lures
+  if lower(v_raw) ~ '(https?://|www\.|discord\.gg|bit\.ly|tinyurl|t\.me|open\.kakao|line\.me|\.(com|net|org|kr|jp|io|gg|xyz|co|me|tv|app|top|click|ru|cn)\M|카톡|텔레그램|오픈채팅)' then
     return false;
   end if;
 

@@ -379,8 +379,17 @@ function clearRoundTimers() {
   clearBotTimers();
 }
 
+const CHAT_URL_SCAM_RE = /(?:https?:\/\/\S+|www\.\S+|(?:bit\.ly|tinyurl\.com|t\.me|discord\.gg|open\.kakao\.com|line\.me|youtu\.be)\/\S+|\b[a-z0-9-]{2,}\.(?:com|net|org|kr|jp|io|gg|xyz|co|me|tv|app|top|click|ru|cn)(?:\/\S*)?)/gi;
+
+function sanitizeChatText(raw, isSys = false) {
+  let s = String(raw || "").trim().slice(0, 120);
+  if (!s || isSys) return s;
+  s = s.replace(CHAT_URL_SCAM_RE, "[link blocked]");
+  return s;
+}
+
 function appendChatMessage({ sys = false, id = "", name = "", text = "" }) {
-  const cleanText = String(text || "").trim().slice(0, 120);
+  const cleanText = sanitizeChatText(text, sys);
   if (!cleanText) return;
   roomState.chatLog.push({ sys, id, name, text: cleanText });
   if (roomState.chatLog.length > 40) roomState.chatLog.shift();
