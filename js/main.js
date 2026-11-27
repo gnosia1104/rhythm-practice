@@ -54,7 +54,7 @@ import {
   buildEndlessPreviewPhrase, startEndlessAudioAndState, stepEndlessFrame,
   onEndlessHit, onEndlessMiss, onEndlessRestPassed, onEndlessRestError, onEndlessExtraHit,
   saveEndlessBest,
-} from "./endless.js?v=20261127af";
+} from "./endless.js?v=20261127ag";
 import {
   initAchievements, syncAchievementsLanguage,
   evaluateStandardRunAchievements, evaluateEndlessAchievements, evaluateRoomWinAchievement,
@@ -63,8 +63,12 @@ import {
   initSuddenDeath, resetSuddenDeathRunState, renderSdLivesHud, playSuddenDeathFailSfx, checkSuddenDeathProgress,
 } from "./sudden-death.js";
 import {
-  initLeaderboard, syncLeaderboardLanguage, recordLeaderboardRun,
-} from "./leaderboard.js";
+  initLeaderboard, syncLeaderboardLanguage, recordLeaderboardRun, toggleLeaderboardBar,
+} from "./leaderboard.js?v=20261127ag";
+import {
+  initJuice, syncJuiceUi, resetJuiceCombo, onJuiceHit, onJuiceMiss, onJuiceExtraHit,
+  animateScoreRollup, celebrateRankReveal,
+} from "./juice.js";
 
 function resetTargets() {
   const ts = getTimeSig(app.phrase ? app.phrase.timeSig : app.timeSig);
@@ -123,6 +127,7 @@ function resetTargets() {
   app.audioExtraHits = 0;
   app.dirtyScore = true;
   resetSuddenDeathRunState();
+  resetJuiceCombo();
 }
 
 
@@ -635,11 +640,21 @@ function handleHit(hitAudioT, source, hitKind = "NORMAL", keyCode = null, played
       }
       app.dirtyScore = true;
     }
+    const twJuice = getTimingThresholds(app.bpm);
+    const aeJuice = Math.abs(best.errMs || 0);
+    const tierJuice = aeJuice <= twJuice.tight ? "tight" : (aeJuice <= twJuice.ok ? "ok" : "bad");
+    onJuiceHit({
+      tier: tierJuice,
+      isGhost: best.art === "ghost" && hitKind === "GHOST",
+      pitchBad: best.pitchOk === false,
+      source,
+    });
     onEndlessHit(best);
   } else {
     app.extraHits += 1;
     if (source === "AUDIO") app.audioExtraHits += 1;
     else app.keyExtraHits += 1;
+    onJuiceExtraHit(source);
     // Forward-only rest check: only flag hits inside [rst.timeSec, rst.endSec]
     let hitRest = null;
     for (const rst of (app.phrase.rests || [])) {
@@ -827,11 +842,12 @@ function finalizeRun() {
   const rankEl = document.getElementById("rankBadge");
   rankEl.textContent = rank.grade;
   rankEl.className = `rank-pill ${rank.cls}`;
+  celebrateRankReveal(rankEl, rank.grade);
   const scoreEl = document.getElementById("scoreBadge");
   if (scoreDetail.sustainMax > 0) {
-    scoreEl.textContent = `${scoreDetail.noteScore.toLocaleString()} + Sus ${scoreDetail.sustainEarned.toLocaleString()} = ${scoreDetail.score.toLocaleString()} / ${scoreDetail.maxScore.toLocaleString()}`;
+    animateScoreRollup(scoreEl, scoreDetail.score, (val) => `${scoreDetail.noteScore.toLocaleString()} + Sus ${scoreDetail.sustainEarned.toLocaleString()} = ${val.toLocaleString()} / ${scoreDetail.maxScore.toLocaleString()}`);
   } else {
-    scoreEl.textContent = `${scoreDetail.score.toLocaleString()} / ${scoreDetail.maxScore.toLocaleString()}`;
+    animateScoreRollup(scoreEl, scoreDetail.score, (val) => `${val.toLocaleString()} / ${scoreDetail.maxScore.toLocaleString()}`);
   }
   const susTip = scoreDetail.sustainMax > 0 ? ` · Note ${scoreDetail.noteScore}/${scoreDetail.noteMax} + Sus ${scoreDetail.sustainEarned}/${scoreDetail.sustainMax}` : "";
   const sdTip = scoreDetail.sdBonus > 0 ? ` · SD +${scoreDetail.sdBonus}` : "";
@@ -839,8 +855,11 @@ function finalizeRun() {
   const modTipStr = scoreDetail.info.modTags.length ? ` · ${scoreDetail.info.modTags.join(", ")}` : "";
   scoreEl.title = `Score ${scoreDetail.pct.toFixed(1)}% (Meter ×${scoreDetail.info.meterMult.toFixed(2)} · BPM ×${scoreDetail.info.bpmMult.toFixed(2)}${modTipStr}${susTip}${sdTip}${penTip})`;
   scoreEl.classList.remove("hidden");
+  const openLbBtn = document.getElementById("btnOpenLbFromResult");
+  if (openLbBtn) openLbBtn.classList.toggle("hidden", !app.dailyDate);
   document.getElementById("btnShareResult").classList.remove("hidden");
   document.getElementById("btnBragCard").classList.remove("hidden");
+  resetJuiceCombo();
   renderLog();
   clearFadeOutClasses();
 
@@ -980,9 +999,13 @@ function finalizeEndlessGameOver(stats) {
   const rankEl = document.getElementById("rankBadge");
   rankEl.textContent = rk.grade;
   rankEl.className = `rank-pill ${rk.cls}`;
+  celebrateRankReveal(rankEl, rk.grade);
   const scoreEl = document.getElementById("scoreBadge");
-  scoreEl.textContent = `${isSd ? "💀" : "♾️"} ${bars}B · Max ${stats.maxCombo}C`;
+  animateScoreRollup(scoreEl, bars, (v) => `${isSd ? "💀" : "♾️"} ${v}B · Max ${stats.maxCombo}C`);
   scoreEl.classList.remove("hidden");
+  const openLbBtn = document.getElementById("btnOpenLbFromResult");
+  if (openLbBtn) openLbBtn.classList.remove("hidden");
+  resetJuiceCombo();
   renderLog();
 
   const goText = isSd
@@ -1249,6 +1272,7 @@ function updateMeta() {
   document.getElementById("btnTouchPad").classList.toggle("active", app.showTouchDock);
   document.getElementById("audioBar").classList.toggle("hidden", !app.audioOn);
 
+  syncJuiceUi();
   syncTransportButtons();
   notifyRoomChartChanged();
 }
@@ -1549,6 +1573,7 @@ function frame() {
         if (!tgt.hit && !tgt.missed && elapsed > tgt.timeSec + win) {
           tgt.missed = true;
           changed = true;
+          onJuiceMiss();
           onEndlessMiss();
         }
       }
@@ -2824,6 +2849,7 @@ function syncAllDropdownBadges() {
   if (app.blindGrade) diffParts.push("Blind");
   if (app.showBeatNums) diffParts.push("+B");
   if (app.showCursor) diffParts.push("+C");
+  if (app.drumBacking) diffParts.push("🥁");
   if (app.endlessMode) diffParts.push("♾️");
   if (app.suddenDeath) diffParts.push("💀");
   const diffDropOpen = !document.getElementById("diffDropdown").classList.contains("hidden");
@@ -3113,6 +3139,20 @@ initLeaderboard({
   onUiChange: () => syncToolsMenuBadge(),
   setHitBadge,
 });
+initJuice({
+  updateMeta,
+});
+const btnOpenLbFromRes = document.getElementById("btnOpenLbFromResult");
+if (btnOpenLbFromRes) {
+  btnOpenLbFromRes.addEventListener("click", (e) => {
+    e.currentTarget.blur();
+    const targetTab = app.endlessMode
+      ? (app.suddenDeath ? "endless_sd3" : "endless")
+      : (app.dailyDate ? (app.dailyPlus ? "dailyplus" : "daily") : "daily");
+    toggleLeaderboardBar(true, targetTab);
+    document.getElementById("lbBar")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  });
+}
 syncToolsMenuBadge();
 renderLog();
 requestAnimationFrame(frame);

@@ -3012,6 +3012,88 @@ body.has-dock .ach-toast-stack {
   }
 }
 
+/* Rhythm Game Juice Package (Combo Pill, Rank Reveal Pop, S+ Glow & Confetti) */
+.status-badges {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.combo-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  font-weight: 800;
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+  white-space: nowrap;
+}
+.combo-badge.hot {
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  color: #b45309;
+  border-color: #fbbf24;
+}
+.combo-badge.fever {
+  background: linear-gradient(135deg, #581c87 0%, #7c3aed 100%);
+  color: #fef08a;
+  border-color: #a855f7;
+  box-shadow: 0 2px 12px rgba(124, 58, 237, 0.35);
+}
+.combo-badge.pop {
+  animation: comboPop 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes comboPop {
+  0%   { transform: scale(1); }
+  45%  { transform: scale(1.16); }
+  100% { transform: scale(1); }
+}
+
+.rank-pill.rank-pop {
+  animation: rankRevealPop 0.48s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.rank-pill.rank-splus-glow {
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.3), 0 6px 18px rgba(245, 158, 11, 0.35);
+}
+@keyframes rankRevealPop {
+  0%   { transform: scale(0.45) rotate(-8deg); opacity: 0.2; }
+  65%  { transform: scale(1.22) rotate(3deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+.juice-confetti-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 95;
+  overflow: hidden;
+}
+.juice-confetti {
+  position: fixed;
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  animation: juiceBurst 0.85s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes juiceBurst {
+  0%   { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy) + 28px)) scale(0.5) rotate(var(--rot)); opacity: 0; }
+}
+
+.lb-my-rank {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #4338ca;
+  border: 1px solid #c7d2fe;
+}
+
 .hidden { display: none !important; }
 
 @page { margin: 12mm; }

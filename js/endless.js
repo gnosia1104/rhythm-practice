@@ -6,7 +6,7 @@ import { TIME_SIGS, generatePhrase } from "./rhythm.js";
 import { app, getTimeSig, isGapBar } from "./state.js";
 import { getTimingThresholds } from "./scoring.js";
 import { assignPitchesToPhrase } from "./pitch-gen.js";
-import { ensureAudioCtx, getAudioCtx, scheduleClick } from "./audio-out.js";
+import { ensureAudioCtx, getAudioCtx, scheduleClick, scheduleBarGroove } from "./audio-out.js";
 
 const ENDLESS_BEST_KEY = "rhythm_practice_endless_best_v1";
 const SD_BEST_KEY = "rhythm_practice_sd_best_v1";
@@ -254,13 +254,7 @@ function scheduleEndlessClicksAhead(elapsedSec) {
     endlessState.scheduledUntilBar = b.globalBar;
     if (!app.soundOn) continue;
     if (isGapBar(b.globalBar, app.gapClick)) continue;
-    for (let c = 0; c < ts.clicksPerBar; c++) {
-      const isDownbeat = c === 0;
-      const isSubAcc = !isDownbeat && ts.subAcc.includes(c);
-      const freq = isDownbeat ? 1318.51 : (isSubAcc ? 1046.50 : 880.0);
-      const amp = isDownbeat ? 0.32 : (isSubAcc ? 0.25 : 0.20);
-      scheduleClick(ctx, app.startAudioT + b.startSec + c * b.clickSec, freq, amp);
-    }
+    scheduleBarGroove(ctx, app.startAudioT + b.startSec, app.timeSig, b.clickSec, Boolean(app.drumBacking));
   }
 }
 

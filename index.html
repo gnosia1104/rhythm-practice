@@ -60,7 +60,7 @@
   "description": "Free browser-based rhythm & pitch sight-reading trainer for musicians featuring 6 progressive levels, 5 time signatures, triplets, staccato, ghost notes, gap click metronome, custom score editor, daily challenges, and audio interface onset/sustain/rest grading."
 }
 </script>
-<link rel="stylesheet" href="css/styles.css?v=20261127af" />
+<link rel="stylesheet" href="css/styles.css?v=20261127ag" />
 <script defer src="https://cloud.umami.is/script.js" data-website-id="9070201e-fd1f-4081-ad26-1219def68ba6" data-domains="gnosia1104.github.io"></script>
 </head>
 <body>
@@ -146,9 +146,11 @@
             <div id="btnOptsText" class="tools-sec-lbl">⚙️ 연습 옵션</div>
             <div class="diff-grid-2">
               <button id="btnSound" type="button" class="active" title="m">🔊 메트로놈 ON</button>
+              <button id="btnDrumBacking" type="button" title="메트로놈 클릭 대신 심플 드럼 백킹 비트(킥·스네어·하이햇) 재생">🥁 드럼 비트 OFF</button>
               <button id="btnBeatNums" type="button" title="마디 위 박자 번호 표기 (단축키 b)">박자표기 OFF</button>
               <button id="btnCursor" type="button" title="입문용 악보 진행 커서 표시 ON/OFF (단축키 c)">커서 OFF</button>
               <button id="btnBlindGrade" type="button" title="채점 시점 전환: 즉시 / 완료후 (단축키 g)">채점: 즉시</button>
+              <button id="btnHitSfx" type="button" class="active" title="키보드·터치 패드 타격음 ON/OFF (오디오 입력 시 자동 OFF · 블루투스 지연 시 OFF 권장)">🪵 타격음 ON</button>
               <button id="btnEndless" type="button" class="endless-btn diff-span-2" title="2줄 교차 무한 초견 서바이벌 모드 (HP 게이지 · 최고 생존 마디 기록)"><span id="btnEndlessText">♾️ 엔드리스 OFF</span><span class="beta-tag">BETA</span></button>
               <button id="btnSuddenDeath" type="button" class="diff-span-2" title="3미스 시 즉시 탈락 서든데스 모드 ON/OFF"><span id="btnSuddenDeathText">💀 서든데스 (3미스) OFF</span><span class="beta-tag">BETA</span></button>
             </div>
@@ -213,7 +215,10 @@
         <div id="statusSub" class="status-sub">1박 초록 / 나머지 박 노랑 · 악보 위치 표시 없음</div>
       </div>
     </div>
-    <div id="hitBadge" class="hit-badge">대기 중</div>
+    <div class="status-badges">
+      <div id="comboBadge" class="combo-badge hidden">🔥 0 COMBO</div>
+      <div id="hitBadge" class="hit-badge">대기 중</div>
+    </div>
   </div>
 
   <!-- Optional Latency Calibration Bar (hidden unless user clicks ⏱ 보정) -->
@@ -528,6 +533,7 @@
       <div class="group">
         <strong id="lblLbTitle">🏆 글로벌 리더보드</strong>
         <span id="lbModeBadge" class="room-mode-pill local">LOCAL</span>
+        <span id="lbMyRank" class="lb-my-rank hidden"></span>
       </div>
       <div class="group">
         <button id="btnLbRefresh" type="button" title="랭킹 새로고침">↻ 새로고침</button>
@@ -606,6 +612,7 @@
             <span id="scoreBadge" class="score-pill hidden">0 / 0</span>
           </div>
           <div class="result-btns">
+            <button id="btnOpenLbFromResult" type="button" class="hidden">🏆 랭킹 보기</button>
             <button id="btnShareResult" type="button" class="hidden">📋 텍스트 자랑</button>
             <button id="btnBragCard" type="button" class="primary hidden">🖼️ 이미지 자랑</button>
           </div>
@@ -692,7 +699,7 @@
 <!-- Steam-Style Achievement Unlock Toast Stack -->
 <div id="achToastStack" class="ach-toast-stack" aria-live="polite"></div>
 
-<script type="module" src="js/main.js?v=20261127af"></script>
+<script type="module" src="js/main.js?v=20261127ag"></script>
 </body>
 </html>
 

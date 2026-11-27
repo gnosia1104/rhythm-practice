@@ -266,6 +266,18 @@ export function renderLeaderboardUi() {
   const boardKey = boardKeyForTab(lbState.tab);
   const survival = isSurvivalTab(lbState.tab);
   const rows = lbState.rowsByBoard.get(boardKey) || [];
+  const myRankEl = document.getElementById("lbMyRank");
+  if (myRankEl) {
+    const myIdx = rows.findIndex((r) => r.client_id === lbState.clientId);
+    if (myIdx >= 0) {
+      const r = rows[myIdx];
+      const val = survival ? `${r.bars}B` : Number(r.score || 0).toLocaleString();
+      myRankEl.textContent = t("lbMyRankFmt", myIdx + 1, val);
+      myRankEl.classList.remove("hidden");
+    } else {
+      myRankEl.classList.add("hidden");
+    }
+  }
   if (!rows.length) {
     listEl.innerHTML = `<div class="lb-empty">${escapeHtml(t("lbEmpty"))}</div>`;
     return;
@@ -307,6 +319,7 @@ export function syncLeaderboardLanguage() {
   setTxt("lblLbTitle", "lbTitle");
   setTxt("btnLbRefresh", "lbRefresh");
   setTxt("btnLbSaveNick", "lbSaveNick");
+  setTxt("btnOpenLbFromResult", "btnOpenLb");
 
   const nickIn = document.getElementById("lbNickInput");
   if (nickIn) nickIn.placeholder = t("roomNickPlaceholder");

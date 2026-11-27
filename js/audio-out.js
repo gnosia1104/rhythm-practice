@@ -234,6 +234,193 @@ export function setClickMasterGainVol(volPct) {
   }
 }
 
+let drumNoiseBuf = null;
+function getDrumNoiseBuf(ctx) {
+  if (!drumNoiseBuf || drumNoiseBuf.sampleRate !== ctx.sampleRate) {
+    const len = Math.floor(ctx.sampleRate * 0.16);
+    drumNoiseBuf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const data = drumNoiseBuf.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+  }
+  return drumNoiseBuf;
+}
+
+function scheduleDrumKick(ctx, when, amp = 0.42) {
+  const outNode = getClickMasterGain(ctx);
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(140, when);
+  osc.frequency.exponentialRampToValueAtTime(44, when + 0.085);
+  gain.gain.setValueAtTime(0.0001, when);
+  gain.gain.linearRampToValueAtTime(amp, when + 0.003);
+  gain.gain.exponentialRampToValueAtTime(0.0001, when + 0.13);
+  osc.connect(gain).connect(outNode);
+  osc.start(when);
+  osc.stop(when + 0.14);
+  scheduledNodes.push(osc, gain);
+}
+
+function scheduleDrumSnare(ctx, when, amp = 0.28) {
+  const outNode = getClickMasterGain(ctx);
+  const noise = ctx.createBufferSource();
+  noise.buffer = getDrumNoiseBuf(ctx);
+  const hp = ctx.createBiquadFilter();
+  hp.type = "bandpass";
+  hp.frequency.setValueAtTime(1850, when);
+  hp.Q.value = 0.85;
+  const ng = ctx.createGain();
+  ng.gain.setValueAtTime(0.0001, when);
+  ng.gain.linearRampToValueAtTime(amp, when + 0.002);
+  ng.gain.exponentialRampToValueAtTime(0.0001, when + 0.11);
+  noise.connect(hp).connect(ng).connect(outNode);
+  noise.start(when);
+  noise.stop(when + 0.12);
+
+  const body = ctx.createOscillator();
+  const bg = ctx.createGain();
+  body.type = "triangle";
+  body.frequency.setValueAtTime(210, when);
+  body.frequency.exponentialRampToValueAtTime(115, when + 0.055);
+  bg.gain.setValueAtTime(0.0001, when);
+  bg.gain.linearRampToValueAtTime(amp * 0.72, when + 0.002);
+  bg.gain.exponentialRampToValueAtTime(0.0001, when + 0.065);
+  body.connect(bg).connect(outNode);
+  body.start(when);
+  body.stop(when + 0.07);
+  scheduledNodes.push(noise, hp, ng, body, bg);
+}
+
+function scheduleDrumHat(ctx, when, amp = 0.11) {
+  const outNode = getClickMasterGain(ctx);
+  const noise = ctx.createBufferSource();
+  noise.buffer = getDrumNoiseBuf(ctx);
+  const hp = ctx.createBiquadFilter();
+  hp.type = "highpass";
+  hp.frequency.setValueAtTime(6800, when);
+  const ng = ctx.createGain();
+  ng.gain.setValueAtTime(0.0001, when);
+  ng.gain.linearRampToValueAtTime(amp, when + 0.0015);
+  ng.gain.exponentialRampToValueAtTime(0.0001, when + 0.032);
+  noise.connect(hp).connect(ng).connect(outNode);
+  noise.start(when);
+  noise.stop(when + 0.036);
+  scheduledNodes.push(noise, hp, ng);
+}
+
+export function scheduleBarGroove(ctx, barStartSec, timeSigKey, clickSec, useDrum = Boolean(app && app.drumBacking)) {
+  const ts = TIME_SIGS[timeSigKey] || TIME_SIGS["4/4"];
+  if (!useDrum) {
+    for (let c = 0; c < ts.clicksPerBar; c++) {
+      const isDownbeat = c === 0;
+      const isSubAcc = !isDownbeat && ts.subAcc.includes(c);
+      const freq = isDownbeat ? 1318.51 : (isSubAcc ? 1046.50 : 880.0);
+      const amp = isDownbeat ? 0.32 : (isSubAcc ? 0.25 : 0.20);
+      scheduleClick(ctx, barStartSec + c * clickSec, freq, amp);
+    }
+    return;
+  }
+
+  // Drum backing groove tailored to each time signature (routed through clickMasterGain!)
+  if (timeSigKey === "6/8") {
+    for (let c = 0; c < 6; c++) {
+      const w = barStartSec + c * clickSec;
+      scheduleDrumHat(ctx, w, (c === 0 || c === 3) ? 0.14 : 0.08);
+      if (c === 0) scheduleDrumKick(ctx, w, 0.44);
+      if (c === 3) scheduleDrumSnare(ctx, w, 0.28);
+    }
+    return;
+  }
+
+  const kicks = timeSigKey === "4/4" ? [0, 2]
+    : (timeSigKey === "5/4" ? [0, 3] : [0]);
+  const snares = timeSigKey === "4/4" ? [1, 3]
+    : (timeSigKey === "5/4" ? [2, 4] : (timeSigKey === "3/4" ? [2] : [1]));
+
+  for (let c = 0; c < ts.clicksPerBar; c++) {
+    const w = barStartSec + c * clickSec;
+    const isDown = c === 0;
+    scheduleDrumHat(ctx, w, isDown ? 0.14 : 0.10);
+    scheduleDrumHat(ctx, w + clickSec * 0.5, 0.065);
+    if (kicks.includes(c)) scheduleDrumKick(ctx, w, isDown ? 0.45 : 0.38);
+    if (snares.includes(c)) scheduleDrumSnare(ctx, w, 0.27);
+  }
+}
+
+export function playKeyHitSfx(kind = "tight") {
+  const ctx = ensureAudioCtx();
+  if (!ctx || ctx.state !== "running") return;
+  const now = ctx.currentTime + 0.002;
+  const volScale = Math.max(0.25, Math.min(1.5, ((app && app.clickVol) || 100) / 100));
+
+  if (kind === "err") {
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(155, now);
+    osc.frequency.exponentialRampToValueAtTime(92, now + 0.055);
+    g.gain.setValueAtTime(0.0001, now);
+    g.gain.linearRampToValueAtTime(0.14 * volScale, now + 0.003);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + 0.06);
+    osc.connect(g).connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.065);
+    return;
+  }
+
+  if (kind === "ghost") {
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(220, now);
+    osc.frequency.exponentialRampToValueAtTime(95, now + 0.032);
+    g.gain.setValueAtTime(0.0001, now);
+    g.gain.linearRampToValueAtTime(0.18 * volScale, now + 0.002);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + 0.035);
+    osc.connect(g).connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.04);
+    return;
+  }
+
+  // Crisp woodblock/rim tap for TIGHT / OK hits (distinct timbre from metronome sine click)
+  const baseFreq = kind === "tight" ? 760 : 580;
+  const osc = ctx.createOscillator();
+  const g = ctx.createGain();
+  osc.type = "triangle";
+  osc.frequency.setValueAtTime(baseFreq, now);
+  osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.62, now + 0.032);
+  g.gain.setValueAtTime(0.0001, now);
+  g.gain.linearRampToValueAtTime((kind === "tight" ? 0.22 : 0.16) * volScale, now + 0.0015);
+  g.gain.exponentialRampToValueAtTime(0.0001, now + 0.038);
+  osc.connect(g).connect(ctx.destination);
+  osc.start(now);
+  osc.stop(now + 0.042);
+}
+
+export function playRankFanfare(grade) {
+  const ctx = ensureAudioCtx();
+  if (!ctx || ctx.state !== "running" || (app && app.clickVol <= 0)) return;
+  const notes = grade === "S+"
+    ? [523.25, 659.25, 783.99, 987.77, 1174.66] // Cmaj9 sparkle
+    : (grade === "S" ? [523.25, 659.25, 783.99, 1046.50] : []);
+  if (!notes.length) return;
+  const t0 = ctx.currentTime + 0.04;
+  notes.forEach((freq, i) => {
+    const when = t0 + i * 0.068;
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(freq, when);
+    g.gain.setValueAtTime(0.0001, when);
+    g.gain.linearRampToValueAtTime(0.14, when + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, when + (i === notes.length - 1 ? 0.42 : 0.18));
+    osc.connect(g).connect(ctx.destination);
+    osc.start(when);
+    osc.stop(when + (i === notes.length - 1 ? 0.45 : 0.20));
+  });
+}
+
 export function scheduleRunAudio(bpm, numBars, startAudioT, playMetronome, demoTargets = null, timeSigKey = "4/4", gapClickMode = "OFF") {
   stopScheduledAudio();
   const ctx = ensureAudioCtx();
@@ -243,21 +430,23 @@ export function scheduleRunAudio(bpm, numBars, startAudioT, playMetronome, demoT
   const tickSec = clickSec / ts.clickTicks;
   const countInSec = ts.countInClicks * clickSec;
 
-  // Always play count-in clicks so the player gets the tempo; play bar clicks only when metronome is ON (or demo)
-  const clicksToSchedule = (playMetronome || demoTargets)
-    ? (ts.countInClicks + safeBars * ts.clicksPerBar)
-    : ts.countInClicks;
-  for (let c = 0; c < clicksToSchedule; c++) {
-    if (!demoTargets && c >= ts.countInClicks) {
-      const playBar = Math.floor((c - ts.countInClicks) / ts.clicksPerBar);
-      if (isGapBar(playBar, gapClickMode)) continue;
-    }
-    const pos = c < ts.countInClicks ? c : (c - ts.countInClicks) % ts.clicksPerBar;
-    const isDownbeat = pos === 0;
-    const isSubAcc = !isDownbeat && ts.subAcc.includes(pos);
+  // Always schedule crisp count-in clicks so the player locks into the tempo immediately
+  for (let c = 0; c < ts.countInClicks; c++) {
+    const isDownbeat = c === 0;
+    const isSubAcc = !isDownbeat && ts.subAcc.includes(c);
     const freq = isDownbeat ? 1318.51 : (isSubAcc ? 1046.50 : 880.0);
     const amp = isDownbeat ? 0.32 : (isSubAcc ? 0.25 : 0.20);
     scheduleClick(ctx, startAudioT + c * clickSec, freq, amp);
+  }
+
+  // Schedule play-bar metronome clicks OR drum backing groove
+  if (playMetronome || demoTargets) {
+    const useDrum = Boolean(!demoTargets && app && app.drumBacking);
+    for (let b = 0; b < safeBars; b++) {
+      if (!demoTargets && isGapBar(b, gapClickMode)) continue;
+      const barStart = startAudioT + countInSec + b * ts.clicksPerBar * clickSec;
+      scheduleBarGroove(ctx, barStart, timeSigKey, clickSec, useDrum);
+    }
   }
   if (demoTargets) {
     for (const tgt of demoTargets) {

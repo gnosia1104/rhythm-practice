@@ -15,6 +15,8 @@ export const app = {
   dailyPlus: false, // false = 4/4 Daily, true = non-4/4 Daily+
   customMode: false,
   soundOn: true,
+  drumBacking: false, // false = Metronome click | true = Drum backing beat groove
+  hitSfxOn: true,     // KEY/PAD percussive hit sound (auto-OFF in AUDIO mode)
   clickVol: 100,    // 0..200 (%) real-time metronome click volume
   showBeatNums: false,
   showCursor: false,
