@@ -293,7 +293,7 @@ export function renderScoreCardPngBlob() {
   c.font = '600 17px ui-monospace, Menlo, Consolas, monospace';
   c.fillText("gnosia1104.github.io/rhythm-practice", 64, H - 50);
   c.textAlign = "right";
-  c.fillText("Free Bass & Rhythm Sight-Reading Trainer", W - 64, H - 50);
+  c.fillText("Free Online Rhythm & Pitch Sight-Reading Trainer", W - 64, H - 50);
   c.textAlign = "left";
 
   return new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
