@@ -54,7 +54,7 @@ import {
   buildEndlessPreviewPhrase, startEndlessAudioAndState, stepEndlessFrame,
   onEndlessHit, onEndlessMiss, onEndlessRestPassed, onEndlessRestError, onEndlessExtraHit,
   saveEndlessBest,
-} from "./endless.js?v=20261127ab";
+} from "./endless.js?v=20261127af";
 import {
   initAchievements, syncAchievementsLanguage,
   evaluateStandardRunAchievements, evaluateEndlessAchievements, evaluateRoomWinAchievement,
@@ -2824,6 +2824,7 @@ function syncAllDropdownBadges() {
   if (app.blindGrade) diffParts.push("Blind");
   if (app.showBeatNums) diffParts.push("+B");
   if (app.showCursor) diffParts.push("+C");
+  if (app.endlessMode) diffParts.push("♾️");
   if (app.suddenDeath) diffParts.push("💀");
   const diffDropOpen = !document.getElementById("diffDropdown").classList.contains("hidden");
   document.getElementById("diffSummaryBadge").textContent = diffParts.join(" · ");

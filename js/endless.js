@@ -511,9 +511,11 @@ export function stepEndlessFrame(elapsedSec) {
 
 export function renderEndlessHud() {
   const btn = document.getElementById("btnEndless");
+  const btnTxt = document.getElementById("btnEndlessText");
   const bar = document.getElementById("endlessBar");
   const sdMode = Boolean(app.suddenDeath);
   if (btn) btn.classList.toggle("active", app.endlessMode);
+  if (btnTxt) btnTxt.textContent = `${t("btnEndless")} ${app.endlessMode ? "ON" : "OFF"}`;
   if (!bar) return;
   bar.classList.toggle("hidden", !app.endlessMode);
   bar.classList.toggle("is-sd", app.endlessMode && sdMode);
@@ -551,7 +553,7 @@ export function renderEndlessHud() {
 
 export function syncEndlessLanguage() {
   const btnTxt = document.getElementById("btnEndlessText");
-  if (btnTxt) btnTxt.textContent = t("btnEndless");
+  if (btnTxt) btnTxt.textContent = `${t("btnEndless")} ${app.endlessMode ? "ON" : "OFF"}`;
   const sdMode = Boolean(app.suddenDeath);
   const lbl = document.getElementById("lblEndlessTitle");
   if (lbl) lbl.textContent = sdMode ? t("sdEndlessTitle") : t("endlessTitle");
