@@ -39,8 +39,10 @@ let cbs = {
   setRoomEndlessMode: () => {},
   triggerRoomStart: () => {},
   unlockAudio: () => {},
+  isAudioRunning: () => true,
   playCountdownBeep: () => {},
   onRoomWin: () => {},
+  onRoomStateChange: () => {},
   stopRun: () => {},
   newPhrase: () => {},
   setHitBadge: () => {},
@@ -1102,6 +1104,10 @@ export function isRoomActive() {
   return roomState.joined;
 }
 
+export function isRoomGuest() {
+  return roomState.joined && !roomState.isHost;
+}
+
 export function isRoomPlaying() {
   return roomState.joined && (roomState.phase === "PLAYING" || roomState.phase === "COUNTDOWN");
 }
@@ -1115,8 +1121,22 @@ export function getRoomCountdownText() {
   return t("roomCountdownBanner", roomState.countdownSec);
 }
 
+export function refreshRoomAudioBanner() {
+  const btn = document.getElementById("btnRoomAudioUnlock");
+  if (!btn) return;
+  const needUnlock = roomState.joined && !cbs.isAudioRunning();
+  btn.classList.toggle("hidden", !needUnlock);
+  if (needUnlock) btn.textContent = t("roomAudioUnlockBtn");
+}
+
 export function tryStartRoomRoundFromMain() {
-  if (!roomState.joined || !roomState.isHost) return false;
+  if (!roomState.joined) return false;
+  cbs.unlockAudio();
+  refreshRoomAudioBanner();
+  if (!roomState.isHost) {
+    cbs.setHitBadge(t("roomHostOnlyStart"), "warn");
+    return true; // Block guest solo start while inside a room!
+  }
   if (roomState.phase === "COUNTDOWN") return true; // already counting down
   hostStartRound();
   return true;
@@ -1560,6 +1580,8 @@ export function renderRoomUi() {
 
   entryEl.classList.toggle("hidden", roomState.joined);
   activeEl.classList.toggle("hidden", !roomState.joined);
+  refreshRoomAudioBanner();
+  cbs.onRoomStateChange();
 
   if (!roomState.joined) return;
 
@@ -1743,17 +1765,31 @@ export function initRoom(callbacks) {
 
   document.getElementById("btnRoom").addEventListener("click", (e) => {
     e.currentTarget.blur();
+    cbs.unlockAudio();
     toggleRoomBar();
   });
   document.getElementById("btnRoomClose").addEventListener("click", () => toggleRoomBar(false));
 
+  const unlockBtn = document.getElementById("btnRoomAudioUnlock");
+  if (unlockBtn) {
+    unlockBtn.addEventListener("click", (e) => {
+      e.currentTarget.blur();
+      cbs.unlockAudio();
+      cbs.playCountdownBeep(1);
+      refreshRoomAudioBanner();
+      cbs.setHitBadge(t("roomAudioReady"), "tight");
+    });
+  }
+
   document.getElementById("btnRoomCreate").addEventListener("click", async (e) => {
     e.currentTarget.blur();
+    cbs.unlockAudio();
     const nick = nickIn ? nickIn.value : "";
     await connectRoom({ code: generateRoomCode(), name: nick, createAsHost: true });
   });
 
   const doJoin = async () => {
+    cbs.unlockAudio();
     const code = sanitizeRoomCode(codeIn ? codeIn.value : "");
     if (code.length < 3) {
       setRoomStatusMsg(t("roomCodeInvalid"), "var(--red)");
@@ -1777,6 +1813,7 @@ export function initRoom(callbacks) {
   document.getElementById("btnRoomCopyLink").addEventListener("click", async (e) => {
     const btn = e.currentTarget;
     btn.blur();
+    cbs.unlockAudio();
     if (!roomState.code) return;
     await copyToClipboard(buildRoomInviteUrl(roomState.code));
     flashBtnText(btn, t("btnShareCopied"), () => t("roomCopyInvite"));
@@ -1823,6 +1860,7 @@ export function initRoom(callbacks) {
 
   const chatInput = document.getElementById("roomChatInput");
   const doSendChat = () => {
+    cbs.unlockAudio();
     if (!chatInput) return;
     const val = chatInput.value;
     if (!val.trim()) return;
@@ -1869,6 +1907,7 @@ export function initRoom(callbacks) {
   document.querySelectorAll(".room-react-btn").forEach((btn) => {
     btn.addEventListener("click", (e) => {
       e.currentTarget.blur();
+      cbs.unlockAudio();
       sendChatMessage(btn.dataset.react || "🔥");
     });
   });

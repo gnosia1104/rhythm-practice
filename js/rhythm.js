@@ -303,7 +303,7 @@ export function buildPhraseFromBars(bars, timeSigKey, seed = 0, isCustom = false
       });
     });
   });
-  return { seed, timeSig: timeSigKey, bars, targets, rests, isCustom, customCode };
+  return { seed, timeSig: timeSigKey, numBars: bars.length, bars, targets, rests, isCustom, customCode };
 }
 
 // Serverless Compact Custom Score Serializer (v1, URL-safe Base64 prefixed with "C1_")
@@ -745,7 +745,7 @@ export function generatePhrase(numBars, level, tripletMode = 0, timeSigKey = "4/
     ) break;
   }
 
-  return { seed, timeSig: timeSigKey, bars: bestBars, targets: bestTargets, rests: bestRests, motifMap: bestMotifMap, isCustom: false, customCode: "" };
+  return { seed, timeSig: timeSigKey, numBars: bestBars.length, bars: bestBars, targets: bestTargets, rests: bestRests, motifMap: bestMotifMap, isCustom: false, customCode: "" };
 }
 
 

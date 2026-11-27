@@ -14,7 +14,7 @@ import {
 } from "./scoring.js";
 import { el, renderScore } from "./engraver.js?v=20261127o";
 import {
-  getAudioCtx, setClickMasterGainVol, ensureAudioCtx, ensureAudioCtxReady,
+  getAudioCtx, isAudioCtxRunning, onAudioStateChange, setClickMasterGainVol, ensureAudioCtx, ensureAudioCtxReady,
   stopScheduledAudio, scheduleClick, scheduleBassNote, scheduleRunAudio,
 } from "./audio-out.js";
 import {
@@ -44,11 +44,11 @@ import {
   trackPracticeStart, trackPracticeComplete, trackPracticeStop, trackShare, trackRefVisit,
 } from "./analytics.js";
 import {
-  initRoom, syncRoomLanguage, isRoomPlaying, isRoomCountingDown, getRoomCountdownText,
-  tryStartRoomRoundFromMain, notifyRoomStopped,
+  initRoom, syncRoomLanguage, isRoomActive, isRoomGuest, isRoomPlaying, isRoomCountingDown, getRoomCountdownText,
+  refreshRoomAudioBanner, tryStartRoomRoundFromMain, notifyRoomStopped,
   notifyRoomChartChanged, notifyRoomLiveProgress, notifyRoomFinish,
   notifyRoomEndlessProgress, notifyRoomEndlessOut,
-} from "./room.js?v=20261127s";
+} from "./room.js?v=20261127v";
 import {
   endlessState, initEndless, setEndlessMode, setEndlessStreamSeed, syncEndlessLanguage, renderEndlessHud,
   buildEndlessPreviewPhrase, startEndlessAudioAndState, stepEndlessFrame,
@@ -260,7 +260,7 @@ async function startRun(demo = false, keepRushRound = false) {
     resetTargets();
     scheduleRunAudio(
       app.bpm,
-      app.phrase ? app.phrase.numBars : app.numBars,
+      (app.phrase && app.phrase.bars ? app.phrase.bars.length : app.numBars),
       app.startAudioT,
       demo ? true : app.soundOn,
       demo ? app.phrase.targets : null,
@@ -418,15 +418,39 @@ function finishCalibration() {
 
 function syncTransportButtons() {
   const running = app.state === "COUNTIN" || app.state === "PLAY" || app.state === "DEMO" || app.state === "CAL";
+  const guestInRoom = isRoomGuest();
+  const roomBusy = isRoomPlaying();
+  const btnStart = document.getElementById("btnStart");
+  const btnDockStart = document.getElementById("btnDockStart");
   const btnStop = document.getElementById("btnStop");
   const btnDockStop = document.getElementById("btnDockStop");
+  const btnNew = document.getElementById("btnNew");
+  const btnDockNew = document.getElementById("btnDockNew");
   const btnDemo = document.getElementById("btnDemo");
-  btnStop.disabled = !running;
-  btnStop.classList.toggle("danger", running);
-  if (btnDockStop) {
-    btnDockStop.disabled = !running;
-    btnDockStop.classList.toggle("danger", running);
+
+  if (btnStart) {
+    btnStart.disabled = guestInRoom;
+    btnStart.title = guestInRoom ? t("roomHostOnlyStart") : "Enter";
   }
+  if (btnDockStart) {
+    btnDockStart.disabled = guestInRoom;
+    btnDockStart.title = guestInRoom ? t("roomHostOnlyStart") : "Enter";
+  }
+  if (btnNew) {
+    btnNew.disabled = guestInRoom || roomBusy;
+    btnNew.title = guestInRoom ? t("roomHostOnlyStart") : "n";
+  }
+  if (btnDockNew) {
+    btnDockNew.disabled = guestInRoom || roomBusy;
+  }
+  const canStop = (running || isRoomCountingDown()) && !guestInRoom;
+  btnStop.disabled = !canStop;
+  btnStop.classList.toggle("danger", canStop);
+  if (btnDockStop) {
+    btnDockStop.disabled = !canStop;
+    btnDockStop.classList.toggle("danger", canStop);
+  }
+  btnDemo.disabled = guestInRoom || roomBusy;
   btnDemo.classList.toggle("active", app.state === "DEMO");
 }
 
@@ -1437,7 +1461,7 @@ function frame() {
     const tickSec = clickSec / ts.clickTicks;
     const countIn = ts.countInClicks * clickSec;
     const win = hitWindowSec();
-    const activeNumBars = app.phrase ? app.phrase.numBars : app.numBars;
+    const activeNumBars = (app.phrase && app.phrase.bars ? app.phrase.bars.length : app.numBars);
     const totalClicks = ts.countInClicks + activeNumBars * ts.clicksPerBar;
     const endT = countIn + (activeNumBars * ts.barTicks) * tickSec + win;
 
@@ -1571,7 +1595,7 @@ function frame() {
         const tickSec = clickSec / ts.clickTicks;
         const countIn = ts.countInClicks * clickSec;
         const playElapsed = (getAudioCtx().currentTime - app.startAudioT) - countIn;
-        const totalTicks = (app.phrase ? app.phrase.numBars : app.numBars) * ts.barTicks;
+        const totalTicks = (app.phrase && app.phrase.bars ? app.phrase.bars.length : app.numBars) * ts.barTicks;
         const curTick = playElapsed / tickSec;
         if (curTick >= 0 && curTick < totalTicks) {
           bIdx = Math.floor(curTick / ts.barTicks);
@@ -1628,13 +1652,36 @@ function handleMainStartAction() {
   if (tryStartRoomRoundFromMain()) return;
   startRun(false);
 }
+function handleMainStopAction() {
+  if (isRoomGuest()) {
+    setHitBadge(t("roomHostOnlyStart"), "warn");
+    return;
+  }
+  stopRun();
+}
+function handleMainNewAction() {
+  if (isRoomGuest()) {
+    setHitBadge(t("roomHostOnlyStart"), "warn");
+    return;
+  }
+  if (isRoomPlaying()) return;
+  newPhrase();
+}
+function handleMainDemoAction() {
+  if (isRoomGuest()) {
+    setHitBadge(t("roomHostOnlyStart"), "warn");
+    return;
+  }
+  if (isRoomPlaying()) return;
+  startRun(true);
+}
 document.getElementById("btnStart").addEventListener("click", handleMainStartAction);
 document.getElementById("btnDockStart").addEventListener("click", handleMainStartAction);
-document.getElementById("btnStop").addEventListener("click", () => stopRun());
-document.getElementById("btnDockStop").addEventListener("click", () => stopRun());
-document.getElementById("btnNew").addEventListener("click", () => newPhrase());
-document.getElementById("btnDockNew").addEventListener("click", () => newPhrase());
-document.getElementById("btnDemo").addEventListener("click", () => startRun(true));
+document.getElementById("btnStop").addEventListener("click", handleMainStopAction);
+document.getElementById("btnDockStop").addEventListener("click", handleMainStopAction);
+document.getElementById("btnNew").addEventListener("click", handleMainNewAction);
+document.getElementById("btnDockNew").addEventListener("click", handleMainNewAction);
+document.getElementById("btnDemo").addEventListener("click", handleMainDemoAction);
 document.getElementById("btnBpmDown").addEventListener("click", () => setBpm(app.bpm - 5));
 document.getElementById("btnBpmUp").addEventListener("click", () => setBpm(app.bpm + 5));
 document.getElementById("bpmSlider").addEventListener("input", e => setBpm(Number(e.target.value)));
@@ -2009,13 +2056,13 @@ window.addEventListener("keydown", (e) => {
     handleMainStartAction();
   } else if (code === "Escape") {
     e.preventDefault();
-    stopRun();
+    handleMainStopAction();
   } else if (code === "KeyN") {
     e.preventDefault();
-    newPhrase();
+    handleMainNewAction();
   } else if (code === "KeyP") {
     e.preventDefault();
-    startRun(true);
+    handleMainDemoAction();
   } else if (code === "Equal" || code === "NumpadAdd" || e.key === "+" || e.key === "=") {
     e.preventDefault();
     setBpm(app.bpm + 5);
@@ -2883,6 +2930,7 @@ initRoom({
     startRun(false);
   },
   unlockAudio: () => ensureAudioCtx(),
+  isAudioRunning: () => isAudioCtxRunning(),
   playCountdownBeep: (sec) => {
     const ctx = ensureAudioCtx();
     if (ctx && app.clickVol > 0) {
@@ -2890,11 +2938,23 @@ initRoom({
     }
   },
   onRoomWin: (playerCount) => evaluateRoomWinAchievement(playerCount),
+  onRoomStateChange: () => syncTransportButtons(),
   stopRun: () => stopRun(true),
   newPhrase,
   setHitBadge,
   updateMeta,
 });
+
+// Automatically unlock Web Audio on ANY first user click/tap/keypress so room guests always hear countdown & metronome
+const unlockAudioOnFirstGesture = () => {
+  if (!isAudioCtxRunning()) {
+    ensureAudioCtx();
+    refreshRoomAudioBanner();
+  }
+};
+window.addEventListener("pointerdown", unlockAudioOnFirstGesture, { capture: true, passive: true });
+window.addEventListener("keydown", unlockAudioOnFirstGesture, { capture: true, passive: true });
+onAudioStateChange(() => refreshRoomAudioBanner());
 initEndless({
   onGameOver: finalizeEndlessGameOver,
   onHudUpdate: (es) => {

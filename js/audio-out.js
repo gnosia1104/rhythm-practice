@@ -5,6 +5,21 @@ import { app, audioIn, IS_MOBILE, isGapBar } from "./state.js";
 let audioCtx = null;
 let audioUnlocked = false;
 let scheduledNodes = [];
+const audioStateListeners = new Set();
+
+export function isAudioCtxRunning() {
+  return Boolean(audioCtx && audioCtx.state === "running");
+}
+
+export function onAudioStateChange(fn) {
+  if (typeof fn === "function") audioStateListeners.add(fn);
+}
+
+function notifyAudioStateChange() {
+  for (const fn of audioStateListeners) {
+    try { fn(isAudioCtxRunning()); } catch (_) {}
+  }
+}
 
 export function setAudioSessionType(mode) {
   try {
@@ -19,9 +34,21 @@ export function ensureAudioCtx() {
   if (!audioCtx) {
     const AC = window.AudioContext || window.webkitAudioContext;
     audioCtx = new AC();
+    audioCtx.onstatechange = () => {
+      if (audioCtx && audioCtx.state === "running") audioUnlocked = true;
+      notifyAudioStateChange();
+    };
   }
   if (audioCtx.state !== "running") {
-    try { audioCtx.resume(); } catch (_) {}
+    try {
+      const p = audioCtx.resume();
+      if (p && typeof p.then === "function") {
+        p.then(() => {
+          if (audioCtx && audioCtx.state === "running") audioUnlocked = true;
+          notifyAudioStateChange();
+        }).catch(() => {});
+      }
+    } catch (_) {}
   }
   if (!audioUnlocked) {
     try {
@@ -30,9 +57,10 @@ export function ensureAudioCtx() {
       src.buffer = buf;
       src.connect(audioCtx.destination);
       src.start(0);
-      audioUnlocked = true;
+      if (audioCtx.state === "running") audioUnlocked = true;
     } catch (_) {}
   }
+  notifyAudioStateChange();
   return audioCtx;
 }
 
@@ -42,7 +70,17 @@ export async function ensureAudioCtxReady() {
     return ctx;
   }
   if (ctx.state !== "running") {
-    try { await ctx.resume(); } catch (_) {}
+    try {
+      await Promise.race([
+        ctx.resume().catch(() => {}),
+        new Promise(r => window.setTimeout(r, 350)),
+      ]);
+    } catch (_) {}
+    notifyAudioStateChange();
+  }
+  // If still suspended (e.g. WebSocket-triggered start before any user gesture), return immediately instead of stalling
+  if (ctx.state !== "running") {
+    return ctx;
   }
   // Wait until AudioContext hardware clock is genuinely ticking (prevents cold-start 1st-beat drift)
   const t0 = ctx.currentTime;
@@ -200,13 +238,14 @@ export function scheduleRunAudio(bpm, numBars, startAudioT, playMetronome, demoT
   stopScheduledAudio();
   const ctx = ensureAudioCtx();
   const ts = TIME_SIGS[timeSigKey] || TIME_SIGS["4/4"];
+  const safeBars = Math.max(1, Number(numBars) || (app && app.phrase && app.phrase.bars ? app.phrase.bars.length : 0) || (app && app.numBars) || 4);
   const clickSec = ts.clickSec(bpm);
   const tickSec = clickSec / ts.clickTicks;
   const countInSec = ts.countInClicks * clickSec;
 
   // Always play count-in clicks so the player gets the tempo; play bar clicks only when metronome is ON (or demo)
   const clicksToSchedule = (playMetronome || demoTargets)
-    ? (ts.countInClicks + numBars * ts.clicksPerBar)
+    ? (ts.countInClicks + safeBars * ts.clicksPerBar)
     : ts.countInClicks;
   for (let c = 0; c < clicksToSchedule; c++) {
     if (!demoTargets && c >= ts.countInClicks) {
