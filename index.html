@@ -60,7 +60,7 @@
   "description": "Free browser-based rhythm & pitch sight-reading trainer for musicians featuring 6 progressive levels, 5 time signatures, triplets, staccato, ghost notes, gap click metronome, custom score editor, daily challenges, and audio interface onset/sustain/rest grading."
 }
 </script>
-<link rel="stylesheet" href="css/styles.css?v=20261127v" />
+<link rel="stylesheet" href="css/styles.css?v=20261127x" />
 <script defer src="https://cloud.umami.is/script.js" data-website-id="9070201e-fd1f-4081-ad26-1219def68ba6" data-domains="gnosia1104.github.io"></script>
 </head>
 <body>
@@ -402,7 +402,10 @@
       <div class="group">
         <strong><span id="lblRoomTitle">⚔️ 실시간 방 대결</span> <span class="beta-tag">MULTI</span></strong>
       </div>
-      <button id="btnRoomClose" type="button" class="cal-close" title="닫기">✕</button>
+      <div class="group room-head-right">
+        <button id="btnRoomLeave" type="button" class="danger room-leave-btn hidden">나가기</button>
+        <button id="btnRoomClose" type="button" class="cal-close" title="닫기">✕</button>
+      </div>
     </div>
 
     <div id="roomEntryView" class="room-entry-row">
@@ -424,7 +427,6 @@
           <span id="roomModeBadge" class="room-mode-pill local">LOCAL TAB</span>
           <button id="btnRoomCopyLink" type="button">🔗 초대 링크</button>
           <button id="btnRoomMuteChat" type="button" title="채팅 전체 끄기/켜기">💬 채팅 ON</button>
-          <button id="btnRoomLeave" type="button" class="danger">나가기</button>
         </div>
         <div id="roomHostControls" class="group">
           <select id="roomRuleSelect" title="대전 룰 선택">
@@ -652,7 +654,7 @@
 <!-- Steam-Style Achievement Unlock Toast Stack -->
 <div id="achToastStack" class="ach-toast-stack" aria-live="polite"></div>
 
-<script type="module" src="js/main.js?v=20261127w"></script>
+<script type="module" src="js/main.js?v=20261127x"></script>
 </body>
 </html>
 

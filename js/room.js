@@ -1580,6 +1580,8 @@ export function renderRoomUi() {
 
   entryEl.classList.toggle("hidden", roomState.joined);
   activeEl.classList.toggle("hidden", !roomState.joined);
+  const leaveBtn = document.getElementById("btnRoomLeave");
+  if (leaveBtn) leaveBtn.classList.toggle("hidden", !roomState.joined);
   refreshRoomAudioBanner();
   cbs.onRoomStateChange();
 

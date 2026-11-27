@@ -2675,12 +2675,6 @@ body.has-dock .ach-toast-stack {
     padding: 5px 8px;
     font-size: 12px;
   }
-  .room-info-group {
-    width: 100%;
-  }
-  .room-info-group #btnRoomLeave {
-    margin-left: auto;
-  }
   .room-chat-bar {
     flex-wrap: wrap;
   }
@@ -2730,6 +2724,15 @@ body.has-dock .ach-toast-stack {
     padding: 4px 7px;
     font-size: 11.5px;
   }
+}
+
+.room-head-right {
+  gap: 6px;
+  flex-shrink: 0;
+}
+.room-leave-btn {
+  padding: 4px 10px;
+  font-size: 11.5px;
 }
 
 .room-audio-banner {
