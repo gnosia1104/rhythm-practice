@@ -60,7 +60,7 @@
   "description": "Free browser-based rhythm & pitch sight-reading trainer for musicians featuring 6 progressive levels, 5 time signatures, triplets, staccato, ghost notes, gap click metronome, custom score editor, daily challenges, and audio interface onset/sustain/rest grading."
 }
 </script>
-<link rel="stylesheet" href="css/styles.css?v=20261127r" />
+<link rel="stylesheet" href="css/styles.css?v=20261127u" />
 <script defer src="https://cloud.umami.is/script.js" data-website-id="9070201e-fd1f-4081-ad26-1219def68ba6" data-domains="gnosia1104.github.io"></script>
 </head>
 <body>
@@ -81,7 +81,7 @@
   <!-- Main Control Toolbar (Row 1: Primary Controls / Row 2: Settings) -->
   <div class="toolbar">
     <div class="toolbar-row primary-row">
-      <div class="group">
+      <div class="group toolbar-transport">
         <button id="btnStart" class="primary" title="Enter">▶ 시작 / 재시도</button>
         <button id="btnStop" title="Esc" disabled>■ 정지</button>
         <button id="btnNew" title="n">새 악보</button>
@@ -156,7 +156,7 @@
     </div>
 
     <div class="toolbar-row secondary">
-      <div class="group">
+      <div class="group toolbar-inputs">
         <div id="inputGroup" class="input-toggles" role="group" aria-label="Input methods">
           <button id="btnInKey" type="button" class="active" title="키보드 입력 ON/OFF (Space/J/K · 단축키 i)">⌨️ 키</button>
           <button id="btnInAudio" type="button" title="오디오 인터페이스 / 마이크 입력 ON/OFF (단축키 i)">🎤 오디오</button>
@@ -165,9 +165,14 @@
         </div>
         <label class="group click-vol-group" title="메트로놈 클릭 볼륨 (0~200%)">
           <span id="lblClickVol" class="label">🔊 클릭</span>
-          <input id="clickVolSlider" type="range" min="0" max="200" step="5" value="100" style="width:72px" />
+          <input id="clickVolSlider" type="range" min="0" max="200" step="5" value="100" style="width:68px" />
           <span id="clickVolVal" class="click-vol-val">100%</span>
         </label>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="group toolbar-modes">
         <div id="toolsWrap" class="tools-wrap">
           <button id="btnToolsMenu" type="button" aria-haspopup="true" aria-expanded="false" title="에디터 · 특수훈련 · 싱크보정 · PDF · 튜토리얼 · 설명"><span id="btnToolsText">⋯ 도구</span><span id="toolsActiveDot" class="tools-dot hidden"></span></button>
           <div id="toolsDropdown" class="tools-dropdown hidden" role="menu">
@@ -187,11 +192,6 @@
             <button id="btnGuide" type="button" role="menuitem" title="사용 방법 및 판정 기준 설명 열기">❓ 설명</button>
           </div>
         </div>
-      </div>
-
-      <div class="divider"></div>
-
-      <div class="group">
         <button id="btnDaily" class="daily-btn" title="오늘의 4/4 데일리 챌린지 (고정 8마디)">🏆 데일리</button>
         <button id="btnDailyPlus" class="daily-plus-btn" title="오늘의 변박·고급 데일리+ 챌린지 (3/4·2/4·5/4·6/8)">🔥 데일리+</button>
         <button id="btnEndless" class="endless-btn" title="2줄 교차 무한 초견 서바이벌 모드 (HP 게이지 · 최고 생존 마디 기록)">♾️ 엔드리스</button>
@@ -406,20 +406,25 @@
     </div>
 
     <div id="roomEntryView" class="room-entry-row">
-      <input id="roomNickInput" class="room-input" type="text" maxlength="16" placeholder="닉네임 (예: GrooveKing)" />
-      <button id="btnRoomCreate" type="button" class="primary">🏠 방 만들기</button>
+      <div class="room-entry-pair">
+        <input id="roomNickInput" class="room-input" type="text" maxlength="16" placeholder="닉네임 (예: GrooveKing)" />
+        <button id="btnRoomCreate" type="button" class="primary">🏠 방 만들기</button>
+      </div>
       <span class="room-sep-or">or</span>
-      <input id="roomCodeInput" class="room-input room-code-in" type="text" maxlength="6" placeholder="방 코드" />
-      <button id="btnRoomJoin" type="button">🚪 입장</button>
+      <div class="room-entry-pair">
+        <input id="roomCodeInput" class="room-input room-code-in" type="text" maxlength="6" placeholder="방 코드" />
+        <button id="btnRoomJoin" type="button">🚪 입장</button>
+      </div>
     </div>
 
     <div id="roomActiveView" class="room-active hidden">
       <div class="room-active-bar">
-        <div class="group">
+        <div class="group room-info-group">
           <span id="roomCodeBadge" class="room-code-badge">#0000</span>
           <span id="roomModeBadge" class="room-mode-pill local">LOCAL TAB</span>
           <button id="btnRoomCopyLink" type="button">🔗 초대 링크</button>
           <button id="btnRoomMuteChat" type="button" title="채팅 전체 끄기/켜기">💬 채팅 ON</button>
+          <button id="btnRoomLeave" type="button" class="danger">나가기</button>
         </div>
         <div id="roomHostControls" class="group">
           <select id="roomRuleSelect" title="대전 룰 선택">
@@ -432,7 +437,6 @@
           <button id="btnRoomStart" type="button" class="primary">▶ 라운드 시작</button>
           <button id="btnRoomEndNow" type="button" class="hidden">🏁 마감</button>
         </div>
-        <button id="btnRoomLeave" type="button" class="danger">나가기</button>
       </div>
 
       <div id="roomChartSummary" class="room-chart-summary"></div>
@@ -465,8 +469,11 @@
 
   <!-- Endless 2-Line Double-Buffered Arcade Survival HUD -->
   <div id="endlessBar" class="endless-bar hidden">
-    <div class="endless-row">
+    <div class="endless-head">
       <strong id="lblEndlessTitle">♾️ 엔드리스 서바이벌</strong>
+      <button id="btnEndlessClose" type="button" class="cal-close" title="엔드리스 종료">✕</button>
+    </div>
+    <div class="endless-row">
       <div class="endless-hp-box" title="정확한 어택·쉼표 통과 시 회복 / 미스·쉼표 에러 시 감소">
         <span class="endless-hp-icon">❤️</span>
         <div class="endless-hp-track">
@@ -474,10 +481,11 @@
         </div>
         <span id="endlessHpVal" class="endless-hp-val">100%</span>
       </div>
-      <span id="endlessBarsVal" class="endless-pill bars">생존 0마디</span>
-      <span id="endlessComboVal" class="endless-pill combo">0 COMBO</span>
-      <span id="endlessBestVal" class="endless-pill best">🏆 최고 0마디</span>
-      <button id="btnEndlessClose" type="button" class="cal-close" title="엔드리스 종료">✕</button>
+      <div class="endless-pills">
+        <span id="endlessBarsVal" class="endless-pill bars">생존 0마디</span>
+        <span id="endlessComboVal" class="endless-pill combo">0 COMBO</span>
+        <span id="endlessBestVal" class="endless-pill best">🏆 최고 0마디</span>
+      </div>
     </div>
     <span id="endlessMsg" class="endless-msg">2줄 교차 무한 초견: 아랫줄 절반을 지나면 지나간 윗줄이 자동으로 새 악보로 바뀝니다. HP가 0이 될 때까지 최대한 많은 마디를 생존하세요!</span>
   </div>
@@ -643,7 +651,7 @@
 <!-- Steam-Style Achievement Unlock Toast Stack -->
 <div id="achToastStack" class="ach-toast-stack" aria-live="polite"></div>
 
-<script type="module" src="js/main.js?v=20261127s"></script>
+<script type="module" src="js/main.js?v=20261127t"></script>
 </body>
 </html>
 

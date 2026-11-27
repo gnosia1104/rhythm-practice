@@ -1818,7 +1818,11 @@ window.addEventListener("resize", () => {
   const nowNarrow = window.innerWidth <= 640;
   if (nowNarrow !== lastNarrow) {
     lastNarrow = nowNarrow;
-    app.dirtyScore = true;
+    if (app.endlessMode && app.state === "READY") {
+      buildEndlessPreviewPhrase();
+    } else {
+      app.dirtyScore = true;
+    }
   }
 });
 
