@@ -60,7 +60,7 @@
   "description": "Free browser-based rhythm & pitch sight-reading trainer for musicians featuring 6 progressive levels, 5 time signatures, triplets, staccato, ghost notes, gap click metronome, custom score editor, daily challenges, and audio interface onset/sustain/rest grading."
 }
 </script>
-<link rel="stylesheet" href="css/styles.css?v=20261128b" />
+<link rel="stylesheet" href="css/styles.css?v=20261128c" />
 <script defer src="https://cloud.umami.is/script.js" data-website-id="9070201e-fd1f-4081-ad26-1219def68ba6" data-domains="gnosia1104.github.io"></script>
 </head>
 <body>
@@ -553,6 +553,13 @@
         <button id="btnLbSaveNick" type="button">닉네임 저장</button>
       </div>
     </div>
+    <div class="lb-filter-row" role="group" aria-label="Input mode filter">
+      <button type="button" class="lb-filter-btn active" data-lb-filter="ALL">🌐 전체</button>
+      <button type="button" class="lb-filter-btn" data-lb-filter="KEY">⌨️ 키</button>
+      <button type="button" class="lb-filter-btn" data-lb-filter="AUDIO">🎤 오디오</button>
+      <button type="button" class="lb-filter-btn" data-lb-filter="MIDI">🎹 MIDI</button>
+      <button type="button" class="lb-filter-btn" data-lb-filter="PAD">👆 패드</button>
+    </div>
     <div id="lbList" class="lb-list"></div>
     <span id="lbMsg" class="lb-msg"></span>
   </div>
@@ -734,7 +741,7 @@
 <!-- Steam-Style Achievement Unlock Toast Stack -->
 <div id="achToastStack" class="ach-toast-stack" aria-live="polite"></div>
 
-<script type="module" src="js/main.js?v=20261128b"></script>
+<script type="module" src="js/main.js?v=20261128c"></script>
 </body>
 </html>
 

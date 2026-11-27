@@ -1,30 +1,35 @@
 // Global & Local Leaderboard Module
-// Tracks Top 20 + Your Rank across 4 boards:
-//   1. Today's Daily (4/4)          -> daily:YYYY-MM-DD
-//   2. Today's Daily+ (Odd Meter)   -> dailyplus:YYYY-MM-DD
-//   3. Endless Survival (HP)        -> endless:all
-//   4. Endless + Sudden Death (3M)  -> endless_sd3:all
-// Uses shared Supabase client when table/RPC is available, and seamlessly falls back to local personal bests.
+// Tracks Top 20 + Your Rank across 4 boards + 5 input-mode filters:
+//   Boards:
+//     1. Today's Daily (4/4)          -> daily:YYYY-MM-DD
+//     2. Today's Daily+ (Odd Meter)   -> dailyplus:YYYY-MM-DD
+//     3. Endless Survival (HP)        -> endless:all
+//     4. Endless + Sudden Death (3M)  -> endless_sd3:all
+//   Input Filters: ALL | KEY | AUDIO | MIDI | PAD
+// Uses Supabase Anonymous Auth (auth.uid()) + hardened RPCs (get_leaderboard / submit_leaderboard_score),
+// never exposes user_id/client_id in queries, and gracefully falls back to local personal bests.
 import { t } from "./i18n.js";
 import { getTodayDateStr } from "./rhythm.js";
 import { getEquippedTitleAndBadges } from "./achievements.js";
 import { trackEvent } from "./analytics.js";
 import {
-  isSupabaseConfigured, getSupabaseClient, getPersistentClientId,
-  loadSavedNickname, saveNickname,
+  isSupabaseConfigured, getSupabaseClient, ensureSupabaseAuth,
+  getPersistentClientId, loadSavedNickname, saveNickname,
 } from "./supabase-client.js";
 
 const LOCAL_LB_KEY = "rhythm_leaderboard_local_v1";
 const MAX_ROWS = 20;
+const VALID_FILTERS = ["ALL", "KEY", "AUDIO", "MIDI", "PAD"];
 
 export const lbState = {
   open: false,
-  tab: "daily", // "daily" | "dailyplus" | "endless" | "endless_sd3"
-  mode: "local", // "online" | "local"
+  tab: "daily",        // "daily" | "dailyplus" | "endless" | "endless_sd3"
+  inputFilter: "ALL",  // "ALL" | "KEY" | "AUDIO" | "MIDI" | "PAD"
+  mode: "local",       // "online" | "local"
   loading: false,
-  clientId: getPersistentClientId(),
-  rowsByBoard: new Map(), // boardKey -> array of rows
-  localBestByBoard: {},   // boardKey -> best local entry
+  clientId: getPersistentClientId(), // used only for default fallback nickname suffix
+  rowsByCacheKey: new Map(), // `${boardKey}|${inputFilter}` -> array of rows
+  localBestByBoard: {},      // boardKey -> best local entry
   lastSubmittedByBoard: new Map(),
 };
 
@@ -49,8 +54,20 @@ function boardKeyForTab(tab = lbState.tab) {
   return "endless:all";
 }
 
+function cacheKeyFor(boardKey, inputFilter = lbState.inputFilter) {
+  return `${boardKey}|${inputFilter}`;
+}
+
 function isSurvivalTab(tab = lbState.tab) {
   return tab === "endless" || tab === "endless_sd3";
+}
+
+function matchesInputFilter(entryMode, filter = lbState.inputFilter) {
+  const f = String(filter || "ALL").toUpperCase();
+  if (f === "ALL") return true;
+  const m = String(entryMode || "KEY").toUpperCase();
+  if (f === "AUDIO") return m === "AUDIO" || m === "BOTH";
+  return m === f;
 }
 
 function loadLocalBests() {
@@ -67,7 +84,6 @@ function loadLocalBests() {
 
 function persistLocalBests() {
   try {
-    // Keep only recent 20 board keys so localStorage stays tiny
     const keys = Object.keys(lbState.localBestByBoard);
     if (keys.length > 20) {
       keys.sort().slice(0, keys.length - 20).forEach((k) => {
@@ -106,31 +122,26 @@ function setLbMsg(text, color = "var(--muted)") {
   el.textContent = text;
 }
 
-export async function fetchLeaderboardTab(tab = lbState.tab) {
+export async function fetchLeaderboardTab(tab = lbState.tab, inputFilter = lbState.inputFilter) {
   const boardKey = boardKeyForTab(tab);
-  const survival = isSurvivalTab(tab);
+  const filter = VALID_FILTERS.includes(inputFilter) ? inputFilter : "ALL";
+  const cKey = cacheKeyFor(boardKey, filter);
   lbState.loading = true;
   renderLeaderboardUi();
 
   if (isSupabaseConfigured()) {
     try {
       const sb = await getSupabaseClient();
-      let q = sb.from("leaderboard_scores")
-        .select("board_key,client_id,nickname,title,score,max_score,bars,acc,sd_ms,rank_grade,bpm,level,input_mode,updated_at")
-        .eq("board_key", boardKey);
-      if (survival) {
-        q = q.order("bars", { ascending: false })
-          .order("acc", { ascending: false })
-          .order("bpm", { ascending: false });
-      } else {
-        q = q.order("score", { ascending: false })
-          .order("sd_ms", { ascending: true })
-          .order("acc", { ascending: false });
-      }
-      const { data, error } = await q.limit(MAX_ROWS);
+      // Best-effort anonymous auth so get_leaderboard computes server-side `is_me`
+      await ensureSupabaseAuth();
+      const { data, error } = await sb.rpc("get_leaderboard", {
+        p_board_key: boardKey,
+        p_input_mode: filter,
+        p_limit: MAX_ROWS,
+      });
       if (!error && Array.isArray(data)) {
         lbState.mode = "online";
-        lbState.rowsByBoard.set(boardKey, data);
+        lbState.rowsByCacheKey.set(cKey, data);
         lbState.loading = false;
         setLbMsg(t("lbOnlineHint"), "var(--muted)");
         renderLeaderboardUi();
@@ -144,22 +155,28 @@ export async function fetchLeaderboardTab(tab = lbState.tab) {
     lbState.mode = "local";
   }
 
-  // Graceful local fallback: show user's own saved best on this board
+  // Graceful local fallback: show user's own saved best on this board if it matches filter
   const mine = lbState.localBestByBoard[boardKey];
-  lbState.rowsByBoard.set(boardKey, mine ? [mine] : []);
+  const localRows = (mine && matchesInputFilter(mine.input_mode, filter))
+    ? [{ ...mine, is_me: true }]
+    : [];
+  lbState.rowsByCacheKey.set(cKey, localRows);
   lbState.loading = false;
   setLbMsg(t("lbLocalHint"), "var(--muted)");
   renderLeaderboardUi();
-  return lbState.rowsByBoard.get(boardKey);
+  return localRows;
 }
 
 async function submitEntryToSupabase(entry) {
-  if (!isSupabaseConfigured()) return false;
+  if (!isSupabaseConfigured()) return { ok: false, reason: "unconfigured" };
   try {
     const sb = await getSupabaseClient();
+    const user = await ensureSupabaseAuth();
+    if (!user || !user.id) {
+      return { ok: false, reason: "auth_required" };
+    }
     const { error } = await sb.rpc("submit_leaderboard_score", {
       p_board_key: entry.board_key,
-      p_client_id: entry.client_id,
       p_nickname: entry.nickname,
       p_title: entry.title || "",
       p_score: Math.max(0, Math.round(entry.score || 0)),
@@ -167,19 +184,25 @@ async function submitEntryToSupabase(entry) {
       p_bars: Math.max(0, Math.round(entry.bars || 0)),
       p_acc: Number((entry.acc || 0).toFixed(1)),
       p_sd_ms: Number((entry.sd_ms || 0).toFixed(1)),
-      p_rank_grade: String(entry.rank_grade || "").slice(0, 8),
+      p_rank_grade: ["S+", "S", "A", "B", "C"].includes(entry.rank_grade) ? entry.rank_grade : "C",
       p_bpm: Math.max(40, Math.min(180, Math.round(entry.bpm || 60))),
       p_level: Math.max(1, Math.min(6, Math.round(entry.level || 1))),
-      p_input_mode: String(entry.input_mode || "KEY").slice(0, 12),
+      p_input_mode: ["KEY", "AUDIO", "MIDI", "PAD", "BOTH"].includes(entry.input_mode) ? entry.input_mode : "KEY",
     });
     if (!error) {
       lbState.mode = "online";
       lbState.lastSubmittedByBoard.set(entry.board_key, Date.now());
-      trackEvent("leaderboard_submit", { board: entry.board_key.split(":")[0] });
-      return true;
+      trackEvent("leaderboard_submit", { board: entry.board_key.split(":")[0], mode: entry.input_mode });
+      return { ok: true, reason: null };
     }
-  } catch (_) {}
-  return false;
+    const msg = String(error.message || "");
+    if (msg.includes("nickname_not_allowed")) return { ok: false, reason: "nickname_not_allowed" };
+    if (msg.includes("rate_limited")) return { ok: false, reason: "rate_limited" };
+    if (msg.includes("auth_required")) return { ok: false, reason: "auth_required" };
+    return { ok: false, reason: msg || "rpc_error" };
+  } catch (_) {
+    return { ok: false, reason: "network_error" };
+  }
 }
 
 export async function recordLeaderboardRun({
@@ -190,7 +213,7 @@ export async function recordLeaderboardRun({
   bars = 0,
   acc = 0,
   sd = 0,
-  rank = "",
+  rank = "C",
   bpm = 60,
   level = 1,
   inputMode = "KEY",
@@ -199,26 +222,32 @@ export async function recordLeaderboardRun({
   const survival = isSurvivalTab(tab);
   if (survival && bars <= 0) return;
   if (!survival && score <= 0) return;
-  if (!survival && maxScore > 0 && score > maxScore + 5) return; // sanity guard
+  if (!survival && maxScore > 0 && score > maxScore) return;
 
   const boardKey = survival
     ? boardKeyForTab(tab)
     : `${tab}:${dateStr || getTodayDateStr()}`;
   const { title } = getEquippedTitleAndBadges();
+  const cleanMode = ["KEY", "AUDIO", "MIDI", "PAD", "BOTH"].includes(String(inputMode || "").toUpperCase())
+    ? String(inputMode).toUpperCase()
+    : "KEY";
+  const cleanRank = ["S+", "S", "A", "B", "C"].includes(String(rank || "").toUpperCase())
+    ? String(rank).toUpperCase()
+    : "C";
+
   const entry = {
     board_key: boardKey,
-    client_id: lbState.clientId,
     nickname: getEffectiveNickname(),
     title: title ? String(title).slice(0, 24) : "",
     score: Math.max(0, Math.round(score)),
     max_score: Math.max(0, Math.round(maxScore)),
     bars: Math.max(0, Math.round(bars)),
     acc: Math.max(0, Math.min(100, Number(acc) || 0)),
-    sd_ms: Math.max(0, Math.min(999, Number(sd) || 0)),
-    rank_grade: String(rank || "").slice(0, 8),
+    sd_ms: Math.max(0, Math.min(500, Number(sd) || 0)),
+    rank_grade: cleanRank,
     bpm: Math.max(40, Math.min(180, Math.round(bpm || 60))),
     level: Math.max(1, Math.min(6, Math.round(level || 1))),
-    input_mode: String(inputMode || "KEY").slice(0, 12),
+    input_mode: cleanMode,
     updated_at: new Date().toISOString(),
   };
 
@@ -229,11 +258,20 @@ export async function recordLeaderboardRun({
   lbState.localBestByBoard[boardKey] = entry;
   persistLocalBests();
 
-  const uploaded = await submitEntryToSupabase(entry);
+  const res = await submitEntryToSupabase(entry);
+  if (res.reason === "nickname_not_allowed") {
+    setLbMsg(t("lbNickRejected"), "var(--red)");
+    cbs.setHitBadge(t("lbNickRejected"), "err");
+  }
   if (lbState.open) {
-    if (uploaded) await fetchLeaderboardTab(lbState.tab);
-    else {
-      lbState.rowsByBoard.set(boardKey, [entry]);
+    if (res.ok) {
+      await fetchLeaderboardTab(lbState.tab, lbState.inputFilter);
+    } else if (!res.reason || res.reason === "unconfigured" || res.reason === "network_error") {
+      const cKey = cacheKeyFor(boardKey, lbState.inputFilter);
+      const localRows = matchesInputFilter(entry.input_mode, lbState.inputFilter)
+        ? [{ ...entry, is_me: true }]
+        : [];
+      lbState.rowsByCacheKey.set(cKey, localRows);
       renderLeaderboardUi();
     }
   }
@@ -254,6 +292,9 @@ export function renderLeaderboardUi() {
   document.querySelectorAll(".lb-tab-btn").forEach((b) => {
     b.classList.toggle("active", b.dataset.lbTab === lbState.tab);
   });
+  document.querySelectorAll(".lb-filter-btn").forEach((b) => {
+    b.classList.toggle("active", b.dataset.lbFilter === lbState.inputFilter);
+  });
 
   const listEl = document.getElementById("lbList");
   if (!listEl) return;
@@ -265,10 +306,10 @@ export function renderLeaderboardUi() {
 
   const boardKey = boardKeyForTab(lbState.tab);
   const survival = isSurvivalTab(lbState.tab);
-  const rows = lbState.rowsByBoard.get(boardKey) || [];
+  const rows = lbState.rowsByCacheKey.get(cacheKeyFor(boardKey, lbState.inputFilter)) || [];
   const myRankEl = document.getElementById("lbMyRank");
   if (myRankEl) {
-    const myIdx = rows.findIndex((r) => r.client_id === lbState.clientId);
+    const myIdx = rows.findIndex((r) => Boolean(r.is_me));
     if (myIdx >= 0) {
       const r = rows[myIdx];
       const val = survival ? `${r.bars}B` : Number(r.score || 0).toLocaleString();
@@ -284,7 +325,7 @@ export function renderLeaderboardUi() {
   }
 
   listEl.innerHTML = rows.map((r, idx) => {
-    const isMe = r.client_id === lbState.clientId;
+    const isMe = Boolean(r.is_me);
     const medal = idx === 0 ? "🥇" : (idx === 1 ? "🥈" : (idx === 2 ? "🥉" : `#${idx + 1}`));
     const titlePill = r.title ? `<span class="lb-title-pill">${escapeHtml(r.title)}</span>` : "";
     const meTag = isMe ? `<span class="room-me-tag">YOU</span>` : "";
@@ -335,6 +376,18 @@ export function syncLeaderboardLanguage() {
     if (key) b.textContent = t(key);
   });
 
+  const filterMap = {
+    ALL: "lbFilterAll",
+    KEY: "lbFilterKey",
+    AUDIO: "lbFilterAudio",
+    MIDI: "lbFilterMidi",
+    PAD: "lbFilterPad",
+  };
+  document.querySelectorAll(".lb-filter-btn").forEach((b) => {
+    const key = filterMap[b.dataset.lbFilter];
+    if (key) b.textContent = t(key);
+  });
+
   setLbMsg(lbState.mode === "online" ? t("lbOnlineHint") : t("lbLocalHint"));
   renderLeaderboardUi();
 }
@@ -350,7 +403,7 @@ export function toggleLeaderboardBar(forceOpen = null, targetTab = null) {
   if (open) {
     const nickIn = document.getElementById("lbNickInput");
     if (nickIn && !nickIn.value) nickIn.value = loadSavedNickname();
-    fetchLeaderboardTab(lbState.tab);
+    fetchLeaderboardTab(lbState.tab, lbState.inputFilter);
   } else {
     renderLeaderboardUi();
   }
@@ -378,7 +431,7 @@ export function initLeaderboard(callbacks = {}) {
   if (btnRefresh) {
     btnRefresh.addEventListener("click", (e) => {
       e.currentTarget.blur();
-      fetchLeaderboardTab(lbState.tab);
+      fetchLeaderboardTab(lbState.tab, lbState.inputFilter);
     });
   }
   const btnSaveNick = document.getElementById("btnLbSaveNick");
@@ -388,18 +441,32 @@ export function initLeaderboard(callbacks = {}) {
     if (!saved) return;
     const roomNick = document.getElementById("roomNickInput");
     if (roomNick && !roomNick.value) roomNick.value = saved;
-    // Update current board's local best nickname/title and re-submit if present
     const boardKey = boardKeyForTab(lbState.tab);
     const mine = lbState.localBestByBoard[boardKey];
     if (mine) {
       const { title } = getEquippedTitleAndBadges();
+      const prevNick = mine.nickname;
       mine.nickname = saved;
       mine.title = title ? String(title).slice(0, 24) : "";
+      const res = await submitEntryToSupabase(mine);
+      if (res.reason === "nickname_not_allowed") {
+        mine.nickname = prevNick;
+        setLbMsg(t("lbNickRejected"), "var(--red)");
+        return;
+      }
+      if (res.reason === "rate_limited") {
+        setLbMsg(t("lbRateLimited"), "var(--amber)");
+        return;
+      }
+      if (res.reason === "auth_required") {
+        persistLocalBests();
+        setLbMsg(t("lbAuthNeeded"), "var(--amber)");
+        return;
+      }
       persistLocalBests();
-      await submitEntryToSupabase(mine);
     }
     setLbMsg(t("lbNickSaved", saved), "var(--green)");
-    await fetchLeaderboardTab(lbState.tab);
+    await fetchLeaderboardTab(lbState.tab, lbState.inputFilter);
   };
   if (btnSaveNick) {
     btnSaveNick.addEventListener("click", (e) => {
@@ -422,7 +489,17 @@ export function initLeaderboard(callbacks = {}) {
       const nextTab = b.dataset.lbTab;
       if (!nextTab) return;
       lbState.tab = nextTab;
-      fetchLeaderboardTab(nextTab);
+      fetchLeaderboardTab(nextTab, lbState.inputFilter);
+    });
+  });
+
+  document.querySelectorAll(".lb-filter-btn").forEach((b) => {
+    b.addEventListener("click", (e) => {
+      e.currentTarget.blur();
+      const nextFilter = b.dataset.lbFilter;
+      if (!nextFilter || !VALID_FILTERS.includes(nextFilter)) return;
+      lbState.inputFilter = nextFilter;
+      fetchLeaderboardTab(lbState.tab, nextFilter);
     });
   });
 

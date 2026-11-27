@@ -64,7 +64,7 @@ import {
 } from "./sudden-death.js";
 import {
   initLeaderboard, syncLeaderboardLanguage, recordLeaderboardRun, toggleLeaderboardBar,
-} from "./leaderboard.js?v=20261127ag";
+} from "./leaderboard.js?v=20261128c";
 import {
   initJuice, syncJuiceUi, resetJuiceCombo, onJuiceHit, onJuiceMiss, onJuiceExtraHit,
   animateScoreRollup, celebrateRankReveal,

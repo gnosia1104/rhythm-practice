@@ -9,6 +9,7 @@ const CLIENT_ID_STORAGE_KEY = "rhythm_player_uid_v1";
 const ID_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
 let supabaseClientPromise = null;
+let supabaseAuthPromise = null;
 
 export function randomCode(len = 10) {
   let out = "";
@@ -59,4 +60,31 @@ export async function getSupabaseClient() {
       }));
   }
   return supabaseClientPromise;
+}
+
+// Ensures a persistent cryptographic Supabase Anonymous Auth session (auth.uid())
+// so leaderboard identity is verified server-side without requiring user sign-up.
+export async function ensureSupabaseAuth() {
+  if (!isSupabaseConfigured()) return null;
+  if (supabaseAuthPromise) return supabaseAuthPromise;
+  supabaseAuthPromise = (async () => {
+    try {
+      const sb = await getSupabaseClient();
+      if (!sb) return null;
+      const { data: sessData } = await sb.auth.getSession();
+      if (sessData && sessData.session && sessData.session.user && sessData.session.user.id) {
+        return sessData.session.user;
+      }
+      const { data, error } = await sb.auth.signInAnonymously();
+      if (error || !data || !data.user) {
+        supabaseAuthPromise = null;
+        return null;
+      }
+      return data.user;
+    } catch (_) {
+      supabaseAuthPromise = null;
+      return null;
+    }
+  })();
+  return supabaseAuthPromise;
 }
