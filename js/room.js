@@ -12,8 +12,8 @@ import { trackEvent } from "./analytics.js";
 // Create a free project at https://supabase.com -> Project Settings -> API
 // Paste Project URL and anon public key below (no DB tables needed!).
 // =========================================================================
-export const SUPABASE_URL = "";
-export const SUPABASE_ANON_KEY = "";
+export const SUPABASE_URL = "https://fdpnrxkohvfrcesoxpwo.supabase.co";
+export const SUPABASE_ANON_KEY = "sb_publishable_ifPAkMXSsD1C_2xEToofNg_GtDLtkVB";
 
 const ROOM_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // Excludes confusing I/O/0/1
 const NICK_STORAGE_KEY = "rhythm_room_nick_v1";
