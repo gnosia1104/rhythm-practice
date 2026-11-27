@@ -48,13 +48,13 @@ import {
   refreshRoomAudioBanner, tryStartRoomRoundFromMain, notifyRoomStopped,
   notifyRoomChartChanged, notifyRoomLiveProgress, notifyRoomFinish,
   notifyRoomEndlessProgress, notifyRoomEndlessOut,
-} from "./room.js?v=20261127y";
+} from "./room.js?v=20261127z";
 import {
-  endlessState, initEndless, setEndlessMode, setEndlessStreamSeed, syncEndlessLanguage, renderEndlessHud,
+  endlessState, isSdEndless, initEndless, setEndlessMode, setEndlessStreamSeed, syncEndlessLanguage, renderEndlessHud,
   buildEndlessPreviewPhrase, startEndlessAudioAndState, stepEndlessFrame,
   onEndlessHit, onEndlessMiss, onEndlessRestPassed, onEndlessRestError, onEndlessExtraHit,
   saveEndlessBest,
-} from "./endless.js?v=20261127q";
+} from "./endless.js?v=20261127z";
 import {
   initAchievements, syncAchievementsLanguage,
   evaluateStandardRunAchievements, evaluateEndlessAchievements, evaluateRoomWinAchievement,
@@ -525,12 +525,15 @@ function pushLiveRoomProgress() {
 let lastSdMisses = 0;
 
 function isSuddenDeathActive() {
-  if (app.endlessMode) return false;
+  if (isSdEndless()) return true;
   if (isRoomActive()) return isRoomSuddenDeath();
   return Boolean(app.suddenDeath);
 }
 
 function countCurrentMisses() {
+  if (isSdEndless()) {
+    return Math.max(0, (endlessState.maxLives || 3) - (endlessState.lives ?? 3));
+  }
   if (!app.phrase) return 0;
   const missedNotes = (app.phrase.targets || []).filter(tg => tg.missed).length;
   const restErrs = (app.phrase.rests || []).filter(r => r.error).length;
@@ -544,9 +547,10 @@ function renderSdLivesHud(shake = false) {
   el.classList.toggle("hidden", !active);
   if (!active) return;
 
-  const maxLives = app.suddenDeathMax || 3;
-  const misses = countCurrentMisses();
-  const left = app.suddenDeathOut ? 0 : Math.max(0, maxLives - misses);
+  const maxLives = isSdEndless() ? (endlessState.maxLives || 3) : (app.suddenDeathMax || 3);
+  const left = app.suddenDeathOut
+    ? 0
+    : (isSdEndless() ? Math.max(0, endlessState.lives ?? maxLives) : Math.max(0, maxLives - countCurrentMisses()));
   if (left <= 0) {
     el.textContent = "💀 OUT";
   } else {
@@ -655,7 +659,8 @@ function checkSuddenDeathProgress() {
     const increased = misses > lastSdMisses;
     lastSdMisses = misses;
     renderSdLivesHud(increased);
-    if (!isRoomPlaying() && misses >= (app.suddenDeathMax || 3)) {
+    // Infinite Sudden Death elimination is handled inside endless.js -> finalizeEndlessGameOver
+    if (!app.endlessMode && !isRoomPlaying() && misses >= (app.suddenDeathMax || 3)) {
       triggerSoloSuddenDeathOut(misses);
     }
   }
@@ -1033,6 +1038,13 @@ function finalizeEndlessGameOver(stats) {
   app.runTrackOpen = false;
   clearFadeOutClasses();
 
+  const isSd = stats.variant === "sd3";
+  if (isSd) {
+    app.suddenDeathOut = true;
+    playSuddenDeathFailSfx();
+    renderSdLivesHud(true);
+  }
+
   const total = stats.hits + stats.missed;
   const acc = total ? (stats.hits / total) * 100 : 0;
   let mean = 0, sd = 0;
@@ -1044,12 +1056,12 @@ function finalizeEndlessGameOver(stats) {
   const rk = bars >= 50 ? { grade: "S+", cls: "rank-sp" }
     : (bars >= 30 ? { grade: "S", cls: "rank-s" }
       : (bars >= 16 ? { grade: "A", cls: "rank-a" }
-        : (bars >= 8 ? { grade: "B", cls: "rank-b" } : { grade: "C", cls: "rank-c" })));
+        : (bars >= 8 ? { grade: "B", cls: "rank-b" } : { grade: isSd ? "💀 OUT" : "C", cls: "rank-c" })));
 
   app.history.unshift({
     take: app.takeId++,
     tsIso: new Date().toISOString(),
-    seed: "ENDL",
+    seed: isSd ? "SD3" : "ENDL",
     fullSeed: "",
     bpm: stats.peakBpm || app.bpm,
     bars,
@@ -1093,17 +1105,24 @@ function finalizeEndlessGameOver(stats) {
   rankEl.textContent = rk.grade;
   rankEl.className = `rank-pill ${rk.cls}`;
   const scoreEl = document.getElementById("scoreBadge");
-  scoreEl.textContent = `♾️ ${bars}B · Max ${stats.maxCombo}C`;
+  scoreEl.textContent = `${isSd ? "💀" : "♾️"} ${bars}B · Max ${stats.maxCombo}C`;
   scoreEl.classList.remove("hidden");
   renderLog();
 
-  const goText = t("endlessGameOver", bars, stats.bestBars, stats.isNewBest, stats.maxCombo, stats.peakBpm || app.bpm);
+  const goText = isSd
+    ? t("sdGameOver", bars, stats.bestBars, stats.isNewBest, stats.maxCombo, stats.peakBpm || app.bpm)
+    : t("endlessGameOver", bars, stats.bestBars, stats.isNewBest, stats.maxCombo, stats.peakBpm || app.bpm);
   const msgEl = document.getElementById("endlessMsg");
   if (msgEl) {
     msgEl.style.color = stats.isNewBest ? "var(--green)" : "var(--red)";
     msgEl.textContent = goText;
   }
-  setHitBadge(`💀 ${bars}B${stats.isNewBest ? " 🏆 NEW BEST!" : ""}`, stats.isNewBest ? "tight" : "err");
+  setHitBadge(
+    isSd
+      ? `💀 OUT · ${bars}B${stats.isNewBest ? " 🏆 NEW BEST!" : ""}`
+      : `💀 ${bars}B${stats.isNewBest ? " 🏆 NEW BEST!" : ""}`,
+    stats.isNewBest ? "tight" : "err"
+  );
   notifyRoomEndlessOut({
     survivedBars: bars,
     maxCombo: stats.maxCombo,
@@ -1255,8 +1274,9 @@ function updateMeta() {
   const relSuffix = app.pitchRelative ? " · 123" : "";
   const pitchTag = app.pitchMode ? ` · ${clefIcon} ${rndPrefix}${(JAZZ_KEYS[resolvedPitchKey] || JAZZ_KEYS.Bb).label}${relSuffix}` : "";
   if (app.endlessMode) {
-    document.getElementById("metaLevel").textContent = `♾️ Endless · ${app.timeSig} · ${baseTitle}${pitchTag} · [${playMods}]`;
-    document.getElementById("metaSeed").textContent = `♾️ Best ${endlessState.bestBars}B`;
+    const isSd = isSdEndless();
+    document.getElementById("metaLevel").textContent = `${isSd ? "💀 Sudden Death" : "♾️ Endless"} · ${app.timeSig} · ${baseTitle}${pitchTag} · [${playMods}]`;
+    document.getElementById("metaSeed").textContent = `${isSd ? "💀" : "♾️"} Best ${isSd ? endlessState.sdBestBars : endlessState.bestBars}B`;
   } else if (app.customMode) {
     document.getElementById("metaLevel").textContent = `✏️ Custom · ${app.timeSig} · ${app.numBars} bars${pitchTag} · [${playMods}]`;
     document.getElementById("metaSeed").textContent = app.phrase.customCode ? app.phrase.customCode.slice(0, 14) + "…" : "Custom";
@@ -1271,7 +1291,7 @@ function updateMeta() {
   const chartMax = computeChartMaxInfo(app.phrase);
   const maxEl = document.getElementById("metaMaxScore");
   if (app.endlessMode) {
-    maxEl.textContent = "♾️ Survival";
+    maxEl.textContent = isSdEndless() ? "💀 3-Miss Survival" : "♾️ Survival";
   } else {
     maxEl.textContent = chartMax.sustainMax > 0
       ? `Max ${chartMax.noteMax.toLocaleString()} + Sus ${chartMax.sustainMax.toLocaleString()}`
@@ -1318,16 +1338,14 @@ function updateMeta() {
   btnCursor.textContent = app.showCursor ? t("cursorOn") : t("cursorOff");
   btnCursor.classList.toggle("active", app.showCursor);
 
-  if (app.endlessMode && app.suddenDeath) {
-    app.suddenDeath = false;
-  }
   const btnBlind = document.getElementById("btnBlindGrade");
   btnBlind.textContent = app.blindGrade ? t("gradeEnd") : t("gradeLive");
   btnBlind.classList.toggle("active", app.blindGrade);
   const btnSd = document.getElementById("btnSuddenDeath");
   if (btnSd) {
-    btnSd.textContent = app.suddenDeath ? t("sdOn") : t("sdOff");
-    btnSd.classList.toggle("active", app.suddenDeath);
+    const sdOn = isSdEndless();
+    btnSd.textContent = sdOn ? t("sdOn") : t("sdOff");
+    btnSd.classList.toggle("active", sdOn);
   }
   if (typeof syncAllDropdownBadges === "function") syncAllDropdownBadges();
   renderSdLivesHud(false);
@@ -1917,13 +1935,8 @@ document.getElementById("btnBlindGrade").addEventListener("click", () => {
 });
 
 document.getElementById("btnSuddenDeath").addEventListener("click", () => {
-  app.suddenDeath = !app.suddenDeath;
-  if (app.suddenDeath && app.endlessMode) {
-    setEndlessMode(false);
-  }
-  app.suddenDeathOut = false;
-  lastSdMisses = 0;
-  updateMeta();
+  const nextOn = !isSdEndless();
+  setEndlessMode(nextOn, "sd3");
   renderSdLivesHud(false);
 });
 
@@ -2903,7 +2916,7 @@ function syncAllDropdownBadges() {
   if (app.blindGrade) diffParts.push("Blind");
   if (app.showBeatNums) diffParts.push("+B");
   if (app.showCursor) diffParts.push("+C");
-  if (app.suddenDeath && !app.endlessMode) diffParts.push("💀");
+  if (isSdEndless()) diffParts.push("💀");
   const diffDropOpen = !document.getElementById("diffDropdown").classList.contains("hidden");
   document.getElementById("diffSummaryBadge").textContent = diffParts.join(" · ");
   document.getElementById("btnDiffMenu").classList.toggle("active", diffDropOpen);
@@ -3087,13 +3100,15 @@ initRoom({
     syncDrillUi();
     updateMeta();
   },
-  setRoomEndlessMode: (enabled, streamSeed) => {
+  setRoomEndlessMode: (enabled, streamSeed, variant = "hp") => {
     setEndlessStreamSeed(streamSeed);
-    if (Boolean(enabled) !== app.endlessMode) {
-      setEndlessMode(Boolean(enabled));
+    const nextVar = variant === "sd3" ? "sd3" : "hp";
+    if (Boolean(enabled) !== app.endlessMode || (enabled && endlessState.variant !== nextVar)) {
+      setEndlessMode(Boolean(enabled), nextVar);
     } else if (enabled) {
       buildEndlessPreviewPhrase();
     }
+    renderSdLivesHud(false);
   },
   triggerRoomStart: (endlessSeed = null) => {
     setEndlessStreamSeed(endlessSeed);

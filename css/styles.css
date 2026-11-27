@@ -2344,6 +2344,18 @@ button.active .tools-badge {
   box-shadow: 0 4px 14px rgba(5, 150, 105, 0.08);
 }
 
+.endless-bar.is-sd {
+  border-color: #fca5a5;
+  background: linear-gradient(135deg, #fff1f2 0%, #ffffff 70%);
+  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.08);
+}
+.endless-bar.is-sd .endless-hp-fill {
+  background: linear-gradient(90deg, #f87171, #dc2626);
+}
+.endless-bar.is-sd .endless-hp-val {
+  min-width: 58px;
+}
+
 .endless-head {
   display: flex;
   align-items: center;

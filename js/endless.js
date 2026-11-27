@@ -9,6 +9,7 @@ import { assignPitchesToPhrase } from "./pitch-gen.js";
 import { ensureAudioCtx, getAudioCtx, scheduleClick } from "./audio-out.js";
 
 const ENDLESS_BEST_KEY = "rhythm_practice_endless_best_v1";
+const SD_BEST_KEY = "rhythm_practice_sd_best_v1";
 
 let cbs = {
   onGameOver: () => {},
@@ -20,13 +21,17 @@ let cbs = {
 };
 
 export const endlessState = {
+  variant: "hp",            // "hp" (Endless HP Survival) | "sd3" (Sudden Death 3-Miss Infinite)
   slotBars: 4,              // 4 bars per line on desktop (2 on narrow/5/4) -> always 2 lines on screen
-  streamSeed: null,         // optional deterministic seed for synced Multiplayer Room Endless Survival
+  streamSeed: null,         // optional deterministic seed for synced Multiplayer Room Endless/SD Survival
   hp: 100,
+  lives: 3,
+  maxLives: 3,
   combo: 0,
   maxCombo: 0,
   survivedBars: 0,
   bestBars: 0,
+  sdBestBars: 0,
   baseBpm: 60,
   curBpm: 60,
   nextGlobalBar: 0,
@@ -49,9 +54,13 @@ export const endlessState = {
   gameOverTriggered: false,
 };
 
-function loadEndlessBest() {
+export function isSdEndless() {
+  return Boolean(app.endlessMode && endlessState.variant === "sd3");
+}
+
+function loadBestByKey(key) {
   try {
-    const v = Number(localStorage.getItem(ENDLESS_BEST_KEY) || "0");
+    const v = Number(localStorage.getItem(key) || "0");
     return Number.isFinite(v) && v > 0 ? Math.floor(v) : 0;
   } catch (_) {
     return 0;
@@ -60,6 +69,14 @@ function loadEndlessBest() {
 
 export function saveEndlessBest(bars) {
   const b = Math.max(0, Math.floor(Number(bars) || 0));
+  if (endlessState.variant === "sd3") {
+    if (b > endlessState.sdBestBars) {
+      endlessState.sdBestBars = b;
+      try { localStorage.setItem(SD_BEST_KEY, String(b)); } catch (_) {}
+      return true;
+    }
+    return false;
+  }
   if (b > endlessState.bestBars) {
     endlessState.bestBars = b;
     try { localStorage.setItem(ENDLESS_BEST_KEY, String(b)); } catch (_) {}
@@ -178,6 +195,7 @@ export function buildEndlessPreviewPhrase() {
   const slotBars = chooseSlotBars();
   endlessState.slotBars = slotBars;
   endlessState.hp = 100;
+  endlessState.lives = endlessState.maxLives;
   endlessState.combo = 0;
   endlessState.maxCombo = 0;
   endlessState.survivedBars = 0;
@@ -314,28 +332,46 @@ function swapSlot(slotToReplace) {
   }, 550);
 }
 
+function triggerEndlessGameOver() {
+  if (endlessState.gameOverTriggered) return;
+  endlessState.gameOverTriggered = true;
+  const isNewBest = saveEndlessBest(endlessState.survivedBars);
+  renderEndlessHud();
+  cbs.onGameOver({
+    variant: endlessState.variant,
+    survivedBars: endlessState.survivedBars,
+    bestBars: endlessState.variant === "sd3" ? endlessState.sdBestBars : endlessState.bestBars,
+    isNewBest,
+    maxCombo: endlessState.maxCombo,
+    hits: endlessState.totalHits,
+    missed: endlessState.totalMissed,
+    tight: endlessState.totalTight,
+    restErrs: endlessState.totalRestErrs,
+    extra: endlessState.totalExtra,
+    errs: [...endlessState.allErrs],
+    peakBpm: endlessState.curBpm,
+  });
+}
+
+function loseSdLife() {
+  if (!app.endlessMode || endlessState.gameOverTriggered) return;
+  endlessState.lives = Math.max(0, endlessState.lives - 1);
+  endlessState.hp = Math.round((endlessState.lives / endlessState.maxLives) * 100);
+  renderEndlessHud();
+  cbs.onHudUpdate(endlessState);
+  if (endlessState.lives <= 0) {
+    triggerEndlessGameOver();
+  }
+}
+
 function adjustHp(delta) {
   if (!app.endlessMode || endlessState.gameOverTriggered) return;
+  if (endlessState.variant === "sd3") return;
   endlessState.hp = Math.max(0, Math.min(100, endlessState.hp + delta));
   renderEndlessHud();
   cbs.onHudUpdate(endlessState);
-  if (endlessState.hp <= 0 && !endlessState.gameOverTriggered) {
-    endlessState.gameOverTriggered = true;
-    const isNewBest = saveEndlessBest(endlessState.survivedBars);
-    renderEndlessHud();
-    cbs.onGameOver({
-      survivedBars: endlessState.survivedBars,
-      bestBars: endlessState.bestBars,
-      isNewBest,
-      maxCombo: endlessState.maxCombo,
-      hits: endlessState.totalHits,
-      missed: endlessState.totalMissed,
-      tight: endlessState.totalTight,
-      restErrs: endlessState.totalRestErrs,
-      extra: endlessState.totalExtra,
-      errs: [...endlessState.allErrs],
-      peakBpm: endlessState.curBpm,
-    });
+  if (endlessState.hp <= 0) {
+    triggerEndlessGameOver();
   }
 }
 
@@ -348,21 +384,25 @@ export function onEndlessHit(tgt) {
 
   if (tgt.pitchOk === false) {
     endlessState.combo = 0;
-    adjustHp(-7);
+    if (endlessState.variant === "sd3") loseSdLife();
+    else adjustHp(-7);
     return;
   }
   if (ae <= tw.tight) {
     endlessState.totalTight += 1;
     endlessState.combo += 1;
     if (endlessState.combo > endlessState.maxCombo) endlessState.maxCombo = endlessState.combo;
-    adjustHp(3.5);
+    if (endlessState.variant === "sd3") { renderEndlessHud(); cbs.onHudUpdate(endlessState); }
+    else adjustHp(3.5);
   } else if (ae <= tw.ok) {
     endlessState.combo += 1;
     if (endlessState.combo > endlessState.maxCombo) endlessState.maxCombo = endlessState.combo;
-    adjustHp(1.5);
+    if (endlessState.variant === "sd3") { renderEndlessHud(); cbs.onHudUpdate(endlessState); }
+    else adjustHp(1.5);
   } else {
     endlessState.combo = 0;
-    adjustHp(-3);
+    if (endlessState.variant === "sd3") { renderEndlessHud(); cbs.onHudUpdate(endlessState); }
+    else adjustHp(-3);
   }
 }
 
@@ -370,11 +410,13 @@ export function onEndlessMiss() {
   if (!app.endlessMode) return;
   endlessState.totalMissed += 1;
   endlessState.combo = 0;
-  adjustHp(-14);
+  if (endlessState.variant === "sd3") loseSdLife();
+  else adjustHp(-14);
 }
 
 export function onEndlessRestPassed() {
   if (!app.endlessMode) return;
+  if (endlessState.variant === "sd3") return; // Sudden Death: zero HP healing!
   adjustHp(1.0);
 }
 
@@ -382,13 +424,15 @@ export function onEndlessRestError() {
   if (!app.endlessMode) return;
   endlessState.totalRestErrs += 1;
   endlessState.combo = 0;
-  adjustHp(-10);
+  if (endlessState.variant === "sd3") loseSdLife();
+  else adjustHp(-10);
 }
 
 export function onEndlessExtraHit() {
   if (!app.endlessMode) return;
   endlessState.totalExtra += 1;
   endlessState.combo = 0;
+  if (endlessState.variant === "sd3") { renderEndlessHud(); return; }
   adjustHp(-4);
 }
 
@@ -467,50 +511,79 @@ export function stepEndlessFrame(elapsedSec) {
 export function renderEndlessHud() {
   const btn = document.getElementById("btnEndless");
   const bar = document.getElementById("endlessBar");
-  if (btn) btn.classList.toggle("active", app.endlessMode);
+  const sdMode = endlessState.variant === "sd3";
+  if (btn) btn.classList.toggle("active", app.endlessMode && !sdMode);
   if (!bar) return;
   bar.classList.toggle("hidden", !app.endlessMode);
+  bar.classList.toggle("is-sd", app.endlessMode && sdMode);
   if (!app.endlessMode) return;
 
-  const hpPct = Math.round(endlessState.hp);
+  const lbl = document.getElementById("lblEndlessTitle");
+  if (lbl) lbl.textContent = sdMode ? t("sdEndlessTitle") : t("endlessTitle");
+
+  const hpPct = sdMode
+    ? Math.round((endlessState.lives / endlessState.maxLives) * 100)
+    : Math.round(endlessState.hp);
   const hpFill = document.getElementById("endlessHpFill");
   const hpVal = document.getElementById("endlessHpVal");
   if (hpFill) {
     hpFill.style.width = `${hpPct}%`;
-    hpFill.className = "endless-hp-fill" + (hpPct <= 25 ? " crit" : (hpPct <= 50 ? " warn" : ""));
+    hpFill.className = "endless-hp-fill" + (hpPct <= 34 ? " crit" : (hpPct <= 67 ? " warn" : ""));
   }
-  if (hpVal) hpVal.textContent = `${hpPct}%`;
+  if (hpVal) {
+    if (sdMode) {
+      hpVal.textContent = endlessState.lives <= 0
+        ? "OUT"
+        : ("❤️".repeat(endlessState.lives) + "🖤".repeat(Math.max(0, endlessState.maxLives - endlessState.lives)));
+    } else {
+      hpVal.textContent = `${hpPct}%`;
+    }
+  }
 
   const barsEl = document.getElementById("endlessBarsVal");
   if (barsEl) barsEl.textContent = t("endlessSurvived", endlessState.survivedBars);
   const comboEl = document.getElementById("endlessComboVal");
   if (comboEl) comboEl.textContent = `${endlessState.combo} COMBO`;
   const bestEl = document.getElementById("endlessBestVal");
-  if (bestEl) bestEl.textContent = t("endlessBest", endlessState.bestBars);
+  if (bestEl) bestEl.textContent = t("endlessBest", sdMode ? endlessState.sdBestBars : endlessState.bestBars);
 }
 
 export function syncEndlessLanguage() {
   const btn = document.getElementById("btnEndless");
   if (btn) btn.textContent = t("btnEndless");
+  const sdMode = endlessState.variant === "sd3";
   const lbl = document.getElementById("lblEndlessTitle");
-  if (lbl) lbl.textContent = t("endlessTitle");
+  if (lbl) lbl.textContent = sdMode ? t("sdEndlessTitle") : t("endlessTitle");
   const msg = document.getElementById("endlessMsg");
-  if (msg) msg.textContent = t("endlessIdleMsg");
+  if (msg) {
+    msg.style.color = "var(--muted)";
+    msg.textContent = sdMode ? t("sdEndlessIdleMsg") : t("endlessIdleMsg");
+  }
   renderEndlessHud();
 }
 
-export function setEndlessMode(enabled) {
+export function setEndlessMode(enabled, variant = "hp") {
   const next = Boolean(enabled);
-  if (app.endlessMode === next) return;
+  const nextVar = variant === "sd3" ? "sd3" : "hp";
+  if (next && app.endlessMode && endlessState.variant === nextVar) return;
+  if (!next && !app.endlessMode && !app.suddenDeath) return;
   cbs.stopRun();
   app.endlessMode = next;
+  app.suddenDeath = next && nextVar === "sd3";
+  app.suddenDeathOut = false;
+  endlessState.variant = next ? nextVar : "hp";
   if (next) {
     app.dailyDate = null;
     app.dailyPlus = false;
     app.customMode = false;
     app.rushOn = false;
     buildEndlessPreviewPhrase();
-    cbs.setHitBadge(t("endlessReadyBadge"), "tight");
+    const msg = document.getElementById("endlessMsg");
+    if (msg) {
+      msg.style.color = "var(--muted)";
+      msg.textContent = nextVar === "sd3" ? t("sdEndlessIdleMsg") : t("endlessIdleMsg");
+    }
+    cbs.setHitBadge(nextVar === "sd3" ? t("sdReadyBadge") : t("endlessReadyBadge"), nextVar === "sd3" ? "warn" : "tight");
   } else {
     endlessState.streamSeed = null;
     if (endlessState.freshClearTimerId) {
@@ -525,11 +598,13 @@ export function setEndlessMode(enabled) {
 
 export function initEndless(callbacks) {
   cbs = { ...cbs, ...callbacks };
-  endlessState.bestBars = loadEndlessBest();
+  endlessState.bestBars = loadBestByKey(ENDLESS_BEST_KEY);
+  endlessState.sdBestBars = loadBestByKey(SD_BEST_KEY);
 
   document.getElementById("btnEndless").addEventListener("click", (e) => {
     e.currentTarget.blur();
-    setEndlessMode(!app.endlessMode);
+    const isHpActive = app.endlessMode && endlessState.variant === "hp";
+    setEndlessMode(!isHpActive, "hp");
   });
   document.getElementById("btnEndlessClose").addEventListener("click", () => {
     setEndlessMode(false);

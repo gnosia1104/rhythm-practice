@@ -723,6 +723,10 @@ function applyChartQuietly(chart) {
   }
 }
 
+function isInfiniteRule(rule = roomState.rule) {
+  return rule === "endless" || rule === "sd3";
+}
+
 function beginSyncedRound(msg) {
   clearRoundTimers();
   roomState.roundId = msg.roundId;
@@ -731,11 +735,11 @@ function beginSyncedRound(msg) {
   roomState.chart = msg.chart;
   roomState.applyingRemoteChart = true;
   try {
-    if (roomState.rule === "endless") {
+    if (isInfiniteRule(roomState.rule)) {
       cbs.applyRoomChart(msg.chart);
-      cbs.setRoomEndlessMode(true, roomState.endlessSeed);
+      cbs.setRoomEndlessMode(true, roomState.endlessSeed, roomState.rule === "sd3" ? "sd3" : "hp");
     } else {
-      cbs.setRoomEndlessMode(false, null);
+      cbs.setRoomEndlessMode(false, null, "hp");
       cbs.applyRoomChart(msg.chart);
     }
   } finally {
@@ -769,15 +773,15 @@ function beginSyncedRound(msg) {
     if (!roomState.joined || roomState.roundId !== msg.roundId) return;
     roomState.phase = "PLAYING";
     renderRoomUi();
-    cbs.triggerRoomStart(roomState.rule === "endless" ? roomState.endlessSeed : null);
+    cbs.triggerRoomStart(isInfiniteRule(roomState.rule) ? roomState.endlessSeed : null);
     if (roomState.isHost && roomState.bots.length) {
-      if (roomState.rule === "endless") startEndlessBotSimulations(msg.roundId);
+      if (isInfiniteRule(roomState.rule)) startEndlessBotSimulations(msg.roundId, roomState.rule === "sd3");
       else startBotSimulations(msg.roundId);
     }
   }, totalSec * 1000);
 }
 
-function startEndlessBotSimulations(roundId) {
+function startEndlessBotSimulations(roundId, isSd3 = false) {
   clearBotTimers();
   const ts = getTimeSig();
   const clickSec = ts.clickSec(app.bpm);
@@ -790,6 +794,7 @@ function startEndlessBotSimulations(roundId) {
     if (!p) continue;
     const prof = BOT_PROFILES[p.botProfileIdx % BOT_PROFILES.length];
     let hp = 100;
+    let lives = 3;
     let survivedBars = 0;
     let combo = 0;
     let hits = 0;
@@ -803,7 +808,7 @@ function startEndlessBotSimulations(roundId) {
           window.clearInterval(ivId);
           return;
         }
-        // Simulate 1 bar of notes + occasional rest error with exact Endless HP math
+        // Simulate 1 bar of notes + occasional rest error
         const barDifficultyPenalty = Math.min(0.10, survivedBars * 0.0025);
         const effSkill = Math.max(0.55, prof.skill - barDifficultyPenalty);
         for (let k = 0; k < notesPerBar; k++) {
@@ -811,18 +816,33 @@ function startEndlessBotSimulations(roundId) {
           if (Math.random() < effSkill) {
             hits += 1;
             const ae = Math.abs(prof.meanBias + gaussianRand() * prof.sd);
-            if (ae <= 35) { combo += 1; hp = Math.min(100, hp + 3.5); }
-            else if (ae <= 80) { combo += 1; hp = Math.min(100, hp + 1.5); }
-            else { combo = 0; hp = Math.max(0, hp - 3); }
+            if (isSd3) {
+              if (ae <= 80) combo += 1;
+              else combo = 0;
+            } else {
+              if (ae <= 35) { combo += 1; hp = Math.min(100, hp + 3.5); }
+              else if (ae <= 80) { combo += 1; hp = Math.min(100, hp + 1.5); }
+              else { combo = 0; hp = Math.max(0, hp - 3); }
+            }
           } else {
             combo = 0;
-            hp = Math.max(0, hp - 14);
+            if (isSd3) {
+              lives = Math.max(0, lives - 1);
+              hp = Math.round((lives / 3) * 100);
+            } else {
+              hp = Math.max(0, hp - 14);
+            }
           }
           if (hp <= 0) break;
         }
         if (hp > 0 && Math.random() < prof.restErrProb) {
           combo = 0;
-          hp = Math.max(0, hp - 10);
+          if (isSd3) {
+            lives = Math.max(0, lives - 1);
+            hp = Math.round((lives / 3) * 100);
+          } else {
+            hp = Math.max(0, hp - 10);
+          }
         }
 
         if (hp <= 0) {
@@ -1058,7 +1078,7 @@ function checkRoundCompletion() {
   if (roomState.phase !== "PLAYING") return;
   const all = [...roomState.players.values()];
   if (!all.length) return;
-  if (roomState.rule === "endless") {
+  if (isInfiniteRule()) {
     const alive = all.filter((p) => p.status !== "OUT");
     const shouldEnd = (all.length >= 2 && alive.length <= 1) || alive.length === 0;
     if (shouldEnd) {
@@ -1196,7 +1216,7 @@ function sendFinishWithCrowdJitter(payload) {
 }
 
 export function notifyRoomEndlessProgress({ survivedBars, hp, combo, hits, total, acc, tight }) {
-  if (!roomState.joined || roomState.phase !== "PLAYING" || roomState.rule !== "endless" || roomState.eliminatedInRound) return;
+  if (!roomState.joined || roomState.phase !== "PLAYING" || !isInfiniteRule() || roomState.eliminatedInRound) return;
   const me = roomState.players.get(roomState.clientId);
   if (!me) return;
   me.hp = Math.round(hp || 0);
@@ -1232,7 +1252,7 @@ export function notifyRoomEndlessProgress({ survivedBars, hp, combo, hits, total
 }
 
 export function notifyRoomEndlessOut({ survivedBars, maxCombo, hits, total, acc, tight }) {
-  if (!roomState.joined || roomState.phase !== "PLAYING" || roomState.rule !== "endless" || roomState.eliminatedInRound) return;
+  if (!roomState.joined || roomState.phase !== "PLAYING" || !isInfiniteRule() || roomState.eliminatedInRound) return;
   const me = roomState.players.get(roomState.clientId);
   if (!me) return;
   roomState.eliminatedInRound = true;
@@ -1270,7 +1290,7 @@ export function notifyRoomEndlessOut({ survivedBars, maxCombo, hits, total, acc,
 }
 
 export function notifyRoomLiveProgress({ score, maxScore, hits, total, doneNotes, misses, acc, tight }) {
-  if (!roomState.joined || roomState.phase !== "PLAYING" || roomState.rule === "endless" || roomState.eliminatedInRound) return;
+  if (!roomState.joined || roomState.phase !== "PLAYING" || isInfiniteRule() || roomState.eliminatedInRound) return;
   const me = roomState.players.get(roomState.clientId);
   if (!me) return;
 
@@ -1494,7 +1514,7 @@ function hostStartRound() {
     type: "round_start",
     roundId: nextRoundId,
     rule: roomState.rule,
-    endlessSeed: roomState.rule === "endless" ? ((Math.floor(Math.random() * 0xEFFF) + 0x1000) & 0xFFFF) : null,
+    endlessSeed: isInfiniteRule(roomState.rule) ? ((Math.floor(Math.random() * 0xEFFF) + 0x1000) & 0xFFFF) : null,
     chart,
     startDelayMs: 3000,
   };
@@ -1558,7 +1578,7 @@ function sortedPlayers() {
   return [...roomState.players.values()].sort((a, b) => {
     // Eliminated players rank below active/done players
     if ((a.status === "OUT") !== (b.status === "OUT")) return a.status === "OUT" ? 1 : -1;
-    if (roomState.rule === "endless") {
+    if (isInfiniteRule()) {
       if ((b.survivedBars || 0) !== (a.survivedBars || 0)) return (b.survivedBars || 0) - (a.survivedBars || 0);
       if ((b.hp || 0) !== (a.hp || 0)) return (b.hp || 0) - (a.hp || 0);
     }
@@ -1657,9 +1677,9 @@ export function renderRoomUi() {
       const p = top3[slot];
       if (!p) return `<div class="podium-slot empty"></div>`;
       const isMe = p.id === roomState.clientId;
-      const mainStat = roomState.rule === "endless" ? `${p.survivedBars || 0}B` : p.score.toLocaleString();
-      const subStat = roomState.rule === "endless"
-        ? (p.status === "OUT" ? `💀 OUT · ${p.acc.toFixed(0)}%` : `❤️ ${Math.round(p.hp || 0)}% · 👑`)
+      const mainStat = isInfiniteRule() ? `${p.survivedBars || 0}B` : p.score.toLocaleString();
+      const subStat = isInfiniteRule()
+        ? (p.status === "OUT" ? `💀 OUT · ${p.acc.toFixed(0)}%` : (roomState.rule === "sd3" ? `❤️×${Math.max(1, Math.round((p.hp || 100) / 33.4))} · 👑` : `❤️ ${Math.round(p.hp || 0)}% · 👑`))
         : `${p.rank || "—"} · ${p.acc.toFixed(0)}%${p.status === "OUT" ? " · 💀" : ""}`;
       return `<div class="podium-slot ${m.cls}${isMe ? " is-me" : ""}">
         <div class="podium-medal">${m.icon}</div>
@@ -1677,16 +1697,18 @@ export function renderRoomUi() {
   const boardEl = document.getElementById("roomLeaderboard");
   boardEl.innerHTML = list.map((p, idx) => {
     const isMe = p.id === roomState.clientId;
-    const isEndlessRule = roomState.rule === "endless";
+    const isEndlessRule = isInfiniteRule();
+    const isSd3Rule = roomState.rule === "sd3";
     const pct = isEndlessRule
       ? Math.max(0, Math.min(100, Math.round(p.hp ?? 100)))
       : (p.total > 0 ? Math.min(100, Math.round((p.doneNotes / p.total) * 100)) : 0);
+    const sdLivesNow = Math.max(0, Math.min(3, Math.round((p.hp ?? 100) / 33.4)));
     const statusBadge = p.status === "OUT"
       ? `<span class="room-st out">💀 ${isEndlessRule ? `${p.survivedBars || 0}B` : "OUT"}</span>`
       : (p.status === "DONE"
         ? `<span class="room-st done">${p.rank || "DONE"}</span>`
         : (p.status === "PLAYING"
-          ? `<span class="room-st play">${isEndlessRule ? `❤️ ${Math.round(p.hp ?? 100)}%` : `${p.doneNotes}/${p.total || "?"}`}</span>`
+          ? `<span class="room-st play">${isSd3Rule ? `❤️×${sdLivesNow}` : (isEndlessRule ? `❤️ ${Math.round(p.hp ?? 100)}%` : `${p.doneNotes}/${p.total || "?"}`)}</span>`
           : `<span class="room-st ready">READY</span>`));
     const crown = p.isHost ? "👑 " : "";
     const meTag = isMe ? ` <span class="room-me-tag">YOU</span>` : "";
@@ -1837,7 +1859,7 @@ export function initRoom(callbacks) {
     roomState.rule = (v === "sd3" || v === "endless") ? v : "score";
     roomState.applyingRemoteChart = true;
     try {
-      cbs.setRoomEndlessMode(roomState.rule === "endless", null);
+      cbs.setRoomEndlessMode(isInfiniteRule(roomState.rule), null, roomState.rule === "sd3" ? "sd3" : "hp");
     } finally {
       roomState.applyingRemoteChart = false;
     }
