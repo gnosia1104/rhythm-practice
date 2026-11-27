@@ -7,6 +7,7 @@ export const TOUR_STORAGE_KEY = "rhythm_practice_tour_v1";
 const DECK_KEYS = {
   tour: "tourSteps",
   guide: "guideTourSteps",
+  grading: "gradingTourSteps",
   shortcuts: "shortcutTourSteps",
 };
 
@@ -94,10 +95,11 @@ export function syncTourButtonsLanguage() {
   };
   setTxt("btnFooterShortcutTour", "btnFooterShortcutTour");
   setTxt("btnGuideSpotlight", "btnGuideSpotlight");
-  setTxt("btnGuideShortcutTour", "btnGuideShortcutTour");
+  setTxt("btnGuideGradingTour", "btnGuideGradingTour");
   const modeLabels = {
     tour: "tourModeTour",
     guide: "tourModeGuide",
+    grading: "tourModeGrading",
     shortcuts: "tourModeShortcuts",
   };
   document.querySelectorAll(".tour-mode-tab").forEach((b) => {
@@ -227,15 +229,19 @@ export function initTour(cbs) {
   const btnGuideSpot = document.getElementById("btnGuideSpotlight");
   if (btnGuideSpot) {
     btnGuideSpot.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
       e.currentTarget.blur();
       openTour(0, "guide");
     });
   }
-  const btnGuideSc = document.getElementById("btnGuideShortcutTour");
-  if (btnGuideSc) {
-    btnGuideSc.addEventListener("click", (e) => {
+  const btnGuideGrade = document.getElementById("btnGuideGradingTour");
+  if (btnGuideGrade) {
+    btnGuideGrade.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
       e.currentTarget.blur();
-      openTour(0, "shortcuts");
+      openTour(0, "grading");
     });
   }
   const btnFooterSc = document.getElementById("btnFooterShortcutTour");

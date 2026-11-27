@@ -89,10 +89,53 @@ export const I18N = {
     tourDone: "🎼 바로 시작!",
     tourModeTour: "🧭 튜토리얼",
     tourModeGuide: "📖 사용설명서",
+    tourModeGrading: "🎯 판정 기준",
     tourModeShortcuts: "⌨️ 단축키",
     btnFooterShortcutTour: "⌨️ 단축키 투어",
-    btnGuideSpotlight: "📖 하이라이트로 설명서 보기",
-    btnGuideShortcutTour: "⌨️ 하이라이트로 단축키 배우기",
+    btnGuideSpotlight: "✨ 하이라이트 설명서",
+    btnGuideGradingTour: "🎯 판정 기준 투어",
+    gradingTourSteps: [
+      {
+        target: ".status-strip",
+        title: "🎯 1. 어택 타이밍 판정 기호 (ms 오차)",
+        body: "모든 음표는 정박과의 밀리초(ms) 차이로 채점됩니다. 40~75 BPM 기준 ±35ms 이내가 ★ TIGHT이며, BPM이 빨라질수록 판정 창도 음악적 간격에 맞춰 정밀하게 좁혀집니다. 기호에 마우스를 올리면 정확한 ms 오차가 보입니다.",
+        chips: [
+          "<strong style=\"color:var(--green)\">★ ≤35ms (TIGHT)</strong>",
+          "<strong style=\"color:var(--amber)\">− / + ≤80ms (빠름/느림)</strong>",
+          "<strong style=\"color:var(--red)\">&lt; / &gt; &gt;80ms</strong>",
+          "<strong style=\"color:var(--red)\">× 미스 (놓침)</strong>",
+        ],
+      },
+      {
+        target: ".sheet-paper",
+        title: "🎯 2. 서스테인 바 & 쉼표 뮤트 판정",
+        body: "오디오 입력 시 음표 아래 막대로 음 유지 길이를 채점합니다. 표기 길이의 62% 미만으로 빨리 끊으면 노랑(짧음), 뒤 쉼표까지 울리면 빨강(침범)이며, 쉼표 구간을 조용히 지키면 초록 ★ 통과 · 울리거나 치면 빨간 음영 × 에러가 됩니다.",
+        chips: [
+          "<strong style=\"color:var(--green)\">▬ 서스테인 양호</strong>",
+          "<strong style=\"color:var(--amber)\">▬ 짧음 (&lt;62%)</strong>",
+          "<strong style=\"color:var(--red)\">▬ 쉼표 침범</strong>",
+          "<strong style=\"color:var(--green)\">★ 쉼표 통과</strong>",
+          "<strong style=\"color:var(--red)\">× 쉼표 에러</strong>",
+        ],
+      },
+      {
+        target: "#btnDiffMenu",
+        title: "🎯 3. 스타카토(•) & 고스트 노트(×) 특수 판정",
+        body: "스타카토(•)는 표기 길이의 약 절반(50%)만큼만 유지한 뒤 깔끔히 끊어야 통과합니다(너무 짧으면 노랑, 절반 넘게 끌면 빨강). 고스트 노트(×)는 오디오에서 짧은 퍼커시브 뮤트 감쇠를 자동 판별하며, 키보드에선 F/D 키로 입력합니다.",
+        chips: ["• 스타카토 ~50% 유지 후 컷", "× 고스트 퍼커시브 뮤트", "<kbd>F</kbd>/<kbd>D</kbd> 고스트 키"],
+      },
+      {
+        target: ".results-grid",
+        title: "🎯 4. 난이도 가중 점수 & S+~C 랭크 기준",
+        body: "16분 엇박·3연음·변박·BPM·무메트로놈 등 난이도에 비례해 Max 점수가 산정되며, 불필요한 연타(여분 입력)와 쉼표 에러는 감점됩니다. S+ 랭크는 95%↑ 점수 · 100% 적중 · 쉼표 에러 0회를 모두 만족해야 달성됩니다!",
+        chips: [
+          "<strong style=\"color:#d97706\">S+</strong> 95%↑·노미스·쉼표0",
+          "<strong style=\"color:var(--green)\">S</strong> 88%↑·90%적중",
+          "<strong style=\"color:#2563eb\">A</strong> 78%↑",
+          "B 62%↑ · C &lt;62%",
+        ],
+      },
+    ],
     guideTourSteps: [
       {
         target: ".toolbar-transport",
@@ -546,8 +589,8 @@ export const I18N = {
     susLongTip: (ms) => `서스테인 쉼표 침범 (+${ms}ms — 뮤트가 늦음)`,
     padLeftSub: "검지 · J",
     padRightSub: "중지 · K",
-    guideTitle: "📖 사용 설명서 & 판정 기준 (클릭해서 펼치기)",
-    guideOpen: "열기 ▾",
+    guideTitle: "📖 사용 설명서 & 판정 기준",
+    guideOpen: "글로 보기 ▾",
     guideClose: "접기 ▴",
     guideHtml: `
       <div class="guide-sec">
@@ -690,10 +733,53 @@ export const I18N = {
     tourDone: "🎼 Start Practicing!",
     tourModeTour: "🧭 Tour",
     tourModeGuide: "📖 User Guide",
+    tourModeGrading: "🎯 Grading",
     tourModeShortcuts: "⌨️ Shortcuts",
     btnFooterShortcutTour: "⌨️ Shortcut Tour",
-    btnGuideSpotlight: "📖 Interactive Guide Tour",
-    btnGuideShortcutTour: "⌨️ Interactive Shortcut Tour",
+    btnGuideSpotlight: "✨ Highlight Guide",
+    btnGuideGradingTour: "🎯 Grading Tour",
+    gradingTourSteps: [
+      {
+        target: ".status-strip",
+        title: "🎯 1. Attack Timing Symbols (ms Error)",
+        body: "Every note is graded by millisecond offset from the beat. At 40–75 BPM, ±35ms scores ★ TIGHT, and windows tighten musically at faster tempos. Hover any mark on the sheet to inspect exact ms error.",
+        chips: [
+          "<strong style=\"color:var(--green)\">★ ≤35ms (TIGHT)</strong>",
+          "<strong style=\"color:var(--amber)\">− / + ≤80ms (Early/Late)</strong>",
+          "<strong style=\"color:var(--red)\">&lt; / &gt; &gt;80ms</strong>",
+          "<strong style=\"color:var(--red)\">× Miss</strong>",
+        ],
+      },
+      {
+        target: ".sheet-paper",
+        title: "🎯 2. Sustain Bars & Rest Mute Grading",
+        body: "In Audio mode, bars under notes grade sustain duration: cut under 62% turns amber (Short), ringing into a rest turns red (Bleed). Staying silent through a rest earns ★ Clean Rest; playing or ringing triggers red × Rest Violation.",
+        chips: [
+          "<strong style=\"color:var(--green)\">▬ Sustain OK</strong>",
+          "<strong style=\"color:var(--amber)\">▬ Short (&lt;62%)</strong>",
+          "<strong style=\"color:var(--red)\">▬ Rest Bleed</strong>",
+          "<strong style=\"color:var(--green)\">★ Clean Rest</strong>",
+          "<strong style=\"color:var(--red)\">× Rest Error</strong>",
+        ],
+      },
+      {
+        target: "#btnDiffMenu",
+        title: "🎯 3. Staccato (•) & Ghost Note (×) Rules",
+        body: "Staccato (•) grades holding ~50% of written duration then muting cleanly (amber if too dead/short, red if held too long). Ghost Notes (×) detect fast percussive decay in Audio mode or F/D mute keys in Key mode.",
+        chips: ["• Staccato ~50% cut", "× Ghost percussive mute", "<kbd>F</kbd>/<kbd>D</kbd> Ghost keys"],
+      },
+      {
+        target: ".results-grid",
+        title: "🎯 4. Difficulty-Weighted Score & S+–C Ranks",
+        body: "Max Score scales with subdivision difficulty, meter, BPM, and mods (e.g. Metronome OFF), while extra mashing and rest errors apply penalties. S+ requires ≥95% score, 100% hits, and 0 rest errors!",
+        chips: [
+          "<strong style=\"color:#d97706\">S+</strong> ≥95%·No Miss·0 Rest Err",
+          "<strong style=\"color:var(--green)\">S</strong> ≥88%·≥90% Hit",
+          "<strong style=\"color:#2563eb\">A</strong> ≥78%",
+          "B ≥62% · C &lt;62%",
+        ],
+      },
+    ],
     guideTourSteps: [
       {
         target: ".toolbar-transport",
@@ -1147,8 +1233,8 @@ export const I18N = {
     susLongTip: (ms) => `Rest bleed (+${ms}ms — mute earlier)`,
     padLeftSub: "Index · J",
     padRightSub: "Middle · K",
-    guideTitle: "📖 User Guide & Grading Reference (Click to expand)",
-    guideOpen: "Open ▾",
+    guideTitle: "📖 User Guide & Grading Reference",
+    guideOpen: "Read Text ▾",
     guideClose: "Close ▴",
     guideHtml: `
       <div class="guide-sec">
@@ -1291,10 +1377,53 @@ export const I18N = {
     tourDone: "🎼 練習を始める!",
     tourModeTour: "🧭 ツアー",
     tourModeGuide: "📖 使い方ガイド",
+    tourModeGrading: "🎯 判定基準",
     tourModeShortcuts: "⌨️ ショートカット",
     btnFooterShortcutTour: "⌨️ キー解説ツアー",
-    btnGuideSpotlight: "📖 ハイライトで使い方を見る",
-    btnGuideShortcutTour: "⌨️ ハイライトでキーを覚える",
+    btnGuideSpotlight: "✨ ハイライト解説",
+    btnGuideGradingTour: "🎯 判定基準ツアー",
+    gradingTourSteps: [
+      {
+        target: ".status-strip",
+        title: "🎯 1. アタック判定記号（ms誤差）",
+        body: "すべての音符はジャスト拍とのミリ秒(ms)誤差で採点されます。40〜75 BPM基準で±35ms以内が ★ TIGHT、速いBPMでは音楽的間隔に合わせて判定窓も精密になります。記号にカーソルを合わせると正確なms誤差が見えます。",
+        chips: [
+          "<strong style=\"color:var(--green)\">★ ≤35ms (TIGHT)</strong>",
+          "<strong style=\"color:var(--amber)\">− / + ≤80ms (早い/遅い)</strong>",
+          "<strong style=\"color:var(--red)\">&lt; / &gt; &gt;80ms</strong>",
+          "<strong style=\"color:var(--red)\">× ミス</strong>",
+        ],
+      },
+      {
+        target: ".sheet-paper",
+        title: "🎯 2. サステインバー＆休符ミュート判定",
+        body: "音声入力では音符下のバーで伸びを判定します。62%未満で切れると黄（短い）、休符へはみ出すと赤（はみ出し）。休符を静かに守れば緑 ★ クリア、音が残ると赤ハイライト × エラーになります。",
+        chips: [
+          "<strong style=\"color:var(--green)\">▬ サステイン良好</strong>",
+          "<strong style=\"color:var(--amber)\">▬ 短い (&lt;62%)</strong>",
+          "<strong style=\"color:var(--red)\">▬ 休符へはみ出し</strong>",
+          "<strong style=\"color:var(--green)\">★ 休符クリア</strong>",
+          "<strong style=\"color:var(--red)\">× 休符エラー</strong>",
+        ],
+      },
+      {
+        target: "#btnDiffMenu",
+        title: "🎯 3. スタッカート(•)＆ゴースト(×)の特殊判定",
+        body: "スタッカート(•)は音価の約半分（50%）だけ伸ばして綺麗に切る必要があります（短すぎは黄、長すぎは赤）。ゴースト(×)は音声でパーカッシブなミュート減衰を自動判別し、キーではF/Dで入力します。",
+        chips: ["• スタッカート約50%カット", "× ゴーストミュート", "<kbd>F</kbd>/<kbd>D</kbd> ゴーストキー"],
+      },
+      {
+        target: ".results-grid",
+        title: "🎯 4. 難易度加重スコア＆S+〜Cランク基準",
+        body: "16分裏拍・3連符・変拍子・BPM・無メトロノームなど難易度に応じて満点が算出され、余分な連打や休符エラーは減点されます。S+ランクはスコア95%↑・100%的中・休符エラー0回で達成！",
+        chips: [
+          "<strong style=\"color:#d97706\">S+</strong> 95%↑·ノーミス·休符0",
+          "<strong style=\"color:var(--green)\">S</strong> 88%↑·90%的中",
+          "<strong style=\"color:#2563eb\">A</strong> 78%↑",
+          "B 62%↑ · C &lt;62%",
+        ],
+      },
+    ],
     guideTourSteps: [
       {
         target: ".toolbar-transport",
@@ -1748,8 +1877,8 @@ export const I18N = {
     susLongTip: (ms) => `休符へのはみ出し (+${ms}ms — ミュートが遅い)`,
     padLeftSub: "人差指 · J",
     padRightSub: "中指 · K",
-    guideTitle: "📖 使い方・判定ガイド（クリックで開く）",
-    guideOpen: "開く ▾",
+    guideTitle: "📖 使い方・判定ガイド",
+    guideOpen: "テキストで読む ▾",
     guideClose: "閉じる ▴",
     guideHtml: `
       <div class="guide-sec">

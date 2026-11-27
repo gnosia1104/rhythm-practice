@@ -61,7 +61,7 @@
   "description": "Free browser-based rhythm & pitch sight-reading trainer for musicians featuring 6 progressive levels, 5 time signatures, triplets, staccato, ghost notes, gap click metronome, custom score editor, daily challenges, and audio interface onset/sustain/rest grading."
 }
 </script>
-<link rel="stylesheet" href="css/styles.css?v=20261128j" />
+<link rel="stylesheet" href="css/styles.css?v=20261128k" />
 <script defer src="https://cloud.umami.is/script.js" data-website-id="9070201e-fd1f-4081-ad26-1219def68ba6" data-domains="gnosia1104.github.io"></script>
 </head>
 <body>
@@ -743,13 +743,15 @@
   <!-- Collapsible Detailed Guide -->
   <details id="guideCard" class="card guide-card">
     <summary class="guide-summary">
-      <span id="guideSummaryTitle">📖 사용 설명서 &amp; 판정 기준 (클릭해서 펼치기)</span>
-      <span id="guideToggleHint" class="guide-toggle-hint">열기 ▾</span>
+      <div class="guide-summary-left">
+        <span id="guideSummaryTitle">📖 사용 설명서 &amp; 판정 기준</span>
+        <div class="guide-tour-cta">
+          <button id="btnGuideSpotlight" type="button" class="primary">✨ 하이라이트 설명서</button>
+          <button id="btnGuideGradingTour" type="button">🎯 판정 기준 투어</button>
+        </div>
+      </div>
+      <span id="guideToggleHint" class="guide-toggle-hint">글로 보기 ▾</span>
     </summary>
-    <div class="guide-tour-cta">
-      <button id="btnGuideSpotlight" type="button" class="primary">📖 하이라이트로 설명서 보기</button>
-      <button id="btnGuideShortcutTour" type="button">⌨️ 하이라이트로 단축키 배우기</button>
-    </div>
     <div id="guideBody" class="guide-body">
       <div class="guide-sec">
         <h3>무료 리듬 · 음정 초견 &amp; 박자 연습 사이트 (Rhythm Sight-Reader)</h3>
@@ -799,6 +801,7 @@
     <div id="tourModeTabs" class="tour-mode-tabs" role="tablist">
       <button type="button" class="tour-mode-tab active" data-tour-mode="tour">🧭 튜토리얼</button>
       <button type="button" class="tour-mode-tab" data-tour-mode="guide">📖 사용설명서</button>
+      <button type="button" class="tour-mode-tab" data-tour-mode="grading">🎯 판정 기준</button>
       <button type="button" class="tour-mode-tab" data-tour-mode="shortcuts">⌨️ 단축키</button>
     </div>
     <h2 id="tourTitle" class="tour-title"></h2>
@@ -822,7 +825,7 @@
 <!-- Steam-Style Achievement Unlock Toast Stack -->
 <div id="achToastStack" class="ach-toast-stack" aria-live="polite"></div>
 
-<script type="module" src="js/main.js?v=20261128j"></script>
+<script type="module" src="js/main.js?v=20261128k"></script>
 </body>
 </html>
 
