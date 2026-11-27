@@ -98,6 +98,18 @@ export function renderTourStep(shouldScroll = true) {
     chipsEl.classList.add("hidden");
   }
 
+  const isBasicsCheck = step.kind === "basicsCheck";
+  const choicesEl = document.getElementById("tourChoices");
+  if (choicesEl) {
+    choicesEl.classList.toggle("hidden", !isBasicsCheck);
+    if (isBasicsCheck) {
+      const goBtn = document.getElementById("btnTourGoLearn");
+      const knowBtn = document.getElementById("btnTourKnowBasics");
+      if (goBtn) goBtn.textContent = t("tourChoiceGoLearn");
+      if (knowBtn) knowBtn.textContent = t("tourChoiceKnowBasics");
+    }
+  }
+
   const dotsEl = document.getElementById("tourDots");
   dotsEl.innerHTML = steps.map((_, i) => `<span class="tour-dot${i === tourState.idx ? " active" : ""}"></span>`).join("");
 
@@ -113,6 +125,7 @@ export function renderTourStep(shouldScroll = true) {
   btnNext.textContent = tourState.idx === steps.length - 1 ? t("tourDone") : t("tourNext");
   btnSkip.classList.toggle("hidden", tourState.idx === steps.length - 1);
   btnPrev.classList.toggle("hidden", tourState.idx === 0);
+  btnNext.classList.toggle("hidden", isBasicsCheck);
 
   if (shouldScroll && step.target) {
     const targetEl = document.querySelector(step.target);
@@ -172,6 +185,19 @@ export function initTour(cbs) {
   document.getElementById("btnTourSkip").addEventListener("click", () => closeTour(true));
   document.getElementById("btnTourPrev").addEventListener("click", () => prevTourStep());
   document.getElementById("btnTourNext").addEventListener("click", () => nextTourStep());
+  const goLearnBtn = document.getElementById("btnTourGoLearn");
+  if (goLearnBtn) {
+    goLearnBtn.addEventListener("click", () => {
+      const curLang = getCurLang();
+      try { localStorage.setItem("rhythm_practice_lang", curLang); } catch (_) {}
+      markTourSeen();
+      window.location.href = `learn.html?lang=${encodeURIComponent(curLang)}`;
+    });
+  }
+  const knowBasicsBtn = document.getElementById("btnTourKnowBasics");
+  if (knowBasicsBtn) {
+    knowBasicsBtn.addEventListener("click", () => nextTourStep());
+  }
   document.querySelectorAll(".tour-lang-btn").forEach(btn => {
     btn.addEventListener("click", () => {
       tourCbs.applyLanguage(btn.dataset.tourLang);

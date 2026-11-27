@@ -64,11 +64,19 @@ export const I18N = {
     tourSkip: "건너뛰기",
     tourDone: "🎼 바로 시작!",
     tourWelcomeChips: ["⌨️ 키보드 (Space/J/K)", "📱 모바일 터치 패드", "🎤 오디오 · MIDI 입력"],
+    tourChoiceGoLearn: "📖 아니요, 처음이에요 — 오선보·음표 기초 페이지로 바로 이동 →",
+    tourChoiceKnowBasics: "✅ 네, 알고 있어요 — 연습 튜토리얼 계속하기",
     tourSteps: [
       {
         target: null,
         title: "🎼 Rhythm Sight-Reader에 오신 걸 환영합니다!",
         body: "설치 없이 브라우저에서 바로 연습하는 무료 리듬 · 음정 초견 트레이너입니다. 30초 만에 핵심 기능을 한눈에 둘러볼까요? (언제든 상단 🧭 튜토리얼로 다시 볼 수 있어요.)",
+      },
+      {
+        target: null,
+        kind: "basicsCheck",
+        title: "📖 오선보 · 음표 기초 지식이 있으신가요?",
+        body: "오선보·음자리표·4분음표·8분음표·쉼표 읽기가 처음이라면, 인터랙티브 기초 학습 페이지에서 소리를 들으며 3분 만에 익히고 돌아올 수 있습니다.",
       },
       {
         target: ".sheet-paper",
@@ -458,11 +466,19 @@ export const I18N = {
     tourSkip: "Skip",
     tourDone: "🎼 Start Practicing!",
     tourWelcomeChips: ["⌨️ Keyboard (Space/J/K)", "📱 Mobile Touch Pads", "🎤 Audio & MIDI Input"],
+    tourChoiceGoLearn: "📖 I'm new — Take me to Staff & Note Basics →",
+    tourChoiceKnowBasics: "✅ Yes, I know the basics — Continue tour",
     tourSteps: [
       {
         target: null,
         title: "🎼 Welcome to Rhythm Sight-Reader!",
         body: "A free browser-based rhythm & pitch sight-reading trainer with zero install. Take a quick 30-second tour of the core features! (You can replay it anytime from 🧭 Tour.)",
+      },
+      {
+        target: null,
+        kind: "basicsCheck",
+        title: "📖 Do you know Staff & Note Basics?",
+        body: "If reading the musical staff, clefs, quarter/eighth notes, or rests is new to you, jump straight to our interactive 3-minute Basics guide with audio playback first!",
       },
       {
         target: ".sheet-paper",
@@ -852,11 +868,19 @@ export const I18N = {
     tourSkip: "スキップ",
     tourDone: "🎼 練習を始める!",
     tourWelcomeChips: ["⌨️ キーボード (Space/J/K)", "📱 スマホタッチパッド", "🎤 オーディオ・MIDI入力"],
+    tourChoiceGoLearn: "📖 初めてです — 五線譜・音符の基礎ページへ移動 →",
+    tourChoiceKnowBasics: "✅ はい、知っています — ツアーを続ける",
     tourSteps: [
       {
         target: null,
         title: "🎼 Rhythm Sight-Reader へようこそ！",
         body: "インストール不要で今すぐ練習できるリズム・音程初見トレーナーです。30秒で主な機能をサクッとご案内します。（いつでも上部の 🧭 ツアーから見直せます）",
+      },
+      {
+        target: null,
+        kind: "basicsCheck",
+        title: "📖 五線譜・音符の基礎知識はありますか？",
+        body: "五線譜や音部記号、四分音符・八分音符・休符の読み方が初めてなら、音を聴きながら3分で学べるインタラクティブ基礎ページへ今すぐ移動できます。",
       },
       {
         target: ".sheet-paper",

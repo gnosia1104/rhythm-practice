@@ -60,7 +60,7 @@
   "description": "Free browser-based rhythm & pitch sight-reading trainer for musicians featuring 6 progressive levels, 5 time signatures, triplets, staccato, ghost notes, gap click metronome, custom score editor, daily challenges, and audio interface onset/sustain/rest grading."
 }
 </script>
-<link rel="stylesheet" href="css/styles.css?v=20261127ac" />
+<link rel="stylesheet" href="css/styles.css?v=20261127ae" />
 <script defer src="https://cloud.umami.is/script.js" data-website-id="9070201e-fd1f-4081-ad26-1219def68ba6" data-domains="gnosia1104.github.io"></script>
 </head>
 <body>
@@ -674,6 +674,10 @@
     <h2 id="tourTitle" class="tour-title"></h2>
     <p id="tourBody" class="tour-body"></p>
     <div id="tourChips" class="tour-chips hidden"></div>
+    <div id="tourChoices" class="tour-choices hidden">
+      <button id="btnTourGoLearn" type="button" class="tour-choice-btn learn">📖 아니요, 처음이에요 — 기초 페이지로 이동 →</button>
+      <button id="btnTourKnowBasics" type="button" class="tour-choice-btn know">✅ 네, 알고 있어요 — 튜토리얼 계속하기</button>
+    </div>
     <div class="tour-footer">
       <div id="tourDots" class="tour-dots"></div>
       <div class="tour-actions">
@@ -688,7 +692,7 @@
 <!-- Steam-Style Achievement Unlock Toast Stack -->
 <div id="achToastStack" class="ach-toast-stack" aria-live="polite"></div>
 
-<script type="module" src="js/main.js?v=20261127ad"></script>
+<script type="module" src="js/main.js?v=20261127ae"></script>
 </body>
 </html>
 

@@ -234,8 +234,10 @@ const LEARN_I18N = {
 
 let lang = "ko";
 try {
+  const qsLang = new URLSearchParams(location.search || "").get("lang");
   const saved = localStorage.getItem("rhythm_practice_lang");
-  if (saved && LEARN_I18N[saved]) lang = saved;
+  if (qsLang && LEARN_I18N[qsLang]) lang = qsLang;
+  else if (saved && LEARN_I18N[saved]) lang = saved;
 } catch (_) {}
 
 let activeClef = "bass"; // "bass" | "treble"

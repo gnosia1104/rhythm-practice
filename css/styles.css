@@ -1366,6 +1366,42 @@ body.has-dock {
   border: 1px solid #e4e4e7;
 }
 
+.tour-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.tour-choice-btn {
+  width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+  padding: 11px 13px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.tour-choice-btn.learn {
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  border: 1.5px solid #3b82f6;
+  color: #1e40af;
+}
+.tour-choice-btn.learn:hover {
+  background: #dbeafe;
+}
+
+.tour-choice-btn.know {
+  background: #171717;
+  border: 1.5px solid #171717;
+  color: #ffffff;
+}
+.tour-choice-btn.know:hover {
+  background: #27272a;
+}
+
 .tour-footer {
   display: flex;
   align-items: center;
