@@ -40,6 +40,7 @@ let cbs = {
   triggerRoomStart: () => {},
   unlockAudio: () => {},
   playCountdownBeep: () => {},
+  onRoomWin: () => {},
   stopRun: () => {},
   newPhrase: () => {},
   setHitBadge: () => {},
@@ -1034,7 +1035,10 @@ function checkRoundCompletion() {
       roomState.phase = "PODIUM";
       cbs.stopRun();
       const winner = sortedPlayers()[0];
-      if (winner) appendChatMessage({ sys: true, text: t("roomSysSurvivor", winner.name, winner.survivedBars || 0) });
+      if (winner) {
+        appendChatMessage({ sys: true, text: t("roomSysSurvivor", winner.name, winner.survivedBars || 0) });
+        if (winner.id === roomState.clientId) cbs.onRoomWin(all.length);
+      }
       if (roomState.isHost) {
         sendMsg({ type: "podium_show", roundId: roomState.roundId });
       }
@@ -1046,7 +1050,10 @@ function checkRoundCompletion() {
   if (allFinished) {
     roomState.phase = "PODIUM";
     const winner = sortedPlayers()[0];
-    if (winner) appendChatMessage({ sys: true, text: t("roomSysWinner", winner.name, winner.score) });
+    if (winner) {
+      appendChatMessage({ sys: true, text: t("roomSysWinner", winner.name, winner.score) });
+      if (winner.id === roomState.clientId) cbs.onRoomWin(all.length);
+    }
     if (roomState.isHost) {
       sendMsg({ type: "podium_show", roundId: roomState.roundId });
     }

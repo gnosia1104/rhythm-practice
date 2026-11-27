@@ -2,6 +2,7 @@
 import { getDailyStreak } from "./rhythm.js";
 import { app, getTimeSig, tripletsAllowed, currentFullSeedCode } from "./state.js";
 import { formatPlayMods, computeScoreRank, getTimingThresholds } from "./scoring.js";
+import { getEquippedTitleAndBadges } from "./achievements.js";
 
 export function clearShareQueryUrl() {
   try {
@@ -293,7 +294,15 @@ export function renderScoreCardPngBlob() {
     }
   }
 
-  // Footer viral URL watermark
+  // Footer viral URL watermark + Equipped Title & Achievement Badges
+  const achInfo = getEquippedTitleAndBadges();
+  if (achInfo.title || achInfo.badges.length) {
+    c.fillStyle = "#cbd5e1";
+    c.font = '700 18px -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR", sans-serif';
+    const badgeStrip = achInfo.badges.length ? `   ${achInfo.badges.join(" ")}` : "";
+    const titleTxt = achInfo.title ? `${achInfo.title}${badgeStrip}` : achInfo.badges.join(" ");
+    c.fillText(titleTxt, 64, H - 84);
+  }
   c.fillStyle = "#64748b";
   c.font = '600 17px ui-monospace, Menlo, Consolas, monospace';
   c.fillText("gnosia1104.github.io/rhythm-practice", 64, H - 50);

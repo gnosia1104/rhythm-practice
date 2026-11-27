@@ -2421,6 +2421,191 @@ button.active .tools-badge {
   to   { opacity: 1; }
 }
 
+/* Achievements & Titles Drawer + Steam-Style Unlock Toast */
+.ach-bar {
+  background: var(--panel-bg);
+  border: 1.5px solid #fcd34d;
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 12.5px;
+  box-shadow: 0 4px 16px rgba(217, 119, 6, 0.08);
+}
+
+.ach-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+
+.ach-head button,
+.ach-head select {
+  padding: 4px 9px;
+  font-size: 12px;
+}
+
+.ach-summary {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #92400e;
+  background: #fef3c7;
+  padding: 2px 9px;
+  border-radius: 999px;
+}
+
+.ach-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(235px, 1fr));
+  gap: 8px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.ach-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  border: 1px solid #eceae4;
+  background: #fafafa;
+}
+.ach-card.unlocked {
+  background: linear-gradient(135deg, #fffbeb 0%, #ffffff 100%);
+  border-color: #fbbf24;
+}
+.ach-card.locked {
+  opacity: 0.65;
+}
+
+.ach-card-icon {
+  font-size: 22px;
+  line-height: 1.1;
+  flex-shrink: 0;
+}
+
+.ach-card-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ach-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.ach-card-name {
+  font-weight: 800;
+  font-size: 12.5px;
+  color: var(--ink);
+}
+
+.ach-cat-tag {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+.ach-cat-tag.habit { background: #e0f2fe; color: #0369a1; }
+.ach-cat-tag.skill { background: #fef3c7; color: #b45309; }
+
+.ach-card-desc {
+  font-size: 11.5px;
+  color: #4b5563;
+  line-height: 1.35;
+}
+
+.ach-card-meta {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.ach-card.unlocked .ach-card-meta {
+  color: #15803d;
+}
+
+.ach-msg {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.ach-toast-stack {
+  position: fixed;
+  right: 18px;
+  bottom: 20px;
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+  max-width: min(340px, calc(100vw - 28px));
+}
+
+body.has-dock .ach-toast-stack {
+  bottom: 175px;
+}
+
+.ach-toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 15px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #18181b 0%, #27272a 100%);
+  color: #ffffff;
+  border: 1.5px solid #f59e0b;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
+  animation: achToastIn 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.ach-toast.fade-out {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+@keyframes achToastIn {
+  from { opacity: 0; transform: translateX(36px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.ach-toast-icon {
+  font-size: 28px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.ach-toast-kicker {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #fbbf24;
+}
+
+.ach-toast-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.ach-toast-desc {
+  font-size: 11.5px;
+  color: #d4d4d8;
+}
+
 .hidden { display: none !important; }
 
 @page { margin: 12mm; }
@@ -2428,6 +2613,6 @@ button.active .tools-badge {
 @media print {
   body { background: #fff; padding: 0; }
   .app { max-width: none; }
-  .lang-select, .toolbar, .status-strip, .audio-bar, .cal-bar, .editor-bar, .drill-bar, .pitch-bar, .room-bar, .endless-bar, .meta-share-btn, .results-grid, .guide-card, .sheet-footer, .touch-dock, .tour-overlay { display: none !important; }
+  .lang-select, .toolbar, .status-strip, .audio-bar, .cal-bar, .editor-bar, .drill-bar, .pitch-bar, .room-bar, .endless-bar, .ach-bar, .ach-toast-stack, .meta-share-btn, .results-grid, .guide-card, .sheet-footer, .touch-dock, .tour-overlay { display: none !important; }
   .sheet-paper { border: none; box-shadow: none; padding: 0; }
 }

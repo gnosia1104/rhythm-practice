@@ -60,7 +60,7 @@
   "description": "Free browser-based rhythm & pitch sight-reading trainer for musicians featuring 6 progressive levels, 5 time signatures, triplets, staccato, ghost notes, gap click metronome, custom score editor, daily challenges, and audio interface onset/sustain/rest grading."
 }
 </script>
-<link rel="stylesheet" href="css/styles.css?v=20261127o" />
+<link rel="stylesheet" href="css/styles.css?v=20261127r" />
 <script defer src="https://cloud.umami.is/script.js" data-website-id="9070201e-fd1f-4081-ad26-1219def68ba6" data-domains="gnosia1104.github.io"></script>
 </head>
 <body>
@@ -175,6 +175,7 @@
             <button id="btnEditor" type="button" role="menuitem" title="커스텀 악보 에디터 열기/닫기">✏️ 에디터</button>
             <button id="btnDrill" type="button" role="menuitem" title="특수 훈련 베타 (갭 클릭 · 시야 방해 · BPM 러쉬)"><span id="btnDrillText">🧪 특수훈련</span><span class="beta-tag">BETA</span></button>
             <button id="btnPitchBeta" type="button" role="menuitem" title="재즈 플랫 키 5선보 음정 초견 베타 (오디오 피치 판정 지원)"><span id="btnPitchText">🎼 음정 초견</span><span class="beta-tag">BETA</span></button>
+            <button id="btnAchievements" type="button" role="menuitem" title="달성 과제 · 칭호 · 기록 JSON 백업/복원"><span id="btnAchText">🏅 도전과제</span><span id="achCountBadge" class="tools-badge">0/12</span></button>
             <div class="tools-sep"></div>
             <div id="lblToolsSecUtil" class="tools-sec-lbl">보정 · 출력</div>
             <button id="btnSyncCal" type="button" role="menuitem" title="타이밍 지연 보정 (블루투스 이어폰 / 오디오 인터페이스)">⏱ 보정</button>
@@ -481,6 +482,30 @@
     <span id="endlessMsg" class="endless-msg">2줄 교차 무한 초견: 아랫줄 절반을 지나면 지나간 윗줄이 자동으로 새 악보로 바뀝니다. HP가 0이 될 때까지 최대한 많은 마디를 생존하세요!</span>
   </div>
 
+  <!-- Achievements, Titles & Local JSON Backup/Restore Drawer -->
+  <div id="achBar" class="ach-bar hidden">
+    <div class="ach-head">
+      <div class="group">
+        <strong id="lblAchTitle">🏅 도전과제 &amp; 칭호</strong>
+        <span id="achSummaryStats" class="ach-summary">해금 0/12 · 누적 0노트 · 스트릭 0일</span>
+      </div>
+      <div class="group">
+        <label class="group">
+          <span id="lblAchEquip" class="label">칭호</span>
+          <select id="achTitleSelect" title="공유 카드에 표시할 칭호 선택">
+            <option value="">칭호 없음</option>
+          </select>
+        </label>
+        <button id="btnAchExport" type="button" title="로컬 기록·도전과제 JSON 파일로 백업">📥 백업</button>
+        <button id="btnAchImport" type="button" title="JSON 백업 파일에서 기록·도전과제 복원">📤 복원</button>
+        <input id="achImportFile" type="file" accept="application/json,.json" class="hidden" />
+        <button id="btnAchClose" type="button" class="cal-close" title="닫기">✕</button>
+      </div>
+    </div>
+    <div id="achGrid" class="ach-grid"></div>
+    <span id="achMsg" class="ach-msg"></span>
+  </div>
+
   <!-- PDF-Style Vector Sheet Music -->
   <div class="sheet-paper">
     <div class="sheet-header">
@@ -615,7 +640,10 @@
   </div>
 </div>
 
-<script type="module" src="js/main.js?v=20261127q"></script>
+<!-- Steam-Style Achievement Unlock Toast Stack -->
+<div id="achToastStack" class="ach-toast-stack" aria-live="polite"></div>
+
+<script type="module" src="js/main.js?v=20261127r"></script>
 </body>
 </html>
 

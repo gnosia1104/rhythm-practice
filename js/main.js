@@ -48,13 +48,17 @@ import {
   tryStartRoomRoundFromMain, notifyRoomStopped,
   notifyRoomChartChanged, notifyRoomLiveProgress, notifyRoomFinish,
   notifyRoomEndlessProgress, notifyRoomEndlessOut,
-} from "./room.js?v=20261127q";
+} from "./room.js?v=20261127r";
 import {
   endlessState, initEndless, setEndlessMode, setEndlessStreamSeed, syncEndlessLanguage, renderEndlessHud,
   buildEndlessPreviewPhrase, startEndlessAudioAndState, stepEndlessFrame,
   onEndlessHit, onEndlessMiss, onEndlessRestPassed, onEndlessRestError, onEndlessExtraHit,
   saveEndlessBest,
 } from "./endless.js?v=20261127q";
+import {
+  initAchievements, syncAchievementsLanguage,
+  evaluateStandardRunAchievements, evaluateEndlessAchievements, evaluateRoomWinAchievement,
+} from "./achievements.js";
 
 function resetTargets() {
   const ts = getTimeSig(app.phrase ? app.phrase.timeSig : app.timeSig);
@@ -747,6 +751,17 @@ function finalizeRun() {
   const durSec = app.numBars * tsTrack.clicksPerBar * tsTrack.clickSec(app.bpm);
   app.runTrackOpen = false;
   trackPracticeComplete(app, { rank: rank.grade, acc, durationSec: durSec });
+  evaluateStandardRunAchievements({
+    hits,
+    total,
+    acc,
+    sd,
+    bpm: app.bpm,
+    level: app.level,
+    rank: rank.grade,
+    restCount: (app.phrase.rests || []).length,
+    restErrs,
+  });
   notifyRoomFinish({
     score: scoreDetail.score,
     maxScore: scoreDetail.maxScore,
@@ -927,6 +942,7 @@ function finalizeEndlessGameOver(stats) {
   });
   const tsTrack = getTimeSig();
   trackPracticeComplete(app, { rank: rk.grade, acc, durationSec: Math.max(1, bars * tsTrack.clicksPerBar * tsTrack.clickSec(app.bpm)) });
+  evaluateEndlessAchievements({ survivedBars: bars, hits: stats.hits });
   syncTransportButtons();
   app.dirtyScore = true;
 }
@@ -1300,6 +1316,7 @@ function applyLanguage(lang) {
   syncGuideUi();
   syncRoomLanguage();
   syncEndlessLanguage();
+  syncAchievementsLanguage();
   updateMeta();
   app.dirtyScore = true;
 }
@@ -2868,6 +2885,7 @@ initRoom({
       scheduleClick(ctx, ctx.currentTime + 0.01, sec === 1 ? 1046.5 : 659.25, 0.18);
     }
   },
+  onRoomWin: (playerCount) => evaluateRoomWinAchievement(playerCount),
   stopRun: () => stopRun(true),
   newPhrase,
   setHitBadge,
@@ -2891,6 +2909,28 @@ initEndless({
   updateMeta,
   stopRun,
   newPhrase,
+});
+initAchievements({
+  playUnlockChime: () => {
+    const ctx = ensureAudioCtx();
+    if (ctx && app.clickVol > 0) {
+      const t0 = ctx.currentTime + 0.02;
+      scheduleClick(ctx, t0, 880, 0.18);
+      scheduleClick(ctx, t0 + 0.11, 1318.51, 0.22);
+    }
+  },
+  onDataRestored: () => {
+    try {
+      const rawHist = localStorage.getItem("rhythm_practice_history_v1");
+      if (rawHist) {
+        const parsed = JSON.parse(rawHist);
+        if (Array.isArray(parsed)) app.history = parsed.slice(0, 12);
+      }
+    } catch (_) {}
+    renderLog();
+    renderEndlessHud();
+    updateMeta();
+  },
 });
 syncToolsMenuBadge();
 renderLog();
