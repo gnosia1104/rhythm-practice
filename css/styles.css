@@ -1816,6 +1816,12 @@ button.active .beta-tag {
   color: #ffffff;
   border-color: #171717;
 }
+.diff-dropdown .diff-grid-3 button.active:hover:not(:disabled),
+.diff-dropdown .diff-grid-2 button.active:hover:not(:disabled) {
+  background: #27272a;
+  color: #ffffff;
+  border-color: #27272a;
+}
 
 .diff-dropdown .tools-sec-lbl {
   padding: 2px 2px 0;
@@ -2782,7 +2788,8 @@ body.has-dock .ach-toast-stack {
   grid-column: 1 / -1;
 }
 
-#btnSuddenDeath.active {
+#btnSuddenDeath.active,
+#btnSuddenDeath.active:hover:not(:disabled) {
   background: #fef2f2;
   border-color: #ef4444;
   color: #b91c1c;
