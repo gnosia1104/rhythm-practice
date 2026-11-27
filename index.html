@@ -60,7 +60,7 @@
   "description": "Free browser-based rhythm & pitch sight-reading trainer for musicians featuring 6 progressive levels, 5 time signatures, triplets, staccato, ghost notes, gap click metronome, custom score editor, daily challenges, and audio interface onset/sustain/rest grading."
 }
 </script>
-<link rel="stylesheet" href="css/styles.css?v=20261128g" />
+<link rel="stylesheet" href="css/styles.css?v=20261128h" />
 <script defer src="https://cloud.umami.is/script.js" data-website-id="9070201e-fd1f-4081-ad26-1219def68ba6" data-domains="gnosia1104.github.io"></script>
 </head>
 <body>
@@ -263,6 +263,7 @@
   <!-- Audio Input Monitor (shown when AUDIO or BOTH) -->
   <div id="audioBar" class="audio-bar hidden">
     <strong id="lblAudioTitle">🎤 오디오 입력</strong>
+    <button id="btnAudioWizard" type="button" class="aw-toggle-btn" title="처음 오디오 인터페이스 연결 시 3단계 실시간 셋업 가이드">🧭 셋업 가이드</button>
     <select id="audioDeviceSelect" title="오디오 입력 장치 선택">
       <option value="">기본 입력 장치</option>
     </select>
@@ -293,6 +294,47 @@
       <span id="latVal">25ms</span>
     </label>
     <span id="audioMsg" class="audio-msg">헤드폰/오인페 라인 입력 권장 (스피커 메트로놈 유입 방지)</span>
+    <!-- Interactive 3-Step First-Time Audio Interface Setup Wizard -->
+    <div id="audioWizard" class="aw-box hidden">
+      <div class="aw-head">
+        <div class="group">
+          <strong id="lblAwTitle">🧭 오디오 인터페이스 3단계 빠른 셋업</strong>
+          <span id="awProgress" class="aw-progress">0 / 3</span>
+        </div>
+        <button id="btnAwClose" type="button" class="cal-close" title="닫기">✕</button>
+      </div>
+      <div class="aw-steps">
+        <div id="awStep1" class="aw-step">
+          <div id="lblAwStep1" class="aw-step-title">1. 권한 &amp; 인터페이스 선택</div>
+          <div id="awStep1Desc" class="aw-step-desc"></div>
+          <div class="aw-step-actions">
+            <button id="btnAwStep1" type="button" class="primary">🎤 권한 요청 / 재연결</button>
+            <button id="btnAwUseBuiltin" type="button" class="hidden">이대로 사용</button>
+          </div>
+        </div>
+        <div id="awStep2" class="aw-step">
+          <div id="lblAwStep2" class="aw-step-title">2. 바닥 노이즈 측정</div>
+          <div id="awStep2Desc" class="aw-step-desc"></div>
+          <div class="aw-step-actions">
+            <button id="btnAwNoiseCal" type="button" class="primary">🔇 노이즈 자동 보정</button>
+            <button id="btnAwSkipNoise" type="button">건너뛰기</button>
+          </div>
+        </div>
+        <div id="awStep3" class="aw-step">
+          <div id="lblAwStep3" class="aw-step-title">3. 한 음 튕겨서 게인 확인</div>
+          <div class="aw-meter">
+            <div id="awMeterFill" class="aw-meter-fill"></div>
+            <div id="awMeterThr" class="aw-meter-thr"></div>
+          </div>
+          <div id="awStep3Desc" class="aw-step-desc"></div>
+          <div class="aw-step-actions">
+            <button id="btnAwGainUp" type="button" class="primary hidden">+2x 게인 올리기</button>
+            <button id="btnAwGainDown" type="button" class="danger hidden">-2x 게인 낮추기</button>
+            <button id="btnAwFinish" type="button" class="primary hidden">🎉 셋업 완료</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Custom Rhythm Score Editor (hidden unless user clicks ✏️ 에디터) -->
@@ -767,7 +809,7 @@
 <!-- Steam-Style Achievement Unlock Toast Stack -->
 <div id="achToastStack" class="ach-toast-stack" aria-live="polite"></div>
 
-<script type="module" src="js/main.js?v=20261128g"></script>
+<script type="module" src="js/main.js?v=20261128h"></script>
 </body>
 </html>
 

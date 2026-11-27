@@ -68,6 +68,9 @@ import {
 } from "./diagnostics.js";
 import { initFeedback, syncFeedbackLanguage } from "./feedback.js";
 import {
+  initAudioWizard, onAudioBarShown, onAudioNoiseCalDone, syncAudioWizardLanguage,
+} from "./audio-wizard.js";
+import {
   cancelRushTimer, saveRushBest, clearFadeOutClasses, syncDrillUi, initDrills,
 } from "./drills.js";
 import {
@@ -1171,6 +1174,7 @@ function applyLanguage(lang) {
   syncLeaderboardLanguage();
   syncDiagnosticsLanguage();
   syncFeedbackLanguage();
+  syncAudioWizardLanguage();
   updateMeta();
   app.dirtyScore = true;
 }
@@ -1191,9 +1195,11 @@ async function applyInputToggles(nextKey, nextAudio, nextPad) {
   app.inputMode = deriveInputMode();
   updateMeta();
   if (app.audioOn && !prevAudio) {
+    onAudioBarShown();
     await startAudioInput();
   } else if (!app.audioOn && prevAudio) {
     stopAudioInput();
+    onAudioBarShown();
   }
 }
 
@@ -1749,6 +1755,7 @@ btnNoiseCal.addEventListener("click", () => {
     syncThreshold(Math.max(6, Math.min(45, targetPct)));
     msgEl.style.color = "var(--muted)";
     msgEl.textContent = t("calDone", Math.round(audioIn.threshold * 100));
+    onAudioNoiseCalDone();
   }, 650);
 });
 
@@ -2058,6 +2065,12 @@ initDiagnostics({
 });
 initFeedback({
   onUiChange: () => syncToolsMenuBadge(),
+  setHitBadge,
+});
+initAudioWizard({
+  startAudioInput,
+  triggerNoiseCal: () => document.getElementById("btnNoiseCal")?.click(),
+  syncGain,
   setHitBadge,
 });
 syncToolsMenuBadge();
