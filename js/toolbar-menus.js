@@ -79,24 +79,14 @@ export function syncClickVol(val, persist = true) {
 
 export function syncGuideUi() {
   const guideCard = document.getElementById("guideCard");
-  const btnGuide = document.getElementById("btnGuide");
   const guideToggleHint = document.getElementById("guideToggleHint");
   const opened = guideCard.open;
-  btnGuide.classList.toggle("active", opened);
   guideToggleHint.textContent = opened ? t("guideClose") : t("guideOpen");
 }
 
 export function initToolbarMenus() {
   const guideCard = document.getElementById("guideCard");
-  const btnGuide = document.getElementById("btnGuide");
   guideCard.addEventListener("toggle", syncGuideUi);
-  btnGuide.addEventListener("click", () => {
-    guideCard.open = !guideCard.open;
-    syncGuideUi();
-    if (guideCard.open) {
-      guideCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    }
-  });
 
   document.getElementById("btnDiffClose").addEventListener("click", (e) => {
     e.stopPropagation();

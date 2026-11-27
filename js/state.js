@@ -120,7 +120,7 @@ export const edState = {
 };
 
 
-export const tourState = { open: false, idx: 0 };
+export const tourState = { open: false, idx: 0, mode: "tour" };
 
 export function getTimeSig(key = null) {
   return TIME_SIGS[key || app.timeSig] || TIME_SIGS["4/4"];

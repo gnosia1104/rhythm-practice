@@ -32,7 +32,7 @@ import {
   loadCustomFromInput, initEditor,
 } from "./editor.js";
 import {
-  hasSeenTour, renderTourStep, openTour, closeTour, nextTourStep, prevTourStep, initTour,
+  hasSeenTour, renderTourStep, syncTourButtonsLanguage, openTour, closeTour, nextTourStep, prevTourStep, initTour,
 } from "./tour.js";
 import {
   trackPracticeStart, trackPracticeComplete, trackPracticeStop, trackRefVisit,
@@ -1168,6 +1168,7 @@ function applyLanguage(lang) {
   }
   renderLog();
   syncGuideUi();
+  syncTourButtonsLanguage();
   syncRoomLanguage();
   syncEndlessLanguage();
   syncAchievementsLanguage();

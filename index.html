@@ -61,7 +61,7 @@
   "description": "Free browser-based rhythm & pitch sight-reading trainer for musicians featuring 6 progressive levels, 5 time signatures, triplets, staccato, ghost notes, gap click metronome, custom score editor, daily challenges, and audio interface onset/sustain/rest grading."
 }
 </script>
-<link rel="stylesheet" href="css/styles.css?v=20261128h" />
+<link rel="stylesheet" href="css/styles.css?v=20261128j" />
 <script defer src="https://cloud.umami.is/script.js" data-website-id="9070201e-fd1f-4081-ad26-1219def68ba6" data-domains="gnosia1104.github.io"></script>
 </head>
 <body>
@@ -689,7 +689,10 @@
         <div id="tapHintBrief" class="tap-hint">
           <kbd>Space</kbd>/<kbd>J</kbd>/<kbd>K</kbd> 입력 · <kbd>Enter</kbd>/<kbd>A</kbd> 시작 · <kbd>N</kbd> 새 악보 · <kbd>H</kbd> 정답 듣기
         </div>
-        <button id="btnFooterToggle" type="button" class="footer-toggle-btn" aria-expanded="false">단축키 · 판정 기준 ▾</button>
+        <div class="sheet-footer-actions">
+          <button id="btnFooterShortcutTour" type="button" class="footer-toggle-btn footer-sc-btn">⌨️ 단축키 투어</button>
+          <button id="btnFooterToggle" type="button" class="footer-toggle-btn" aria-expanded="false">단축키 · 판정 기준 ▾</button>
+        </div>
       </div>
       <div id="footerDetails" class="footer-details hidden">
         <div id="tapHint" class="tap-hint">
@@ -743,6 +746,10 @@
       <span id="guideSummaryTitle">📖 사용 설명서 &amp; 판정 기준 (클릭해서 펼치기)</span>
       <span id="guideToggleHint" class="guide-toggle-hint">열기 ▾</span>
     </summary>
+    <div class="guide-tour-cta">
+      <button id="btnGuideSpotlight" type="button" class="primary">📖 하이라이트로 설명서 보기</button>
+      <button id="btnGuideShortcutTour" type="button">⌨️ 하이라이트로 단축키 배우기</button>
+    </div>
     <div id="guideBody" class="guide-body">
       <div class="guide-sec">
         <h3>무료 리듬 · 음정 초견 &amp; 박자 연습 사이트 (Rhythm Sight-Reader)</h3>
@@ -789,6 +796,11 @@
         <button id="btnTourClose" type="button" class="tour-close-btn" aria-label="Close">✕</button>
       </div>
     </div>
+    <div id="tourModeTabs" class="tour-mode-tabs" role="tablist">
+      <button type="button" class="tour-mode-tab active" data-tour-mode="tour">🧭 튜토리얼</button>
+      <button type="button" class="tour-mode-tab" data-tour-mode="guide">📖 사용설명서</button>
+      <button type="button" class="tour-mode-tab" data-tour-mode="shortcuts">⌨️ 단축키</button>
+    </div>
     <h2 id="tourTitle" class="tour-title"></h2>
     <p id="tourBody" class="tour-body"></p>
     <div id="tourChips" class="tour-chips hidden"></div>
@@ -810,7 +822,7 @@
 <!-- Steam-Style Achievement Unlock Toast Stack -->
 <div id="achToastStack" class="ach-toast-stack" aria-live="polite"></div>
 
-<script type="module" src="js/main.js?v=20261128i"></script>
+<script type="module" src="js/main.js?v=20261128j"></script>
 </body>
 </html>
 
