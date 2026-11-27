@@ -53,6 +53,7 @@ export const app = {
   history: [],
   lastResult: null,
   runSeq: 0,
+  runTrackOpen: false,
   dirtyScore: true,
 };
 

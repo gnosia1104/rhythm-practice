@@ -41,7 +41,7 @@ import {
   hasSeenTour, renderTourStep, openTour, closeTour, nextTourStep, prevTourStep, initTour,
 } from "./tour.js";
 import {
-  trackPracticeStart, trackPracticeComplete, trackPracticeStop, trackShare,
+  trackPracticeStart, trackPracticeComplete, trackPracticeStop, trackShare, trackRefVisit,
 } from "./analytics.js";
 
 function resetTargets() {
@@ -150,7 +150,22 @@ function applyPitchToCurrentPhrase(rebuildRhythm = false) {
   app.dirtyScore = true;
 }
 
+function abortActiveRunTracking(reason = "stop") {
+  if (!app.runTrackOpen) return;
+  const phase = app.state === "COUNTIN" ? "COUNTIN" : "PLAY";
+  let elapsed = 0;
+  const ctx = getAudioCtx();
+  if (ctx && app.state === "PLAY") {
+    const tsStop = getTimeSig();
+    const playStartT = app.startAudioT + tsStop.countInClicks * tsStop.clickSec(app.bpm);
+    elapsed = Math.max(0, ctx.currentTime - playStartT);
+  }
+  app.runTrackOpen = false;
+  trackPracticeStop(app, elapsed, reason, phase);
+}
+
 function newPhrase(forcedSeed = null, keepDaily = false) {
+  abortActiveRunTracking("new");
   cancelRushTimer(true);
   app.runSeq += 1;
   if (app.state === "CAL") stopCalibration(false);
@@ -192,6 +207,7 @@ function loadDailyChallenge(dateStr = null, isPlus = false) {
 
 
 async function startRun(demo = false, keepRushRound = false) {
+  abortActiveRunTracking("retry");
   cancelRushTimer(!keepRushRound);
   const seq = ++app.runSeq;
   ensureAudioCtx(); // Synchronously unlock/resume inside user tap gesture on mobile
@@ -210,6 +226,7 @@ async function startRun(demo = false, keepRushRound = false) {
   app.state = demo ? "DEMO" : "COUNTIN";
   setHitBadge(demo ? t("badgeDemo") : t("badgeCountIn"), "");
   syncTransportButtons();
+  app.runTrackOpen = !demo;
   trackPracticeStart(app, demo);
   scheduleRunAudio(
     app.bpm,
@@ -232,13 +249,7 @@ function stopRun() {
     return;
   }
   if (app.state !== "COUNTIN" && app.state !== "PLAY" && app.state !== "DEMO" && !hadRushTimer) return;
-  if (app.state === "PLAY") {
-    const ctx = getAudioCtx();
-    const tsStop = getTimeSig();
-    const playStartT = app.startAudioT + tsStop.countInClicks * tsStop.clickSec(app.bpm);
-    const elapsed = ctx ? Math.max(0, ctx.currentTime - playStartT) : 0;
-    trackPracticeStop(app, elapsed);
-  }
+  abortActiveRunTracking("stop");
   stopScheduledAudio();
   resetTargets();
   app.state = "READY";
@@ -256,6 +267,7 @@ function resetCalDots() {
 }
 
 async function startCalibration() {
+  abortActiveRunTracking("cal");
   const seq = ++app.runSeq;
   ensureAudioCtx(); // Synchronously unlock/resume inside user tap gesture on mobile
   stopScheduledAudio();
@@ -652,6 +664,7 @@ function finalizeRun() {
   const rank = computeScoreRank(app.lastResult);
   const tsTrack = getTimeSig();
   const durSec = app.numBars * tsTrack.clicksPerBar * tsTrack.clickSec(app.bpm);
+  app.runTrackOpen = false;
   trackPracticeComplete(app, { rank: rank.grade, acc, durationSec: durSec });
   const rankEl = document.getElementById("rankBadge");
   rankEl.textContent = rank.grade;
@@ -1063,6 +1076,16 @@ function applyLanguage(lang) {
     populateAudioDevices(audioIn.deviceId);
   }
 
+  const taglineEl = document.getElementById("brandTagline");
+  if (taglineEl) taglineEl.textContent = t("brandTagline");
+  const briefEl = document.getElementById("tapHintBrief");
+  if (briefEl) briefEl.innerHTML = t("tapHintBriefHtml");
+  const footerDet = document.getElementById("footerDetails");
+  const footerBtn = document.getElementById("btnFooterToggle");
+  if (footerBtn && footerDet) {
+    const opened = !footerDet.classList.contains("hidden");
+    footerBtn.textContent = opened ? t("footerToggleClose") : t("footerToggleOpen");
+  }
   document.getElementById("tapHint").innerHTML = t("tapHintHtml");
   document.getElementById("legendLine").innerHTML = t("legendHtml");
   document.getElementById("guideSummaryTitle").textContent = t("guideTitle");
@@ -1120,6 +1143,7 @@ async function cycleInputMode() {
 }
 
 function setBpm(val) {
+  abortActiveRunTracking("bpm");
   cancelRushTimer(true);
   if (app.state === "CAL") stopCalibration(true);
   app.bpm = Math.max(40, Math.min(180, val));
@@ -1141,6 +1165,7 @@ const meterFill = document.getElementById("meterFill");
 const meterTrack = document.getElementById("meterTrack");
 const audioLevelText = document.getElementById("audioLevelText");
 const scoreSvg = document.getElementById("scoreSvg");
+const countinHintEl = document.getElementById("countinHint");
 
 function meterPct(val) {
   // Perceptual (sqrt) meter curve so healthy -24..-18 dBFS bass signals sit cleanly in the mid-upper meter range
@@ -1267,6 +1292,21 @@ function frame() {
   }
 
   if (ledCore.className !== ledClass) ledCore.className = ledClass;
+
+  if (countinHintEl) {
+    const showHint = app.state === "COUNTIN";
+    if (showHint) {
+      const hintTxt = app.pitchMode
+        ? t("countinHintPitch")
+        : (app.audioOn && !app.keyOn && !app.showTouchDock
+          ? t("countinHintAudio")
+          : (app.showTouchDock && !app.keyOn ? t("countinHintPad") : t("countinHintKey")));
+      if (countinHintEl.textContent !== hintTxt) countinHintEl.textContent = hintTxt;
+      if (countinHintEl.classList.contains("hidden")) countinHintEl.classList.remove("hidden");
+    } else if (!countinHintEl.classList.contains("hidden")) {
+      countinHintEl.classList.add("hidden");
+    }
+  }
 
   if (app.dirtyScore) {
     renderScore(scoreSvg, app.phrase);
@@ -1443,6 +1483,18 @@ document.getElementById("btnInMidi").addEventListener("click", async (e) => {
 });
 document.getElementById("btnPrint").addEventListener("click", () => window.print());
 
+const btnFooterToggle = document.getElementById("btnFooterToggle");
+const footerDetails = document.getElementById("footerDetails");
+if (btnFooterToggle && footerDetails) {
+  btnFooterToggle.addEventListener("click", (e) => {
+    e.currentTarget.blur();
+    const willOpen = footerDetails.classList.contains("hidden");
+    footerDetails.classList.toggle("hidden", !willOpen);
+    btnFooterToggle.setAttribute("aria-expanded", willOpen ? "true" : "false");
+    btnFooterToggle.textContent = willOpen ? t("footerToggleClose") : t("footerToggleOpen");
+  });
+}
+
 const guideCard = document.getElementById("guideCard");
 const btnGuide = document.getElementById("btnGuide");
 const guideToggleHint = document.getElementById("guideToggleHint");
@@ -1477,6 +1529,7 @@ function syncTouchDock() {
   touchDock.classList.toggle("visible", app.showTouchDock);
   document.body.classList.toggle("has-dock", app.showTouchDock);
   btnTouchPad.classList.toggle("active", app.showTouchDock);
+  if (typeof syncPitchUi === "function") syncPitchUi();
 }
 btnTouchPad.addEventListener("click", (e) => {
   e.currentTarget.blur();
@@ -2244,7 +2297,7 @@ function syncPitchUi() {
   hintBtn.textContent = app.pitchShowHints ? t("pitchHintsOn") : t("pitchHintsOff");
   hintBtn.classList.toggle("active", app.pitchShowHints);
   const pianoEl = document.getElementById("pitchPiano");
-  if (pianoEl) pianoEl.classList.toggle("hidden", !app.pitchMode);
+  if (pianoEl) pianoEl.classList.toggle("hidden", !app.pitchMode || app.showTouchDock);
   const dockPadsEl = document.getElementById("dockPads");
   const dockPianoEl = document.getElementById("dockPitchPiano");
   if (dockPadsEl) dockPadsEl.classList.toggle("hidden", app.pitchMode);
@@ -2500,6 +2553,10 @@ initTour({ stopRun, applyLanguage });
 // Boot
 const bootParams = new URLSearchParams(location.search || "");
 const arrivedViaSharedLink = ["seed", "daily", "dailyplus", "custom"].some(k => bootParams.has(k));
+if (bootParams.has("ref")) {
+  trackRefVisit(bootParams.get("ref"));
+}
+window.addEventListener("pagehide", () => abortActiveRunTracking("unload"));
 bootInitialScore();
 syncGain(2);
 syncThreshold(16);

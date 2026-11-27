@@ -9,11 +9,15 @@
 <meta name="keywords" content="rhythm sight reading, rhythm sight reading trainer, free rhythm practice online, bass sight reading, bass clef sight reading, jazz bass sight reading, bass guitar rhythm practice, rhythm reading generator, bass clef rhythm generator, midi rhythm trainer, midi sight reading, syncopation practice, 16th note rhythm exercises, triplet rhythm trainer, staccato ghost note practice, gap click metronome, custom rhythm sheet music editor, daily rhythm challenge, audio interface bass practice, 리듬 초견, 베이스 초견, 낮은음자리표 악보 읽기, 재즈 베이스 초견, 베이스 음정 초견, 리듬 연습 사이트, 박자 연습, 박자감 테스트, 리듬 시창, 미디 리듬 연습, 싱코페이션 연습, 16분음표 리듬, 3연음, 스타카토 고스트노트, 갭 클릭 메트로놈, 오디오 인터페이스 베이스 연습, リズム初見, ベース初見練習, ヘ音記号 譜読み, ジャズベース 譜読み, MIDI リズム練習" />
 <meta name="robots" content="index, follow, max-image-preview:large" />
 <link rel="canonical" href="https://gnosia1104.github.io/rhythm-practice/" />
+<link rel="alternate" hreflang="en" href="https://gnosia1104.github.io/rhythm-practice/" />
+<link rel="alternate" hreflang="ko" href="https://gnosia1104.github.io/rhythm-practice/ko/" />
+<link rel="alternate" hreflang="ja" href="https://gnosia1104.github.io/rhythm-practice/ja/" />
+<link rel="alternate" hreflang="x-default" href="https://gnosia1104.github.io/rhythm-practice/" />
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="Rhythm Sight-Reader" />
 <meta property="og:url" content="https://gnosia1104.github.io/rhythm-practice/" />
 <meta property="og:title" content="Rhythm Sight-Reader — Free Online Bass &amp; Rhythm Sight-Reading Trainer" />
-<meta property="og:description" content="Practice rhythm sight-reading with keyboard, touch pads, or real bass via audio interface. 6 levels, 5 meters, triplets, staccato, ghost notes, gap click, custom editor &amp; daily challenges — 100% free." />
+<meta property="og:description" content="Practice rhythm sight-reading with keyboard, touch pads, or real bass via audio interface. 6 levels, 5 meters, triplets, staccato, ghost notes, gap click, custom editor &amp; daily challenges — free online in your browser." />
 <meta property="og:image" content="https://gnosia1104.github.io/rhythm-practice/og-image.png?v=2" />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
@@ -56,14 +60,17 @@
   "description": "Free browser-based rhythm sight-reading trainer for bassists and musicians featuring 6 progressive levels, 5 time signatures, triplets, staccato, ghost notes, gap click metronome, custom score editor, daily challenges, and audio interface onset/sustain/rest grading."
 }
 </script>
-<link rel="stylesheet" href="css/styles.css?v=20261127c" />
+<link rel="stylesheet" href="css/styles.css?v=20261127d" />
 <script defer src="https://cloud.umami.is/script.js" data-website-id="9070201e-fd1f-4081-ad26-1219def68ba6" data-domains="gnosia1104.github.io"></script>
 </head>
 <body>
 <div class="app">
   <!-- Page Top Masthead: Brand Title (Left) + Language Selector (Right) -->
   <div class="top-bar">
-    <h1 class="sheet-title">Rhythm Sight-Reader</h1>
+    <div class="brand-head">
+      <h1 class="sheet-title">Rhythm Sight-Reader</h1>
+      <p id="brandTagline" class="brand-tagline">오디오 인터페이스 직결 · 어택/서스테인/쉼표 뮤트 실시간 채점 · 설치 없는 리듬·베이스 초견</p>
+    </div>
     <select id="langSelect" class="lang-select" title="Language / 언어 / 言語">
       <option value="ko">🌐 한국어</option>
       <option value="en">🌐 English</option>
@@ -383,7 +390,7 @@
       <button id="btnPitchClose" type="button" class="cal-close" title="닫기">✕</button>
     </div>
     <div id="pitchPiano" class="pitch-piano" role="group" aria-label="QWERTY Pitch Keyboard"></div>
-    <span id="pitchMsg" class="pitch-msg">재즈 플랫 키(0♭~5♭) · 1~0 / Q~P 키보드로 음 타건 가능 (옥타브 무관 정답 · 오디오 입력도 지원).</span>
+    <span id="pitchMsg" class="pitch-msg">재즈 플랫 키(0♭~7♭) · C부터 e4r5ty7u8i9op(좌측 q2w=A·B♭·B) / MIDI / 오디오 입력 (옥타브 무관 정답).</span>
   </div>
 
   <!-- PDF-Style Vector Sheet Music -->
@@ -400,22 +407,31 @@
       </div>
     </div>
     <div class="score-wrap">
+      <div id="countinHint" class="countin-hint hidden" aria-live="polite"></div>
       <svg id="scoreSvg" viewBox="0 0 1120 160" xmlns="http://www.w3.org/2000/svg"></svg>
     </div>
     <div class="sheet-footer">
-      <div id="tapHint" class="tap-hint">
-        입력: <kbd>Space</kbd> / <kbd>J</kbd> / <kbd>K</kbd> 또는 오디오 ·
-        <kbd>Enter</kbd> 시작 · <kbd>Esc</kbd> 정지 · <kbd>N</kbd> 새 악보 · <kbd>P</kbd> 정답 듣기 ·
-        <kbd>L</kbd> 마디 수 · <kbd>+</kbd><kbd>−</kbd> BPM ·
-        <kbd>M</kbd> 메트로놈 · <kbd>B</kbd> 박자표기 · <kbd>I</kbd> 입력모드 · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> 난이도
+      <div class="sheet-footer-bar">
+        <div id="tapHintBrief" class="tap-hint">
+          <kbd>Space</kbd>/<kbd>J</kbd>/<kbd>K</kbd> 입력 · <kbd>Enter</kbd> 시작 · <kbd>N</kbd> 새 악보 · <kbd>P</kbd> 정답 듣기
+        </div>
+        <button id="btnFooterToggle" type="button" class="footer-toggle-btn" aria-expanded="false">단축키 · 판정 기준 ▾</button>
       </div>
-      <div id="legendLine">
-        판정: <strong style="color:var(--green)">★ ≤35ms/쉼표통과</strong> ·
-        <strong style="color:var(--amber)">−/+ ≤80ms</strong> ·
-        <strong style="color:var(--red)">&lt;/&gt; &gt;80ms · × miss/쉼표에러</strong> ·
-        서스테인(AUD): <strong style="color:var(--green)">▬ 양호</strong> /
-        <strong style="color:var(--amber)">▬ 짧음</strong> /
-        <strong style="color:var(--red)">▬ 침범</strong>
+      <div id="footerDetails" class="footer-details hidden">
+        <div id="tapHint" class="tap-hint">
+          입력: <kbd>Space</kbd> / <kbd>J</kbd> / <kbd>K</kbd> 또는 오디오 ·
+          <kbd>Enter</kbd> 시작 · <kbd>Esc</kbd> 정지 · <kbd>N</kbd> 새 악보 · <kbd>P</kbd> 정답 듣기 ·
+          <kbd>L</kbd> 마디 수 · <kbd>+</kbd><kbd>−</kbd> BPM ·
+          <kbd>M</kbd> 메트로놈 · <kbd>B</kbd> 박자표기 · <kbd>I</kbd> 입력모드 · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> 난이도
+        </div>
+        <div id="legendLine">
+          판정: <strong style="color:var(--green)">★ ≤35ms/쉼표통과</strong> ·
+          <strong style="color:var(--amber)">−/+ ≤80ms</strong> ·
+          <strong style="color:var(--red)">&lt;/&gt; &gt;80ms · × miss/쉼표에러</strong> ·
+          서스테인(AUD): <strong style="color:var(--green)">▬ 양호</strong> /
+          <strong style="color:var(--amber)">▬ 짧음</strong> /
+          <strong style="color:var(--red)">▬ 침범</strong>
+        </div>
       </div>
     </div>
   </div>
@@ -511,7 +527,7 @@
   </div>
 </div>
 
-<script type="module" src="js/main.js?v=20261127c"></script>
+<script type="module" src="js/main.js?v=20261127d"></script>
 </body>
 </html>
 

@@ -214,6 +214,14 @@ export const I18N = {
     audioFail: (err, isFile) => `오디오 입력 연결 실패: ${err}${isFile ? " (로컬 file:// 대신 https://gnosia1104.github.io/rhythm-practice/ 에서 여세요)" : " (브라우저 주소창 마이크 권한 및 OS 개인정보 설정 확인)"}`,
     calMeasuring: "줄을 건드리지 말고 잠시 기다리세요 (바닥 노이즈 측정 중)...",
     calDone: (pct) => `노이즈 보정 완료 — 임계값 ${pct}%로 자동 설정됨`,
+    brandTagline: "오디오 인터페이스 직결 · 어택/서스테인/쉼표 뮤트 실시간 채점 · 설치 없는 리듬·베이스 초견",
+    tapHintBriefHtml: `<kbd>Space</kbd>/<kbd>J</kbd>/<kbd>K</kbd> 입력 · <kbd>Enter</kbd> 시작 · <kbd>N</kbd> 새 악보 · <kbd>P</kbd> 정답 듣기`,
+    footerToggleOpen: "단축키 · 판정 기준 ▾",
+    footerToggleClose: "단축키 · 판정 기준 ▴",
+    countinHintKey: "⏳ 카운트인 후 Space / J / K 로 입력하세요 (커서 없음 · 상단 LED 참고)",
+    countinHintAudio: "🎸 카운트인 후 베이스를 연주하세요 (커서 없음 · 상단 LED 참고)",
+    countinHintPad: "👆 카운트인 후 하단 패드를 탭하세요 (커서 없음 · 상단 LED 참고)",
+    countinHintPitch: "🎹 카운트인 후 음에 맞춰 연주하세요 (e4r5ty7u8i9op · MIDI · 베이스)",
     tapHintHtml: `입력: <kbd>Space</kbd>/<kbd>J</kbd>/<kbd>K</kbd> (고스트 <kbd>F</kbd>/<kbd>D</kbd>) 또는 오디오 · <kbd>Enter</kbd> 시작 · <kbd>Esc</kbd> 정지 · <kbd>N</kbd> 새 악보 · <kbd>P</kbd> 정답 · <kbd>1</kbd>~<kbd>6</kbd>/<kbd>↑</kbd><kbd>↓</kbd> 난이도 · <kbd>T</kbd> 3연음 · <kbd>Q</kbd> 스타카토 · <kbd>X</kbd> 고스트 · <kbd>S</kbd> 박자표 · <kbd>L</kbd> 마디수 · <kbd>+</kbd><kbd>−</kbd> BPM · <kbd>M</kbd>/<kbd>B</kbd>/<kbd>C</kbd>/<kbd>G</kbd>/<kbd>I</kbd>`,
     legendHtml: `판정: <strong style="color:var(--green)">★ ≤35ms/쉼표통과</strong> · <strong style="color:var(--amber)">−/+ ≤80ms</strong> · <strong style="color:var(--red)">&lt;/&gt; &gt;80ms · × miss/쉼표에러</strong> · 서스테인(AUD): <strong style="color:var(--green)">▬ 양호</strong> / <strong style="color:var(--amber)">▬ 짧음</strong> / <strong style="color:var(--red)">▬ 침범</strong>`,
     summaryIdle: "연주를 마치면 타이밍 분포가 표시됩니다.",
@@ -501,6 +509,14 @@ export const I18N = {
     audioFail: (err, isFile) => `Audio input failed: ${err}${isFile ? " (open https://gnosia1104.github.io/rhythm-practice/ instead of file://)" : " (check browser & OS microphone permissions)"}`,
     calMeasuring: "Keep strings muted — measuring idle noise floor...",
     calDone: (pct) => `Noise calibrated — threshold auto-set to ${pct}%`,
+    brandTagline: "Plug in your bass or tap keyboard — real-time attack, sustain & rest-mute sight-reading in your browser",
+    tapHintBriefHtml: `<kbd>Space</kbd>/<kbd>J</kbd>/<kbd>K</kbd> Play · <kbd>Enter</kbd> Start · <kbd>N</kbd> New · <kbd>P</kbd> Demo`,
+    footerToggleOpen: "Shortcuts & Grading ▾",
+    footerToggleClose: "Shortcuts & Grading ▴",
+    countinHintKey: "⏳ Play Space / J / K after count-in (no cursor · follow top LED)",
+    countinHintAudio: "🎸 Pluck your bass after count-in (no cursor · follow top LED)",
+    countinHintPad: "👆 Tap the pads below after count-in (no cursor · follow top LED)",
+    countinHintPitch: "🎹 Play the notated pitches after count-in (e4r5ty7u8i9op · MIDI · Bass)",
     tapHintHtml: `Play: <kbd>Space</kbd>/<kbd>J</kbd>/<kbd>K</kbd> (Ghost <kbd>F</kbd>/<kbd>D</kbd>) or Audio · <kbd>Enter</kbd> Start · <kbd>Esc</kbd> Stop · <kbd>N</kbd> New · <kbd>P</kbd> Demo · <kbd>1</kbd>–<kbd>6</kbd>/<kbd>↑</kbd><kbd>↓</kbd> Level · <kbd>T</kbd> Triplets · <kbd>Q</kbd> Staccato · <kbd>X</kbd> Ghost · <kbd>S</kbd> Meter · <kbd>L</kbd> Bars · <kbd>+</kbd><kbd>−</kbd> BPM · <kbd>M</kbd>/<kbd>B</kbd>/<kbd>C</kbd>/<kbd>G</kbd>/<kbd>I</kbd>`,
     legendHtml: `Grade: <strong style="color:var(--green)">★ ≤35ms/Rest OK</strong> · <strong style="color:var(--amber)">−/+ ≤80ms</strong> · <strong style="color:var(--red)">&lt;/&gt; &gt;80ms · × Miss/Rest Err</strong> · Sustain(AUD): <strong style="color:var(--green)">▬ OK</strong> / <strong style="color:var(--amber)">▬ Short</strong> / <strong style="color:var(--red)">▬ Bleed</strong>`,
     summaryIdle: "Finish a take to see your timing distribution.",
@@ -788,6 +804,14 @@ export const I18N = {
     audioFail: (err, isFile) => `オーディオ入力接続失敗: ${err}${isFile ? " (file:// ではなく https://gnosia1104.github.io/rhythm-practice/ で開いてください)" : " (ブラウザおよびOSのマイク権限を確認)"}`,
     calMeasuring: "弦に触れずにお待ちください（フロアノイズ測定中）...",
     calDone: (pct) => `ノイズ補正完了 — しきい値を ${pct}% に自動設定しました`,
+    brandTagline: "オーディオI/F直結・アタック／サステイン／休符ミュートをリアルタイム採点するリズム＆ベース初見トレーナー",
+    tapHintBriefHtml: `<kbd>Space</kbd>/<kbd>J</kbd>/<kbd>K</kbd> 入力 · <kbd>Enter</kbd> 開始 · <kbd>N</kbd> 新規 · <kbd>P</kbd> お手本`,
+    footerToggleOpen: "ショートカット・判定基準 ▾",
+    footerToggleClose: "ショートカット・判定基準 ▴",
+    countinHintKey: "⏳ カウントイン後に Space / J / K で入力（カーソルなし・上部LED参照）",
+    countinHintAudio: "🎸 カウントイン後にベースを演奏（カーソルなし・上部LED参照）",
+    countinHintPad: "👆 カウントイン後に下のパッドをタップ（カーソルなし・上部LED参照）",
+    countinHintPitch: "🎹 カウントイン後に音程に合わせて演奏（e4r5ty7u8i9op・MIDI・ベース）",
     tapHintHtml: `入力: <kbd>Space</kbd>/<kbd>J</kbd>/<kbd>K</kbd>（ゴースト <kbd>F</kbd>/<kbd>D</kbd>）またはオーディオ · <kbd>Enter</kbd> 開始 · <kbd>Esc</kbd> 停止 · <kbd>N</kbd> 新規 · <kbd>P</kbd> お手本 · <kbd>1</kbd>〜<kbd>6</kbd>/<kbd>↑</kbd><kbd>↓</kbd> 難易度 · <kbd>T</kbd> 3連符 · <kbd>Q</kbd> スタッカート · <kbd>X</kbd> ゴースト · <kbd>S</kbd> 拍子 · <kbd>L</kbd> 小節数 · <kbd>+</kbd><kbd>−</kbd> BPM · <kbd>M</kbd>/<kbd>B</kbd>/<kbd>C</kbd>/<kbd>G</kbd>/<kbd>I</kbd>`,
     legendHtml: `判定: <strong style="color:var(--green)">★ ≤35ms/休符OK</strong> · <strong style="color:var(--amber)">−/+ ≤80ms</strong> · <strong style="color:var(--red)">&lt;/&gt; &gt;80ms · × ミス/休符エラー</strong> · サステイン(AUD): <strong style="color:var(--green)">▬ 良好</strong> / <strong style="color:var(--amber)">▬ 短い</strong> / <strong style="color:var(--red)">▬ はみ出し</strong>`,
     summaryIdle: "演奏を終えるとタイミング分布が表示されます。",
@@ -885,6 +909,13 @@ export function setCurLang(lang) {
 try {
   const saved = localStorage.getItem("rhythm_practice_lang");
   if (saved && I18N[saved]) curLang = saved;
+} catch (_) {}
+try {
+  const qLang = new URLSearchParams(location.search || "").get("lang");
+  if (qLang && I18N[qLang]) {
+    curLang = qLang;
+    localStorage.setItem("rhythm_practice_lang", qLang);
+  }
 } catch (_) {}
 
 export function t(key, ...args) {
