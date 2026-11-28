@@ -143,16 +143,21 @@ function strHash(str) {
   return h >>> 0;
 }
 
-// Jazz chord qualities (all flat-friendly symbols & authentic chord-scale pairs)
+// Jazz chord qualities with authentic Bebop scales, safe tensions & explicit avoid notes:
+// - chord     : Core chord tones (1, 3, 5, 7) — mandatory anchors on strong/on-beats & long sustains
+// - tension   : Consonant jazz extensions (9, 13, #11, m7 11) — safe on weak on-beats & off-beats
+// - bebopPass : 8-note Bebop / Symmetric Dominant passing tones — strictly stepwise on short off-beats!
+// - avoid     : Clashing tones (e.g. natural 4 on maj7/dom7; W-H tones B/D/F/Ab on A°7) — never on on-beats!
 const CHORD_QUAL = {
-  maj7:   { suffix: "maj7",  chord: [0, 4, 7, 11], scale: [0, 2, 4, 5, 7, 9, 11] }, // Ionian
-  maj6:   { suffix: "6",     chord: [0, 4, 7, 9],  scale: [0, 2, 4, 5, 7, 9, 11] }, // Major 6/9
-  m7:     { suffix: "m7",    chord: [0, 3, 7, 10], scale: [0, 2, 3, 5, 7, 9, 10] }, // Dorian
-  dom7:   { suffix: "7",     chord: [0, 4, 7, 10], scale: [0, 2, 4, 5, 7, 9, 10] }, // Mixolydian
-  dom7b9: { suffix: "7♭9",   chord: [0, 4, 7, 10], scale: [0, 1, 3, 4, 7, 8, 10] }, // Phrygian Dominant / Altered feel
-  lyd7:   { suffix: "7",     chord: [0, 4, 7, 10], scale: [0, 2, 4, 6, 7, 9, 10] }, // Lydian Dominant (Tritone Sub bII7!)
-  m7b5:   { suffix: "m7♭5",  chord: [0, 3, 6, 10], scale: [0, 2, 3, 5, 6, 8, 10] }, // Locrian nat2
-  dim7:   { suffix: "°7",    chord: [0, 3, 6, 9],  scale: [0, 2, 3, 5, 6, 8, 9, 11] }, // Passing diminished
+  maj7:   { suffix: "maj7",  chord: [0, 4, 7, 11], tension: [2, 9],    bebopPass: [8],           avoid: [5],          scale: [0, 2, 4, 5, 7, 8, 9, 11] }, // Major Bebop
+  maj6:   { suffix: "6",     chord: [0, 4, 7, 9],  tension: [2, 11],   bebopPass: [8],           avoid: [5],          scale: [0, 2, 4, 5, 7, 8, 9, 11] }, // Major 6/9 Bebop
+  m7:     { suffix: "m7",    chord: [0, 3, 7, 10], tension: [2, 5, 9], bebopPass: [4, 11],       avoid: [],           scale: [0, 2, 3, 4, 5, 7, 9, 10] }, // Dorian Bebop
+  dom7:   { suffix: "7",     chord: [0, 4, 7, 10], tension: [2, 9],    bebopPass: [11],          avoid: [5],          scale: [0, 2, 4, 5, 7, 9, 10, 11] }, // Bebop Dominant
+  dom7b9: { suffix: "7♭9",   chord: [0, 4, 7, 10], tension: [1, 3, 8], bebopPass: [6, 9],        avoid: [5, 11],      scale: [0, 1, 3, 4, 6, 7, 8, 10] }, // Altered / H-W Dominant
+  lyd7:   { suffix: "7",     chord: [0, 4, 7, 10], tension: [2, 6, 9], bebopPass: [11],          avoid: [5],          scale: [0, 2, 4, 6, 7, 9, 10, 11] }, // Lydian Dominant Bebop
+  m7b5:   { suffix: "m7♭5",  chord: [0, 3, 6, 10], tension: [2, 5, 8], bebopPass: [7, 11],       avoid: [1],          scale: [0, 2, 3, 5, 6, 8, 10] },     // Locrian nat2
+  // Symmetric Dominant (Half-Whole Diminished): A Bb C Db Eb E Gb G — chord tones on beats, H-W passing on off-beats; zero B♮ clash!
+  dim7:   { suffix: "°7",    chord: [0, 3, 6, 9],  tension: [],        bebopPass: [1, 4, 7, 10], avoid: [2, 5, 8, 11], scale: [0, 1, 3, 4, 6, 7, 9, 10] },
 };
 
 function makeChord(keyRootPc, degreeSemi, qualKey, keyId) {
@@ -167,6 +172,9 @@ function makeChord(keyRootPc, degreeSemi, qualKey, keyId) {
     rootPc,
     qual: qualKey,
     chordPcs: new Set(q.chord.map(o => (rootPc + o) % 12)),
+    tensionPcs: new Set((q.tension || []).map(o => (rootPc + o) % 12)),
+    bebopPassPcs: new Set((q.bebopPass || []).map(o => (rootPc + o) % 12)),
+    avoidPcs: new Set((q.avoid || []).map(o => (rootPc + o) % 12)),
     scalePcs: new Set(q.scale.map(o => (rootPc + o) % 12)),
     thirdPc: (rootPc + thirdOff) % 12,
     fifthPc: (rootPc + fifthOff) % 12,
@@ -453,10 +461,10 @@ export function generateChordProgression(numBars, keyId, progType, rand) {
 const MIN_BASS_MIDI = 28;
 const MAX_BASS_MIDI = 50;
 
-function weightedPick(scored, rand, temp = 1.05) {
+function weightedPick(scored, rand, temp = 0.80) {
   if (!scored.length) return 38;
   scored.sort((a, b) => b.score - a.score);
-  const top = scored.slice(0, Math.min(5, scored.length));
+  const top = scored.slice(0, Math.min(4, scored.length));
   const maxS = top[0].score;
   let sumW = 0;
   const weights = top.map(item => {
@@ -588,17 +596,28 @@ export function assignPitchesToPhrase(phrase, keySetting = "Bb", progType = "aut
     }
 
     const barTick = tgt.globalSlot - b * ts.barTicks;
+    const durSlots = tgt.durSlots || 12;
     const isDownbeat = barTick === 0;
+    const isOnBeat = (barTick % ts.beatTicks) === 0;
     const isSecondaryStrong = !isDownbeat && (
       (ts.num === 4 && barTick === 24) ||
       (ts.num === 6 && barTick === 18) ||
       (ts.num === 5 && barTick === 36) ||
-      (ts.num === 3 && (barTick === 12 || barTick === 24))
+      (ts.num === 3 && barTick === 12)
     );
+    // Any syncopated note sustained across an on-beat (e.g. 1& tied over beat 2, or 3& dotted quarter over beat 4)
+    // rings directly over the beat and must obey chord-tone / safe-tension gravity!
+    const crossesOnBeat = !isOnBeat && (Math.floor(barTick / ts.beatTicks) !== Math.floor((barTick + durSlots - 1) / ts.beatTicks));
+    const isLongNote = durSlots >= ts.beatTicks || Boolean(tgt.tied) || crossesOnBeat;
     const hasNextChordChange = Boolean(nextChord && nextChord.rootPc !== chord.rootPc);
-    const isBarEndApproach = (notesLeftInBar === 0) && !isDownbeat && hasNextChordChange;
-    const isPreApproachEnclosure = (notesLeftInBar === 1) && !isDownbeat && hasNextChordChange && (contour === "ENCLOSURE" || rand() < 0.35);
-    const isFast = (tgt.durSlots || 12) <= 6;
+    const nextTgt = i + 1 < targets.length ? targets[i + 1] : null;
+    const nextBarStartsOnDownbeat = Boolean(
+      nextTgt && nextTgt.bar === b + 1 && (nextTgt.globalSlot - (b + 1) * ts.barTicks) === 0
+    );
+    const isFast = durSlots <= 6;
+    // Only use a chromatic bar-end pickup when it is a short off-beat leading directly into next bar's beat 1!
+    const isBarEndApproach = (notesLeftInBar === 0) && !isOnBeat && !crossesOnBeat && isFast && hasNextChordChange && nextBarStartsOnDownbeat;
+    const isPreApproachEnclosure = (notesLeftInBar === 1) && !isDownbeat && !isSecondaryStrong && hasNextChordChange && nextBarStartsOnDownbeat && (contour === "ENCLOSURE" || rand() < 0.30);
 
     // Ghost notes keep the previous fret/pitch (percussive muted thump)
     if (tgt.art === "ghost" && prevMidi !== null) {
@@ -606,8 +625,55 @@ export function assignPitchesToPhrase(phrase, keySetting = "Bb", progType = "aut
       continue;
     }
 
+    // Bebop Hard Eligibility Gate:
+    // - Beat 1 & Beat 3 (strong pillars): strictly chord tones (1, 3, 5, 7)
+    // - Beats 2 & 4 (on-beats) & long/syncopated sustains: chord tones (always) + safe non-avoid tensions (except dim7 = pure chord tones!)
+    // - Short off-beats: chord tones + tensions + stepwise Bebop/Symmetric-Dominant passing tones (+ chromatic approach only right before next beat 1)
+    // - Avoid notes (4th on maj7/dom7, B/D/F/Ab on A°7): hard-blocked on all on-beats/sustains & 100% blocked on dim7!
+    const isDim7 = chord.qual === "dim7";
+    const isStrongPillar = isDownbeat || isSecondaryStrong;
+    const prevPc = prevMidi !== null ? (prevMidi % 12) : null;
+
+    const isEligiblePitch = (m) => {
+      const pc = m % 12;
+      const isChordTone = chord.chordPcs.has(pc);
+      if (isChordTone) return true;
+      // Beat 1 & Beat 3: pure chord tones ONLY so harmony never sounds wrong!
+      if (isStrongPillar) return false;
+      // On dim7, any sustained/on-beat note must be a pure diminished chord tone (1, b3, b5, 6)
+      if (isDim7 && (isOnBeat || isLongNote)) return false;
+      // Explicit avoid notes are NEVER allowed on dim7, on-beats, or sustained/syncopated notes
+      if (chord.avoidPcs.has(pc)) {
+        if (isDim7 || isOnBeat || isLongNote || !isFast || prevMidi === null) return false;
+        // On maj7/dom7 only: allow fleeting 4th ONLY as strict stepwise passing between 3rd and 5th
+        const absD = Math.abs(m - prevMidi);
+        return absD <= 2 && (prevPc === chord.thirdPc || prevPc === chord.fifthPc);
+      }
+      const isTension = chord.tensionPcs.has(pc);
+      // Beats 2 & 4 (on-beats) and long/syncopated notes: only chord tones or consonant tensions (9, 13, #11, m7 11)
+      if (isOnBeat || isLongNote) {
+        return isTension;
+      }
+      // Short off-beat: tensions always allowed
+      if (isTension) return true;
+      // Short off-beat: Bebop / Symmetric Dominant passing tones allowed when moving stepwise
+      if (chord.bebopPassPcs.has(pc)) {
+        return prevMidi === null || Math.abs(m - prevMidi) <= 2;
+      }
+      // Short off-beat bar-end pickup directly into next bar's downbeat root: ±1 semitone leading tone
+      if (isBarEndApproach && nextChord) {
+        const upDist = ((nextChord.rootPc - pc) + 12) % 12;
+        const downDist = ((pc - nextChord.rootPc) + 12) % 12;
+        if ((upDist === 1 || downDist === 1) && (prevMidi === null || Math.abs(m - prevMidi) <= 3)) {
+          return true;
+        }
+      }
+      return false;
+    };
+
     const candidates = [];
     for (let m = minMidi; m <= maxMidi; m++) {
+      if (!isEligiblePitch(m)) continue;
       const pc = m % 12;
       let score = 0;
 
@@ -617,63 +683,68 @@ export function assignPitchesToPhrase(phrase, keySetting = "Bb", progType = "aut
       const isSeventh = pc === chord.seventhPc;
       const isGuide = chord.guidePcs.has(pc);
       const isChordTone = chord.chordPcs.has(pc);
+      const isTension = chord.tensionPcs.has(pc);
+      const isBebopPass = chord.bebopPassPcs.has(pc);
       const isScaleTone = chord.scalePcs.has(pc);
 
-      // A. Harmonic & Metric Hierarchy (with real jazz inversions & enclosures!)
+      // A. Bebop Harmonic & Metric Hierarchy
       if (isDownbeat) {
-        // Bar 0 always anchors strongly on Root; later bars allow tasteful 3rd/5th inversions when stepwise!
-        if (isRoot) score += (b === 0 ? 7.0 : 5.4);
-        else if (isThird && b > 0) score += 2.6;
-        else if (isFifth && b > 0) score += 2.2;
-        else if (isSeventh && b > 0) score += 1.0;
-        else score -= 6.5;
+        // Bar 0 always anchors strongly on Root; later bars favor Root with smooth 3rd/5th/7th voice-leading
+        if (isRoot) score += (b === 0 ? 7.2 : 5.4);
+        else if (isThird && b > 0) score += 2.8;
+        else if (isFifth && b > 0) score += 2.3;
+        else if (isSeventh && b > 0) score += 1.4;
 
-        // If previous bar set up an approach/enclosure into this root, resolve smoothly by step!
+        // If previous bar set up a leading-tone pickup into this root, resolve smoothly by step!
         if (pendingTargetRoot !== null && isRoot && prevMidi !== null) {
           const d = Math.abs(m - prevMidi);
-          if (d === 1) score += 5.2;
+          if (d === 1) score += 5.4;
           else if (d === 2) score += 4.2;
         }
+      } else if (isSecondaryStrong) {
+        // Beat 3 pillar: strictly chord tones — favor guide tones (3rd / 7th) & 5th for colorful jazz movement
+        if (isGuide) score += 4.4;
+        else if (isFifth) score += 3.8;
+        else if (isRoot) score += (contour === "POCKET" ? 3.5 : 2.3);
       } else if (isBarEndApproach) {
-        // Look-ahead chromatic/diatonic approach into next bar's root (or opposite side of enclosure!)
+        // Short off-beat pickup right before next bar's downbeat root
         const upDist = ((nextChord.rootPc - pc) + 12) % 12;   // 1 = half-step below next root
         const downDist = ((pc - nextChord.rootPc) + 12) % 12; // 1 = half-step above next root
         if (enclosureDir !== 0) {
-          // Complete the enclosure from the OPPOSITE side of next root!
           if ((enclosureDir > 0 && upDist === 1) || (enclosureDir < 0 && downDist === 1)) {
-            score += 6.2;
+            score += 6.0;
           } else if (upDist === 1 || downDist === 1) {
-            score += 4.5;
+            score += 4.4;
           }
         } else {
-          if (upDist === 1 || downDist === 1) score += 4.8; // Chromatic leading tone (e.g. E->F or Gb->F)
-          else if ((upDist === 2 || downDist === 2) && isScaleTone) score += 3.8; // Diatonic step approach
-          else if (downDist === 7 || upDist === 5) score += 2.6; // Dominant 5th drop
-          else if (isChordTone) score += 1.2;
-          else score -= 3.8;
+          if (upDist === 1 || downDist === 1) score += 4.6;
+          else if ((upDist === 2 || downDist === 2) && isScaleTone) score += 3.8;
+          else if (downDist === 7 || upDist === 5) score += 2.6;
+          else if (isChordTone) score += 2.2;
         }
       } else if (isPreApproachEnclosure) {
-        // Penultimate note of bar: set up an enclosure (±1 or ±2 around next bar's root!)
+        // Penultimate note setting up an enclosure around next bar's downbeat root (strictly inside valid tones!)
         const upDist = ((nextChord.rootPc - pc) + 12) % 12;
         const downDist = ((pc - nextChord.rootPc) + 12) % 12;
-        if (downDist === 1 || downDist === 2) score += 4.2; // Step above next root -> then drop below -> resolve!
-        else if (upDist === 1 || upDist === 2) score += 3.6;
-        else if (isGuide) score += 2.6;
-        else if (isScaleTone) score += 1.5;
-        else score -= 3.5;
-      } else if (isSecondaryStrong) {
-        // Favor color guide tones (3rd / 7th) & 5th over monotonous root repetition
-        if (isGuide) score += 4.0;
-        else if (isFifth) score += 3.5;
-        else if (isRoot) score += (contour === "POCKET" ? 3.4 : 2.1);
-        else if (isScaleTone) score += 1.8;
-        else score -= 4.8;
+        if (downDist === 1 || downDist === 2) score += 3.8;
+        else if (upDist === 1 || upDist === 2) score += 3.4;
+        else if (isGuide) score += 3.0;
+        else if (isChordTone) score += 2.4;
+        else if (isTension) score += 1.6;
+      } else if (isOnBeat || isLongNote) {
+        // Beats 2 & 4 (정박) & sustained/syncopated notes: strongly anchor on Chord Tones (Bebop rule!),
+        // allowing safe 9th/13th tensions tastefully when stepwise!
+        if (isGuide) score += 4.2;
+        else if (isFifth) score += 3.6;
+        else if (isRoot) score += (contour === "POCKET" ? 3.5 : 2.5);
+        else if (isTension) score += 1.8;
       } else {
-        // Weak beat / off-beat: reward smooth scale passing tones & chromatic tension over rigid arpeggio
-        if (isScaleTone && !isChordTone) score += 3.0; // 2nd/6th/9th color tones make jazz lines sing!
-        else if (isGuide) score += 2.7;
-        else if (isChordTone) score += 2.2;
-        else score -= 4.2;
+        // Short off-beat (엇박): Bebop passing tones & 9/13 color tensions connect chord tones smoothly!
+        if (isTension) score += 3.2;
+        else if (isBebopPass) score += 2.9;
+        else if (isGuide) score += 2.8;
+        else if (isChordTone) score += 2.3;
+        else score += 0.6;
       }
 
       // B. Contour Archetype Bias (breaks mechanical 1-3-5-7 patterns!)
@@ -756,7 +827,8 @@ export function assignPitchesToPhrase(phrase, keySetting = "Bb", progType = "aut
       candidates.push({ midi: m, score });
     }
 
-    const chosenMidi = weightedPick(candidates, rand, isDownbeat ? 0.65 : (recallStrength > 0 ? 0.75 : 1.05));
+    const pickTemp = isDownbeat ? 0.50 : (isOnBeat || isLongNote ? 0.65 : (recallStrength > 0 ? 0.70 : 0.82));
+    const chosenMidi = weightedPick(candidates, rand, pickTemp);
     tgt.pitch = spellBassMidi(chosenMidi, keyId, clef);
 
     // Record per-bar interval sequence for motific repetition & variation
