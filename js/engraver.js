@@ -257,22 +257,19 @@ export function renderScore(svg, phrase) {
   const keyAcc = hasPitch ? getKeySignatureAcc(phrase.pitchMeta.key) : null;
   const hasDenseNotes = hasPitch && phrase.bars.some(bar => bar.some(bt => bt.some(ev => !ev.rest && ev.dur <= 4)));
 
+  const isWideNeed = phrase.timeSig === "5/4" || hasDenseNotes || (hasPitch && pitchFlats >= 5);
   let barsPerSystem;
   if (phrase.endless && phrase.endlessSlotBars) {
     // Double-buffered Endless Mode ALWAYS renders exactly 2 lines (Slot 0 top, Slot 1 bottom)
     barsPerSystem = phrase.endlessSlotBars;
-  } else if (phrase.timeSig === "5/4") {
-    barsPerSystem = isNarrow ? 1 : (numBars <= 2 ? numBars : (numBars <= 4 ? 2 : 3));
-  } else if (hasDenseNotes) {
-    // Give 16th-note / triplet pitched bars generous horizontal width so accidentals never collide with noteheads
-    barsPerSystem = isNarrow ? 1 : (numBars <= 2 ? numBars : (numBars <= 4 ? 2 : 3));
-  } else if (hasPitch && pitchFlats >= 5) {
-    barsPerSystem = isNarrow ? 1 : (numBars <= 2 ? numBars : (numBars <= 4 ? 2 : 3));
+  } else if (isNarrow) {
+    barsPerSystem = phrase.timeSig === "5/4" ? 1 : Math.min(numBars, 2);
   } else {
-    barsPerSystem = numBars <= 2 ? numBars : (isNarrow ? 2 : 4);
+    // Desktop ALWAYS keeps clean 4-bar phrases per system (never awkward 3-bar wraps!)
+    barsPerSystem = Math.min(numBars, 4);
   }
   const numSystems = Math.ceil(numBars / barsPerSystem);
-  const W = isNarrow ? 600 : 1120;
+  const W = isNarrow ? (isWideNeed ? 660 : 600) : (isWideNeed && barsPerSystem >= 4 ? 1280 : 1120);
   const sysH = hasPitch ? 196 : 164;
   const H = numSystems * sysH + 10;
   svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
