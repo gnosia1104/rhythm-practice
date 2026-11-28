@@ -389,7 +389,8 @@ export function renderScore(svg, phrase) {
       if (accTickSet.size === 0) {
         tickX = (barTick) => barX0 + innerPadL + (barTick / ts.barTicks) * innerW;
       } else {
-        // Piecewise-linear accidental-aware tick mapping: inserts extra horizontal breathing room right before each accidental
+        // Deficit-only pixel-aware accidental spacing: adds ONLY the exact pixels needed to clear ♭/♮
+        // (zero unnatural chasm inside 16th-note beams, and zero distortion when gap is already wide enough!)
         const anchors = [0];
         for (let bt = 0; bt < ts.beatsPerBar; bt++) {
           for (const ev of beats[bt]) {
@@ -400,14 +401,30 @@ export function renderScore(svg, phrase) {
           }
         }
         anchors.push(ts.barTicks);
-        const accBonus = Math.max(4.5, ts.barTicks * 0.11);
+        const minAccGapPx = 22.0;
+        let totalU = ts.barTicks;
+        const extras = new Array(anchors.length).fill(0);
+        for (let pass = 0; pass < 2; pass++) {
+          const pxPerU = innerW / Math.max(1, totalU);
+          totalU = 0;
+          for (let k = 1; k < anchors.length; k++) {
+            const dt = anchors[k] - anchors[k - 1];
+            let ex = 0;
+            if (accTickSet.has(anchors[k])) {
+              const gapPx = dt * pxPerU;
+              if (gapPx < minAccGapPx) {
+                ex = (minAccGapPx - gapPx) / Math.max(0.5, pxPerU);
+              }
+            }
+            extras[k] = ex;
+            totalU += dt + ex;
+          }
+        }
         const cumU = [0];
         for (let k = 1; k < anchors.length; k++) {
-          const dt = anchors[k] - anchors[k - 1];
-          const extra = accTickSet.has(anchors[k]) ? accBonus : 0;
-          cumU.push(cumU[k - 1] + dt + extra);
+          cumU.push(cumU[k - 1] + (anchors[k] - anchors[k - 1]) + extras[k]);
         }
-        const totalU = cumU[cumU.length - 1] || ts.barTicks;
+        totalU = cumU[cumU.length - 1] || ts.barTicks;
         tickX = (barTick) => {
           if (barTick <= 0) return barX0 + innerPadL;
           if (barTick >= ts.barTicks) return barX0 + innerPadL + innerW;
@@ -551,7 +568,7 @@ export function renderScore(svg, phrase) {
                 const aKey = `${p.writtenOct}:${p.letter}`;
                 const activeAcc = barAccState.has(aKey) ? barAccState.get(aKey) : keyAcc[p.letter];
                 if (p.acc !== activeAcc) {
-                  drawAccidental(beatG, nx - 11.4, ny, p.acc);
+                  drawAccidental(beatG, nx - 10.4, ny, p.acc);
                   barAccState.set(aKey, p.acc);
                 }
               }
