@@ -20,7 +20,7 @@ import {
 import {
   registerAudioInCallbacks, populateAudioDevices, populateChannelSelect, startAudioInput, stopAudioInput,
   closeSustainTarget, schedulePitchCheck,
-} from "./audio-in.js";
+} from "./audio-in.js?v=20261128o";
 import { JAZZ_KEYS, getRelativeDegreeName } from "./pitch-gen.js";
 import { comparePitchClass } from "./pitch-detect.js";
 import {
@@ -80,7 +80,7 @@ import {
   PITCH_KEY_MAP, PITCH_TOP_ROW_SWALLOW,
   applyPitchToCurrentPhrase, getActivePitchKeyId, findNextPitchFreeIdx,
   handlePitchFreeStep, triggerPitchPianoKey, handleMidiNoteOn, syncPitchUi, initPitchUi,
-} from "./pitch-ui.js";
+} from "./pitch-ui.js?v=20261128o";
 import { drawDistribution, renderLog, initResultsUi } from "./results-ui.js";
 import {
   syncAllDropdownBadges, syncToolsMenuBadge, syncClickVol, syncGuideUi, initToolbarMenus,
@@ -215,6 +215,10 @@ function loadDailyChallenge(dateStr = null, isPlus = false) {
 }
 
 
+function isPitchFreeActive() {
+  return Boolean(app.pitchMode && app.pitchFreeMode && !app.endlessMode && !isRoomActive());
+}
+
 async function startRun(demo = false, keepRushRound = false) {
   abortActiveRunTracking("retry");
   cancelRushTimer(!keepRushRound);
@@ -226,6 +230,18 @@ async function startRun(demo = false, keepRushRound = false) {
   app.state = "READY";
   resetTargets();
   clearFadeOutClasses();
+  // In Pitch Free-Tempo mode, Start resets to note #1 with NO metronome / count-in!
+  if (!demo && isPitchFreeActive()) {
+    setHitBadge(t("badgePitchFree"), "tight");
+    const pitchMsgEl = document.getElementById("pitchMsg");
+    if (pitchMsgEl) {
+      pitchMsgEl.style.color = "var(--green)";
+      pitchMsgEl.textContent = t("pitchFreeReady");
+    }
+    syncTransportButtons();
+    await ensureAudioCtxReady();
+    return;
+  }
   setHitBadge(t("statusGetReady"), "");
   syncTransportButtons();
   const ctx = await ensureAudioCtxReady();
@@ -1389,7 +1405,7 @@ function frame() {
   } else if (isRoomCountingDown()) {
     statusMain.textContent = getRoomCountdownText();
   } else if (app.state === "READY") {
-    statusMain.textContent = t("statusReady");
+    statusMain.textContent = isPitchFreeActive() ? t("statusPitchFree") : t("statusReady");
   } else if (app.state === "DONE") {
     statusMain.textContent = app.suddenDeathOut ? t("sdStatusOut") : t("statusDone");
   }
@@ -1827,6 +1843,9 @@ initPitchUi({
   setHitBadge,
   handleHit,
   recordCalibrationTap,
+  onPitchFreeEnabled: () => {
+    if (app.endlessMode) setEndlessMode(false);
+  },
   onUiChange: () => syncToolsMenuBadge(),
 });
 initResultsUi({

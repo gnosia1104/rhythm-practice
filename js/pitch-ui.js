@@ -60,6 +60,7 @@ let cbs = {
   setHitBadge: () => {},
   handleHit: () => {},
   recordCalibrationTap: () => {},
+  onPitchFreeEnabled: () => {},
   onUiChange: () => {},
 };
 
@@ -357,15 +358,26 @@ export function initPitchUi(callbacks = {}) {
   document.getElementById("btnPitchFreeMode").addEventListener("click", (e) => {
     e.currentTarget.blur();
     app.pitchFreeMode = !app.pitchFreeMode;
-    if (app.pitchFreeMode && !app.pitchMode) {
-      app.pitchMode = true;
-      applyPitchToCurrentPhrase();
+    if (app.pitchFreeMode) {
+      cbs.onPitchFreeEnabled();
+      if (!app.pitchMode) {
+        app.pitchMode = true;
+        applyPitchToCurrentPhrase();
+      }
     }
     cbs.stopRun();
+    app.state = "READY";
     cbs.resetTargets();
     const msgEl = document.getElementById("pitchMsg");
-    msgEl.style.color = "var(--muted)";
-    msgEl.textContent = t("pitchIdleMsg");
+    if (app.pitchFreeMode) {
+      msgEl.style.color = "var(--green)";
+      msgEl.textContent = t("pitchFreeReady");
+      cbs.setHitBadge(t("badgePitchFree"), "tight");
+    } else {
+      msgEl.style.color = "var(--muted)";
+      msgEl.textContent = t("pitchIdleMsg");
+      cbs.setHitBadge(t("badgeWait"), "");
+    }
     cbs.updateMeta();
     syncPitchUi();
   });

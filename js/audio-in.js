@@ -415,7 +415,7 @@ export function pollAudioInput() {
     } else if (app.inputMode === "AUDIO" || app.inputMode === "BOTH") {
       if (app.state === "COUNTIN" || app.state === "PLAY") {
         audioInCbs.handleHit(now - audioIn.latencyMs / 1000, "AUDIO");
-      } else if (app.state === "READY") {
+      } else if (app.state === "READY" || app.state === "DONE") {
         if (app.pitchMode && audioIn.pitchAnalysers[bestCh] && audioIn.pitchBuf) {
           // Schedule a quick +55ms pitch read in READY mode so bassists can verify live pitch detection
           audioIn.pendingPitchChecks.push({ tgt: null, ch: bestCh, checkAt: now + 0.055, isReadyPreview: true });
