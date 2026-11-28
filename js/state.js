@@ -117,6 +117,8 @@ export const edState = {
   selBeat: 0,
   timeSig: "4/4",
   bars: [],
+  undoStack: [],
+  activeCat: "basic",
 };
 
 

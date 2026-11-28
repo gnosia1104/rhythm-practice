@@ -15,7 +15,77 @@ const edCbs = {
   loadDailyChallenge: () => {},
   newPhrase: () => {},
   syncPitchUi: () => {},
+  playDemo: () => {},
+  startPlay: () => {},
+  applyPitchIfNeeded: () => {},
 };
+
+const MAX_ED_UNDO = 30;
+
+export function pushEdUndo() {
+  if (!edState.bars || !edState.bars.length) return;
+  edState.undoStack.push({
+    timeSig: edState.timeSig,
+    bars: cloneBars(edState.bars),
+    selBar: edState.selBar,
+    selBeat: edState.selBeat,
+  });
+  if (edState.undoStack.length > MAX_ED_UNDO) {
+    edState.undoStack.shift();
+  }
+}
+
+export function undoEditor() {
+  if (!edState.undoStack.length) return false;
+  const snap = edState.undoStack.pop();
+  edState.timeSig = snap.timeSig;
+  edState.bars = cloneBars(snap.bars);
+  edState.selBar = snap.selBar;
+  edState.selBeat = snap.selBeat;
+  applyCustomToApp();
+  renderEditorUi();
+  const msgEl = document.getElementById("edMsg");
+  if (msgEl) {
+    msgEl.style.color = "var(--muted)";
+    msgEl.textContent = t("edUndone");
+  }
+  return true;
+}
+
+export function stepSelectedBeat(delta) {
+  const ts = TIME_SIGS[edState.timeSig] || TIME_SIGS["4/4"];
+  const totalBeats = edState.bars.length * ts.beatsPerBar;
+  if (totalBeats <= 0) return;
+  const curFlat = edState.selBar * ts.beatsPerBar + edState.selBeat;
+  const nextFlat = Math.max(0, Math.min(totalBeats - 1, curFlat + delta));
+  edState.selBar = Math.floor(nextFlat / ts.beatsPerBar);
+  edState.selBeat = nextFlat % ts.beatsPerBar;
+  app.dirtyScore = true;
+  renderEditorUi();
+}
+
+export function duplicateSelectedBar() {
+  if (!edState.bars.length) return;
+  const srcIdx = Math.max(0, Math.min(edState.bars.length - 1, edState.selBar));
+  let dstIdx = srcIdx + 1;
+  if (dstIdx >= edState.bars.length) {
+    if (edState.bars.length >= 8) return;
+    pushEdUndo();
+    edState.bars.push(cloneBars([edState.bars[srcIdx]])[0]);
+  } else {
+    pushEdUndo();
+    edState.bars[dstIdx] = cloneBars([edState.bars[srcIdx]])[0];
+  }
+  edState.selBar = dstIdx;
+  edState.selBeat = 0;
+  applyCustomToApp();
+  renderEditorUi();
+  const msgEl = document.getElementById("edMsg");
+  if (msgEl) {
+    msgEl.style.color = "var(--green)";
+    msgEl.textContent = t("edDupDone", srcIdx + 1, dstIdx + 1);
+  }
+}
 
 export const ED_SIMPLE_GROUPS = [
   {
@@ -237,6 +307,7 @@ export function applyStampAt(bIdx, btIdx, cells) {
   const ts = TIME_SIGS[edState.timeSig] || TIME_SIGS["4/4"];
   const bar = edState.bars[bIdx];
   if (!bar || btIdx + cells.length > ts.beatsPerBar) return;
+  pushEdUndo();
 
   // 1. If btIdx is inside a multi-beat span owned by an earlier beat, split that span cleanly first
   const { owner, span } = findBeatOwner(bar, btIdx, ts);
@@ -288,10 +359,13 @@ export function applyCustomToApp() {
   app.numBars = edState.bars.length;
   const code = encodeCustomScore(edState.timeSig, edState.bars);
   app.phrase = buildPhraseFromBars(cloneBars(edState.bars), edState.timeSig, 0, true, code);
+  edCbs.applyPitchIfNeeded();
   edCbs.resetTargets();
   app.state = "READY";
   edCbs.setHitBadge(t("badgeWait"), "");
   edCbs.updateMeta();
+  const tsMain = document.getElementById("timeSigSelect");
+  if (tsMain && tsMain.value !== edState.timeSig) tsMain.value = edState.timeSig;
   const inp = document.getElementById("edCodeInput");
   if (inp) inp.value = code;
 }
@@ -304,16 +378,29 @@ export function renderEditorUi() {
   edState.selBar = Math.max(0, Math.min(edState.bars.length - 1, edState.selBar));
   edState.selBeat = Math.max(0, Math.min(ts.beatsPerBar - 1, edState.selBeat));
 
+  const edTsSel = document.getElementById("edTimeSigSelect");
+  if (edTsSel && edTsSel.value !== edState.timeSig) edTsSel.value = edState.timeSig;
   document.getElementById("edBarsVal").textContent = t("edBarsLbl", edState.bars.length);
   document.getElementById("btnEdBarMinus").disabled = edState.bars.length <= 1;
   document.getElementById("btnEdBarPlus").disabled = edState.bars.length >= 8;
+  const undoBtn = document.getElementById("btnEdUndo");
+  if (undoBtn) undoBtn.disabled = edState.undoStack.length === 0;
+  const dupBtn = document.getElementById("btnEdDupBar");
+  if (dupBtn) dupBtn.disabled = (edState.selBar >= 7 && edState.bars.length >= 8);
+  const posBadge = document.getElementById("edCurPosBadge");
+  if (posBadge) posBadge.textContent = t("edBeatPos", edState.selBar + 1, edState.selBeat + 1);
+  const prevBtn = document.getElementById("btnEdPrevBeat");
+  if (prevBtn) prevBtn.disabled = (edState.selBar === 0 && edState.selBeat === 0);
+  const nextBtn = document.getElementById("btnEdNextBeat");
+  if (nextBtn) nextBtn.disabled = (edState.selBar === edState.bars.length - 1 && edState.selBeat === ts.beatsPerBar - 1);
 
-  // 1. Beat strip
+  // 1. Beat strip (horizontal swipeable rail on mobile, auto-centered on active beat)
   const strip = document.getElementById("edBeatStrip");
   strip.innerHTML = "";
+  let selectedBeatBtn = null;
   edState.bars.forEach((bar, bIdx) => {
     const grp = document.createElement("div");
-    grp.className = "ed-bar-group";
+    grp.className = "ed-bar-group" + (bIdx === edState.selBar ? " active-bar" : "");
     const lbl = document.createElement("span");
     lbl.className = "ed-bar-lbl";
     lbl.textContent = `M${bIdx + 1}`;
@@ -322,8 +409,10 @@ export function renderEditorUi() {
       const btn = document.createElement("button");
       btn.type = "button";
       const isCont = !bar[bt] || bar[bt].length === 0;
-      btn.className = "ed-beat-btn" + (bIdx === edState.selBar && bt === edState.selBeat ? " selected" : "") + (isCont ? " cont" : "");
+      const isSel = bIdx === edState.selBar && bt === edState.selBeat;
+      btn.className = "ed-beat-btn" + (isSel ? " selected" : "") + (isCont ? " cont" : "");
       btn.textContent = isCont ? "→" : String(bt + 1);
+      if (isSel) selectedBeatBtn = btn;
       btn.addEventListener("click", (e) => {
         e.currentTarget.blur();
         edState.selBar = bIdx;
@@ -335,16 +424,43 @@ export function renderEditorUi() {
     }
     strip.appendChild(grp);
   });
+  if (selectedBeatBtn && strip.scrollWidth > strip.clientWidth + 4) {
+    const targetLeft = Math.max(0, selectedBeatBtn.offsetLeft - strip.clientWidth / 2 + selectedBeatBtn.offsetWidth / 2);
+    strip.scrollTo({ left: targetLeft, behavior: "smooth" });
+  }
 
-  // 2. Categorized SVG notation stamp palette
-  const pal = document.getElementById("edPalette");
-  pal.innerHTML = "";
+  // 2. Categorized SVG notation stamp palette (+ mobile segmented category tabs)
   const groups = ts.compound ? ED_68_GROUPS : ED_SIMPLE_GROUPS;
   const catLabels = t("edCats");
+  if (!groups.some((g) => g.cat === edState.activeCat)) {
+    edState.activeCat = groups[0].cat;
+  }
+  const tabsWrap = document.getElementById("edCatTabs");
+  if (tabsWrap) {
+    tabsWrap.innerHTML = "";
+    for (const grp of groups) {
+      const tab = document.createElement("button");
+      tab.type = "button";
+      tab.role = "tab";
+      const isActive = grp.cat === edState.activeCat;
+      tab.className = "ed-cat-tab" + (isActive ? " active" : "");
+      tab.setAttribute("aria-selected", isActive ? "true" : "false");
+      tab.textContent = catLabels[grp.cat] || grp.cat;
+      tab.addEventListener("click", (e) => {
+        e.currentTarget.blur();
+        edState.activeCat = grp.cat;
+        renderEditorUi();
+      });
+      tabsWrap.appendChild(tab);
+    }
+  }
+
+  const pal = document.getElementById("edPalette");
+  pal.innerHTML = "";
   const remBeats = ts.beatsPerBar - edState.selBeat;
   for (const grp of groups) {
     const row = document.createElement("div");
-    row.className = "ed-cat-row";
+    row.className = "ed-cat-row" + (grp.cat === edState.activeCat ? " cat-active" : "");
     const lbl = document.createElement("span");
     lbl.className = "ed-cat-lbl";
     lbl.textContent = catLabels[grp.cat] || grp.cat;
@@ -404,6 +520,7 @@ export function renderEditorUi() {
         chip.disabled = Boolean(ev.tiedIn || ev.tiedOut);
         chip.addEventListener("click", (e) => {
           e.currentTarget.blur();
+          pushEdUndo();
           ev.art = ev.art === null ? "staccato" : (ev.art === "staccato" ? "ghost" : null);
           applyCustomToApp();
           renderEditorUi();
@@ -426,6 +543,7 @@ export function renderEditorUi() {
         tieBtn.textContent = t("edTiePrev");
         tieBtn.addEventListener("click", (e) => {
           e.currentTarget.blur();
+          pushEdUndo();
           const next = !firstEv.tiedIn;
           prevEv.tiedOut = next;
           firstEv.tiedIn = next;
@@ -468,11 +586,17 @@ export function toggleEditorBar(forceOpen = null) {
     } else {
       renderEditorUi();
     }
+    if (window.innerWidth <= 780) {
+      window.requestAnimationFrame(() => {
+        const paper = document.querySelector(".sheet-paper");
+        if (paper) paper.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
   }
   app.dirtyScore = true;
 }
 
-// Click directly on any beat in the sheet music SVG to select it when the editor is open!
+// Click/tap directly on any beat in the sheet music SVG to select it when the editor is open!
 scoreSvg.addEventListener("click", (e) => {
   if (!edState.open || !app.scoreLayout) return;
   const rect = scoreSvg.getBoundingClientRect();
@@ -484,7 +608,7 @@ scoreSvg.addEventListener("click", (e) => {
   for (let bIdx = 0; bIdx < layouts.length; bIdx++) {
     const lay = layouts[bIdx];
     if (!lay) continue;
-    if (sy >= lay.staffTop - 42 && sy <= lay.staffTop + 78 && sx >= lay.barX0 && sx <= lay.barX1) {
+    if (sy >= lay.staffTop - 52 && sy <= lay.staffTop + 92 && sx >= lay.barX0 && sx <= lay.barX1) {
       const relTick = ((sx - (lay.barX0 + lay.innerPadL)) / Math.max(1, lay.innerW)) * lay.barTicks;
       const bt = Math.max(0, Math.min(lay.beatsPerBar - 1, Math.floor(relTick / lay.beatTicks)));
       edState.selBar = bIdx;
@@ -667,10 +791,71 @@ export function initEditor(cbs) {
     toggleEditorBar();
   });
   document.getElementById("btnEdClose").addEventListener("click", () => toggleEditorBar(false));
-  
+
+  const btnEdDemo = document.getElementById("btnEdDemo");
+  if (btnEdDemo) {
+    btnEdDemo.addEventListener("click", (e) => {
+      e.currentTarget.blur();
+      edCbs.playDemo();
+    });
+  }
+  const btnEdPlay = document.getElementById("btnEdPlay");
+  if (btnEdPlay) {
+    btnEdPlay.addEventListener("click", (e) => {
+      e.currentTarget.blur();
+      toggleEditorBar(false);
+      edCbs.startPlay();
+    });
+  }
+  const edTsSel = document.getElementById("edTimeSigSelect");
+  if (edTsSel) {
+    edTsSel.addEventListener("change", (e) => {
+      const nextTs = e.target.value;
+      e.target.blur();
+      if (!TIME_SIGS[nextTs] || nextTs === edState.timeSig) return;
+      pushEdUndo();
+      edState.timeSig = nextTs;
+      const nBars = Math.max(1, Math.min(8, edState.bars.length || 4));
+      edState.bars = Array.from({ length: nBars }, () => makeDefaultBar(nextTs));
+      edState.selBar = 0;
+      edState.selBeat = 0;
+      applyCustomToApp();
+      renderEditorUi();
+    });
+  }
+  const btnEdUndo = document.getElementById("btnEdUndo");
+  if (btnEdUndo) {
+    btnEdUndo.addEventListener("click", (e) => {
+      e.currentTarget.blur();
+      undoEditor();
+    });
+  }
+  const btnEdDupBar = document.getElementById("btnEdDupBar");
+  if (btnEdDupBar) {
+    btnEdDupBar.addEventListener("click", (e) => {
+      e.currentTarget.blur();
+      duplicateSelectedBar();
+    });
+  }
+  const btnEdPrevBeat = document.getElementById("btnEdPrevBeat");
+  if (btnEdPrevBeat) {
+    btnEdPrevBeat.addEventListener("click", (e) => {
+      e.currentTarget.blur();
+      stepSelectedBeat(-1);
+    });
+  }
+  const btnEdNextBeat = document.getElementById("btnEdNextBeat");
+  if (btnEdNextBeat) {
+    btnEdNextBeat.addEventListener("click", (e) => {
+      e.currentTarget.blur();
+      stepSelectedBeat(1);
+    });
+  }
+
   document.getElementById("btnEdBarMinus").addEventListener("click", (e) => {
     e.currentTarget.blur();
     if (edState.bars.length > 1) {
+      pushEdUndo();
       edState.bars.pop();
       applyCustomToApp();
       renderEditorUi();
@@ -679,6 +864,7 @@ export function initEditor(cbs) {
   document.getElementById("btnEdBarPlus").addEventListener("click", (e) => {
     e.currentTarget.blur();
     if (edState.bars.length < 8) {
+      pushEdUndo();
       edState.bars.push(makeDefaultBar(edState.timeSig));
       applyCustomToApp();
       renderEditorUi();
@@ -686,10 +872,12 @@ export function initEditor(cbs) {
   });
   document.getElementById("btnEdImportCur").addEventListener("click", (e) => {
     e.currentTarget.blur();
+    if (edState.bars.length) pushEdUndo();
     importCurrentScoreIntoEditor();
   });
   document.getElementById("btnEdClear").addEventListener("click", (e) => {
     e.currentTarget.blur();
+    pushEdUndo();
     edState.bars = edState.bars.map(() => makeDefaultBar(edState.timeSig));
     edState.selBar = 0;
     edState.selBeat = 0;
@@ -709,6 +897,15 @@ export function initEditor(cbs) {
   document.getElementById("btnEdLoadCode").addEventListener("click", (e) => {
     e.currentTarget.blur();
     loadCustomFromInput(document.getElementById("edCodeInput").value);
+  });
+
+  window.addEventListener("keydown", (e) => {
+    if (!edState.open) return;
+    if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.tagName === "SELECT")) return;
+    if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.code === "KeyZ") {
+      e.preventDefault();
+      undoEditor();
+    }
   });
   
 }

@@ -61,7 +61,7 @@
   "description": "Free browser-based rhythm & pitch sight-reading trainer for musicians featuring 6 progressive levels, 5 time signatures, triplets, staccato, ghost notes, gap click metronome, custom score editor, daily challenges, and audio interface onset/sustain/rest grading."
 }
 </script>
-<link rel="stylesheet" href="css/styles.css?v=20261128k" />
+<link rel="stylesheet" href="css/styles.css?v=20261128p" />
 <script defer src="https://cloud.umami.is/script.js" data-website-id="9070201e-fd1f-4081-ad26-1219def68ba6" data-domains="gnosia1104.github.io"></script>
 </head>
 <body>
@@ -340,19 +340,44 @@
 
   <!-- Custom Rhythm Score Editor (hidden unless user clicks ✏️ 에디터) -->
   <div id="editorBar" class="editor-bar hidden">
-    <div class="ed-row">
+    <div class="ed-row ed-head-row">
       <strong id="lblEdTitle">✏️ 커스텀 악보 에디터</strong>
-      <button id="btnEdBarMinus" type="button" class="icon-btn">−</button>
-      <span id="edBarsVal" class="label">4마디</span>
-      <button id="btnEdBarPlus" type="button" class="icon-btn">+</button>
+      <div class="ed-head-actions">
+        <button id="btnEdDemo" type="button" title="작성한 악보 미리듣기">🔊 듣기</button>
+        <button id="btnEdPlay" type="button" class="primary" title="에디터를 닫고 바로 연주 시작">▶ 연주</button>
+        <button id="btnEdClose" type="button" class="cal-close" title="닫기">✕</button>
+      </div>
+    </div>
+    <div class="ed-row ed-ctrl-row">
+      <select id="edTimeSigSelect" class="ed-ts-select" aria-label="Time signature">
+        <option value="4/4">4/4</option>
+        <option value="3/4">3/4</option>
+        <option value="2/4">2/4</option>
+        <option value="6/8">6/8</option>
+        <option value="5/4">5/4</option>
+      </select>
+      <div class="ed-bar-stepper">
+        <button id="btnEdBarMinus" type="button" class="icon-btn" aria-label="Remove bar">−</button>
+        <span id="edBarsVal" class="label">4마디</span>
+        <button id="btnEdBarPlus" type="button" class="icon-btn" aria-label="Add bar">+</button>
+      </div>
+      <button id="btnEdUndo" type="button" disabled title="실행취소 (Ctrl/⌘+Z)">↩ 실행취소</button>
+      <button id="btnEdDupBar" type="button" title="현재 마디를 다음 마디로 복제">📋 마디복사</button>
       <button id="btnEdImportCur" type="button">현재 악보 가져오기</button>
       <button id="btnEdClear" type="button">초기화</button>
-      <button id="btnEdClose" type="button" class="cal-close" title="닫기">✕</button>
     </div>
-    <div id="edBeatStrip" class="ed-beats"></div>
+    <div class="ed-beat-nav">
+      <div class="ed-stepper-group">
+        <button id="btnEdPrevBeat" type="button" class="icon-btn ed-step-btn" title="이전 박자">◀</button>
+        <span id="edCurPosBadge" class="ed-pos-badge">M1 · 1박</span>
+        <button id="btnEdNextBeat" type="button" class="icon-btn ed-step-btn" title="다음 박자">▶</button>
+      </div>
+      <div id="edBeatStrip" class="ed-beats"></div>
+    </div>
+    <div id="edCatTabs" class="ed-cat-tabs" role="tablist" aria-label="Rhythm categories"></div>
     <div id="edPalette" class="ed-palette"></div>
     <div id="edNoteTools" class="ed-note-tools"></div>
-    <div class="ed-row">
+    <div class="ed-row ed-share-row">
       <input id="edCodeInput" class="ed-code-input" type="text" placeholder="커스텀 코드 또는 공유 URL 붙여넣기..." />
       <button id="btnEdCopyUrl" type="button" class="primary">🔗 커스텀 링크 복사</button>
       <button id="btnEdLoadCode" type="button">📥 코드 불러오기</button>
@@ -825,7 +850,7 @@
 <!-- Steam-Style Achievement Unlock Toast Stack -->
 <div id="achToastStack" class="ach-toast-stack" aria-live="polite"></div>
 
-<script type="module" src="js/main.js?v=20261128o"></script>
+<script type="module" src="js/main.js?v=20261128p"></script>
 </body>
 </html>
 

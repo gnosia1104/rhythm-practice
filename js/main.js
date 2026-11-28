@@ -29,8 +29,8 @@ import {
 import { clearShareQueryUrl, buildShareUrl } from "./share-card.js";
 import {
   makeDefaultBar, applyCustomToApp, renderEditorUi, toggleEditorBar, applyFullSeedObj, applySeedQueryParams,
-  loadCustomFromInput, initEditor,
-} from "./editor.js";
+  loadCustomFromInput, initEditor, pushEdUndo,
+} from "./editor.js?v=20261128p";
 import {
   hasSeenTour, renderTourStep, syncTourButtonsLanguage, openTour, closeTour, nextTourStep, prevTourStep, initTour,
 } from "./tour.js";
@@ -1115,6 +1115,14 @@ function applyLanguage(lang) {
   document.getElementById("btnShareResult").textContent = t("btnShareResult");
   document.getElementById("btnBragCard").textContent = t("btnBragCard");
   document.getElementById("lblEdTitle").textContent = t("edTitle");
+  const btnEdDemoEl = document.getElementById("btnEdDemo");
+  if (btnEdDemoEl) btnEdDemoEl.textContent = t("edDemo");
+  const btnEdPlayEl = document.getElementById("btnEdPlay");
+  if (btnEdPlayEl) btnEdPlayEl.textContent = t("edPlay");
+  const btnEdUndoEl = document.getElementById("btnEdUndo");
+  if (btnEdUndoEl) btnEdUndoEl.textContent = t("edUndo");
+  const btnEdDupEl = document.getElementById("btnEdDupBar");
+  if (btnEdDupEl) btnEdDupEl.textContent = t("edDupBar");
   document.getElementById("btnEdImportCur").textContent = t("edImportCur");
   document.getElementById("btnEdClear").textContent = t("edClear");
   document.getElementById("btnEdCopyUrl").textContent = t("edCopyUrl");
@@ -1575,6 +1583,7 @@ document.getElementById("timeSigSelect").addEventListener("change", (e) => {
   app.timeSig = e.target.value;
   e.target.blur();
   if (edState.open) {
+    pushEdUndo();
     edState.timeSig = app.timeSig;
     const nBars = Math.max(1, Math.min(8, edState.bars.length || 4));
     edState.bars = Array.from({ length: nBars }, () => makeDefaultBar(app.timeSig));
@@ -1898,7 +1907,20 @@ registerMidiCallbacks({
     }
   },
 });
-initEditor({ stopRun, resetTargets, updateMeta, setHitBadge, loadDailyChallenge, newPhrase, syncPitchUi });
+initEditor({
+  stopRun,
+  resetTargets,
+  updateMeta,
+  setHitBadge,
+  loadDailyChallenge,
+  newPhrase,
+  syncPitchUi,
+  playDemo: () => startRun(true),
+  startPlay: () => startRun(false),
+  applyPitchIfNeeded: () => {
+    if (app.pitchMode) applyPitchToCurrentPhrase(false);
+  },
+});
 initTour({ stopRun, applyLanguage });
 
 // Boot
